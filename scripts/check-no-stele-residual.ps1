@@ -19,6 +19,11 @@ Set-Location $root
 
 $allowlist = @(
     'genesis/plans/estrategia/03-naming-options.md',
+    'genesis/plans/tactica/00-INDEX.md',
+    'genesis/plans/tactica/sprint-01/00-INDEX.md',
+    'genesis/plans/tactica/sprint-01/01-bloque-A-workspace-skeleton.md',
+    'genesis/plans/tactica/sprint-01/04-bloque-D-tests-integration.md',
+    '.github/workflows/ci.yml',
     'scripts/check-no-stele-residual.sh',
     'scripts/check-no-stele-residual.ps1',
     'CHANGELOG.md'

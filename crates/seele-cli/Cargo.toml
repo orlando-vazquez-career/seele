@@ -1,0 +1,29 @@
+[package]
+name = "seele-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "CLI binary for SEELE."
+
+[[bin]]
+name = "seele"
+path = "src/main.rs"
+
+[dependencies]
+seele-core = { path = "../seele-core" }
+seele-storage = { path = "../seele-storage" }
+seele-embedder = { path = "../seele-embedder" }
+seele-search = { path = "../seele-search" }
+seele-mcp = { path = "../seele-mcp" }
+seele-http = { path = "../seele-http" }
+seele-tui = { path = "../seele-tui" }
+seele-sync = { path = "../seele-sync" }
+seele-setup = { path = "../seele-setup" }
+seele-project = { path = "../seele-project" }
+clap.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+anyhow.workspace = true

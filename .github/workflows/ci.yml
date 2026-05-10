@@ -1,0 +1,48 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build
+        run: cargo build --workspace --all-features
+      - name: Test
+        run: cargo test --workspace --all-features
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - name: Clippy
+        run: cargo clippy --workspace --all-features -- -D warnings
+      - name: Fmt check
+        run: cargo fmt --all -- --check
+
+  static-checks:
+    strategy:
+      matrix:
+        include:
+          - { os: ubuntu-latest, shell: bash, script: scripts/check-no-stele-residual.sh }
+          - { os: windows-latest, shell: pwsh, script: scripts/check-no-stele-residual.ps1 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run STELE residual check
+        shell: ${{ matrix.shell }}
+        run: |
+          ${{ matrix.os == 'windows-latest' && format('powershell -File {0}', matrix.script) || format('bash {0}', matrix.script) }}

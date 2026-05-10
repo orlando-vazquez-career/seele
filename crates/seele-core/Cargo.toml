@@ -1,0 +1,18 @@
+[package]
+name = "seele-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Core types, errors, and traits shared across SEELE crates."
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+ulid.workspace = true
+chrono.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true

@@ -1,0 +1,15 @@
+[package]
+name = "seele-project"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "5-case project detection algorithm (config / git remote / git root / child scan / dir basename)."
+
+[dependencies]
+seele-core = { path = "../seele-core" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true

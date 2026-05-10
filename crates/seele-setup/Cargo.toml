@@ -1,0 +1,16 @@
+[package]
+name = "seele-setup"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Setup wizard for AI agent integrations (Claude Code, Cursor, VS Code, OpenCode, Gemini CLI, Codex, Windsurf, Antigravity)."
+
+[dependencies]
+seele-core = { path = "../seele-core" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+chrono.workspace = true

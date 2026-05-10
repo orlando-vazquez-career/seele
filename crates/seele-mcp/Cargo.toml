@@ -1,0 +1,19 @@
+[package]
+name = "seele-mcp"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "MCP (Model Context Protocol) server over stdio."
+
+[dependencies]
+seele-core = { path = "../seele-core" }
+seele-storage = { path = "../seele-storage" }
+seele-search = { path = "../seele-search" }
+seele-embedder = { path = "../seele-embedder" }
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true

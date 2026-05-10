@@ -1,0 +1,87 @@
+[workspace]
+members = [
+    "crates/seele-core",
+    "crates/seele-storage",
+    "crates/seele-embedder",
+    "crates/seele-search",
+    "crates/seele-mcp",
+    "crates/seele-http",
+    "crates/seele-tui",
+    "crates/seele-sync",
+    "crates/seele-setup",
+    "crates/seele-project",
+    "crates/seele-cli",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+authors = ["DevZen SpA"]
+license = "MIT"
+repository = "https://github.com/orlando-vazquez-career/seele"
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1.42", features = ["full"] }
+futures = "0.3"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Errors
+thiserror = "2"
+anyhow = "1"
+
+# Tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Storage
+rusqlite = { version = "0.32", features = ["bundled", "load_extension"] }
+r2d2 = "0.8"
+r2d2_sqlite = "0.25"
+refinery = { version = "0.8", features = ["rusqlite"] }
+
+# Embedder
+ort = "=2.0.0-rc.10"
+tokenizers = "0.20"
+hf-hub = "0.3"
+
+# HTTP
+axum = "0.8"
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors", "trace", "compression-gzip"] }
+utoipa = { version = "5", features = ["axum_extras"] }
+utoipa-swagger-ui = { version = "8", features = ["axum"] }
+
+# CLI
+clap = { version = "4.5", features = ["derive", "env"] }
+
+# TUI
+ratatui = "0.29"
+crossterm = "0.28"
+tempfile = "3"
+
+# IDs
+ulid = "1.1"
+
+# Misc
+chrono = { version = "0.4", features = ["serde"] }
+once_cell = "1.20"
+regex = "1"
+sha2 = "0.10"
+
+# Test deps
+assert_cmd = "2"
+predicates = "3"
+proptest = "1"
+insta = "1"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true

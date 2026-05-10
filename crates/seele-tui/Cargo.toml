@@ -1,0 +1,21 @@
+[package]
+name = "seele-tui"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Terminal UI for SEELE (ratatui + crossterm)."
+
+[dependencies]
+seele-core = { path = "../seele-core" }
+seele-storage = { path = "../seele-storage" }
+seele-search = { path = "../seele-search" }
+ratatui.workspace = true
+crossterm.workspace = true
+tokio.workspace = true
+tempfile.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
