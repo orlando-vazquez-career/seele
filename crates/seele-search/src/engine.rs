@@ -1,5 +1,7 @@
 //! Hybrid search engine: FTS5 + vec0 combined via Reciprocal Rank Fusion.
 
+use std::collections::HashMap;
+
 use rusqlite::Row;
 use seele_core::id::SeeleId;
 use seele_core::memory::{Observation, Scope};
@@ -27,6 +29,39 @@ pub struct SearchQuery {
     /// Include `metadata.context_mode = 'purist'` rows? Default false to
     /// match Counsel pattern's "purists do not see prior counsels" rule.
     pub include_purist: bool,
+    /// Multiplier applied per unit of `metadata.score` (virtual column
+    /// `meta_score`). The post-RRF score becomes
+    /// `rrf_score * (1.0 + score_boost_multiplier * meta_score.unwrap_or(1.0))`
+    /// (ADR-03 §"Capa 5"). Default `0.0` disables boost — keeps Sprint-01
+    /// behavior.
+    pub score_boost_multiplier: f64,
+    /// Drop vec hits whose cosine distance exceeds this threshold. Useful
+    /// when vec0 returns top-K regardless of similarity. `None` keeps all.
+    pub max_vec_distance: Option<f64>,
+    /// Attach `memory_relations` annotations to each hit. Costs one extra
+    /// query against `memory_relations`. Default `false` to preserve the
+    /// sub-300ms target on large queries; opt in per call.
+    pub include_annotations: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AnnotationKind {
+    /// `self` supersedes `other_id`.
+    Supersedes,
+    /// `other_id` supersedes `self`.
+    SupersededBy,
+    /// Peer-level conflict, judgment still `pending`.
+    ConflictsWith,
+    /// `self` was on the losing side of a judged conflict.
+    ContestedBy,
+}
+
+#[derive(Debug, Clone)]
+pub struct RelationAnnotation {
+    pub kind: AnnotationKind,
+    pub other_id: SeeleId,
+    pub other_title: Option<String>,
+    pub reason: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -35,6 +70,7 @@ pub struct SearchHit {
     pub score: f64,
     pub fts_rank: Option<usize>,
     pub vec_rank: Option<usize>,
+    pub annotations: Vec<RelationAnnotation>,
 }
 
 pub struct SearchEngine {
@@ -59,7 +95,7 @@ impl SearchEngine {
 
     pub fn search(&self, query: SearchQuery) -> Result<Vec<SearchHit>> {
         if query.text.trim().is_empty() {
-            return Err(SearchError::InvalidInput("query text is empty".into()));
+            return self.list_by_filters(&query);
         }
 
         let per_method = query.per_method_limit.unwrap_or(DEFAULT_PER_METHOD_LIMIT);
@@ -73,31 +109,81 @@ impl SearchEngine {
             self.rrf_k,
         );
 
-        let top: Vec<&RrfHit<SeeleId>> = combined.iter().take(final_limit).collect();
+        // Apply meta_score boost if enabled, then re-sort and truncate.
+        let boosted = self.apply_score_boost(combined, query.score_boost_multiplier)?;
+        let top: Vec<RrfHit<SeeleId>> = boosted.into_iter().take(final_limit).collect();
+
         let observations = self.hydrate(&top.iter().map(|h| h.id).collect::<Vec<_>>())?;
-        let by_id: std::collections::HashMap<SeeleId, Observation> =
+        let by_id: HashMap<SeeleId, Observation> =
             observations.into_iter().map(|o| (o.id, o)).collect();
 
-        let mut hits = Vec::with_capacity(top.len());
-        for hit in top {
-            let Some(obs) = by_id.get(&hit.id).cloned() else {
-                continue; // race or filter mismatch
-            };
-            let mut fts_r = None;
-            let mut vec_r = None;
-            for (src, rank) in &hit.per_source {
-                match *src {
-                    "fts" => fts_r = Some(*rank),
-                    "vec" => vec_r = Some(*rank),
-                    _ => {}
-                }
-            }
+        let mut hits: Vec<SearchHit> = top
+            .into_iter()
+            .filter_map(|hit| {
+                let obs = by_id.get(&hit.id).cloned()?;
+                let (fts_r, vec_r) = unpack_per_source(&hit);
+                Some(SearchHit {
+                    observation: obs,
+                    score: hit.score,
+                    fts_rank: fts_r,
+                    vec_rank: vec_r,
+                    annotations: Vec::new(),
+                })
+            })
+            .collect();
+
+        if query.include_annotations && !hits.is_empty() {
+            self.attach_annotations(&mut hits)?;
+        }
+        Ok(hits)
+    }
+
+    /// Empty-query path: list observations matching the filters, ordered by
+    /// `created_at DESC`. Skips FTS + vec entirely (no embedder call).
+    fn list_by_filters(&self, query: &SearchQuery) -> Result<Vec<SearchHit>> {
+        let limit = query.limit.unwrap_or(DEFAULT_FINAL_LIMIT) as i64;
+        let mut sql = String::from(
+            "SELECT id, int_id, session_id, type, title, content, tool_name, project, \
+                    scope, topic_key, normalized_hash, revision_count, duplicate_count, \
+                    last_seen_at, created_at, updated_at, deleted_at, metadata \
+             FROM observations WHERE deleted_at IS NULL",
+        );
+        let mut bound: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+        if let Some(p) = &query.project {
+            sql.push_str(" AND project = ?");
+            bound.push(Box::new(p.clone()));
+        }
+        if let Some(s) = query.scope {
+            sql.push_str(" AND scope = ?");
+            bound.push(Box::new(s.as_str().to_string()));
+        }
+        if let Some(k) = &query.kind {
+            sql.push_str(" AND type = ?");
+            bound.push(Box::new(k.clone()));
+        }
+        if !query.include_purist {
+            sql.push_str(" AND (meta_context_mode IS NULL OR meta_context_mode != 'purist')");
+        }
+        sql.push_str(" ORDER BY created_at DESC LIMIT ?");
+        bound.push(Box::new(limit));
+
+        let conn = self.pool.get().map_err(seele_storage::StorageError::Pool)?;
+        let mut stmt = conn.prepare(&sql)?;
+        let mut rows = stmt.query(rusqlite::params_from_iter(bound.iter().map(|b| b.as_ref())))?;
+        let mut hits = Vec::new();
+        while let Some(row) = rows.next()? {
+            let observation = parse_observation(row)?;
             hits.push(SearchHit {
-                observation: obs,
-                score: hit.score,
-                fts_rank: fts_r,
-                vec_rank: vec_r,
+                observation,
+                score: 0.0,
+                fts_rank: None,
+                vec_rank: None,
+                annotations: Vec::new(),
             });
+        }
+
+        if query.include_annotations && !hits.is_empty() {
+            self.attach_annotations(&mut hits)?;
         }
         Ok(hits)
     }
@@ -177,6 +263,10 @@ impl SearchEngine {
         if !query.include_purist {
             sql.push_str(" AND (o.meta_context_mode IS NULL OR o.meta_context_mode != 'purist')");
         }
+        if let Some(maxd) = query.max_vec_distance {
+            sql.push_str(" AND vec.distance <= ?");
+            bound.push(Box::new(maxd));
+        }
         sql.push_str(" ORDER BY vec.distance");
 
         let conn = self.pool.get().map_err(seele_storage::StorageError::Pool)?;
@@ -190,6 +280,150 @@ impl SearchEngine {
                     .parse::<SeeleId>()
                     .map_err(|e| SearchError::InvalidInput(format!("bad ULID '{id_str}': {e}")))?,
             );
+        }
+        Ok(out)
+    }
+
+    /// Multiply each RRF score by `(1 + multiplier * meta_score)` and re-sort.
+    /// No-op when multiplier is 0.0 (default). `meta_score` is read from the
+    /// virtual column on `observations`; null is treated as 1.0 per ADR-03.
+    fn apply_score_boost(
+        &self,
+        hits: Vec<RrfHit<SeeleId>>,
+        multiplier: f64,
+    ) -> Result<Vec<RrfHit<SeeleId>>> {
+        if multiplier == 0.0 || hits.is_empty() {
+            return Ok(hits);
+        }
+        let ids: Vec<SeeleId> = hits.iter().map(|h| h.id).collect();
+        let scores = self.fetch_meta_scores(&ids)?;
+        let mut boosted: Vec<RrfHit<SeeleId>> = hits
+            .into_iter()
+            .map(|mut hit| {
+                let ms = scores.get(&hit.id).copied().unwrap_or(1.0);
+                hit.score *= 1.0 + multiplier * ms;
+                hit
+            })
+            .collect();
+        boosted.sort_by(|a, b| {
+            b.score
+                .partial_cmp(&a.score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        Ok(boosted)
+    }
+
+    fn fetch_meta_scores(&self, ids: &[SeeleId]) -> Result<HashMap<SeeleId, f64>> {
+        if ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+        let placeholders = std::iter::repeat_n("?", ids.len())
+            .collect::<Vec<_>>()
+            .join(",");
+        let sql = format!("SELECT id, meta_score FROM observations WHERE id IN ({placeholders})");
+        let bound: Vec<Box<dyn rusqlite::ToSql>> =
+            ids.iter().map(|id| Box::new(id.to_string()) as _).collect();
+        let conn = self.pool.get().map_err(seele_storage::StorageError::Pool)?;
+        let mut stmt = conn.prepare(&sql)?;
+        let mut rows = stmt.query(rusqlite::params_from_iter(bound.iter().map(|b| b.as_ref())))?;
+        let mut out = HashMap::new();
+        while let Some(row) = rows.next()? {
+            let id_str: String = row.get(0)?;
+            let score: Option<f64> = row.get(1)?;
+            if let Some(s) = score {
+                let parsed: SeeleId = id_str
+                    .parse()
+                    .map_err(|e| SearchError::InvalidInput(format!("bad ULID '{id_str}': {e}")))?;
+                out.insert(parsed, s);
+            }
+        }
+        Ok(out)
+    }
+
+    fn attach_annotations(&self, hits: &mut [SearchHit]) -> Result<()> {
+        let ids: Vec<SeeleId> = hits.iter().map(|h| h.observation.id).collect();
+        let annotations = self.fetch_annotations(&ids)?;
+        for hit in hits {
+            if let Some(list) = annotations.get(&hit.observation.id) {
+                hit.annotations = list.clone();
+            }
+        }
+        Ok(())
+    }
+
+    fn fetch_annotations(
+        &self,
+        ids: &[SeeleId],
+    ) -> Result<HashMap<SeeleId, Vec<RelationAnnotation>>> {
+        if ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+        let placeholders = std::iter::repeat_n("?", ids.len())
+            .collect::<Vec<_>>()
+            .join(",");
+        let id_in = format!("({placeholders})");
+        // Fetch relations where either side is in the hit set, plus the
+        // titles of the *other* end so the caller can render
+        // "supersedes: <title>" without an extra round-trip.
+        let sql = format!(
+            "SELECT r.source_id, r.target_id, r.relation, r.judgment_status, r.reason, \
+                    src.title, tgt.title \
+             FROM memory_relations r \
+             JOIN observations src ON src.id = r.source_id \
+             JOIN observations tgt ON tgt.id = r.target_id \
+             WHERE r.source_id IN {id_in} OR r.target_id IN {id_in}"
+        );
+        // Bind ids twice — once for source_id IN, once for target_id IN.
+        let mut bound: Vec<Box<dyn rusqlite::ToSql>> = Vec::with_capacity(ids.len() * 2);
+        for id in ids {
+            bound.push(Box::new(id.to_string()));
+        }
+        for id in ids {
+            bound.push(Box::new(id.to_string()));
+        }
+
+        let conn = self.pool.get().map_err(seele_storage::StorageError::Pool)?;
+        let mut stmt = conn.prepare(&sql)?;
+        let mut rows = stmt.query(rusqlite::params_from_iter(bound.iter().map(|b| b.as_ref())))?;
+        let hit_set: std::collections::HashSet<SeeleId> = ids.iter().copied().collect();
+        let mut out: HashMap<SeeleId, Vec<RelationAnnotation>> = HashMap::new();
+        while let Some(row) = rows.next()? {
+            let source_str: String = row.get(0)?;
+            let target_str: String = row.get(1)?;
+            let relation: String = row.get(2)?;
+            let status: String = row.get(3)?;
+            let reason: Option<String> = row.get(4)?;
+            let source_title: String = row.get(5)?;
+            let target_title: String = row.get(6)?;
+
+            let source_id: SeeleId = source_str.parse().map_err(|e| {
+                SearchError::InvalidInput(format!("bad source ULID '{source_str}': {e}"))
+            })?;
+            let target_id: SeeleId = target_str.parse().map_err(|e| {
+                SearchError::InvalidInput(format!("bad target ULID '{target_str}': {e}"))
+            })?;
+
+            // Attach annotations to whichever endpoints are in the hit set.
+            if hit_set.contains(&source_id) {
+                if let Some(kind) = annotation_for_source(&relation, &status) {
+                    out.entry(source_id).or_default().push(RelationAnnotation {
+                        kind,
+                        other_id: target_id,
+                        other_title: Some(target_title.clone()),
+                        reason: reason.clone(),
+                    });
+                }
+            }
+            if hit_set.contains(&target_id) {
+                if let Some(kind) = annotation_for_target(&relation, &status) {
+                    out.entry(target_id).or_default().push(RelationAnnotation {
+                        kind,
+                        other_id: source_id,
+                        other_title: Some(source_title),
+                        reason,
+                    });
+                }
+            }
         }
         Ok(out)
     }
@@ -218,6 +452,45 @@ impl SearchEngine {
             out.push(parse_observation(row)?);
         }
         Ok(out)
+    }
+}
+
+fn unpack_per_source(hit: &RrfHit<SeeleId>) -> (Option<usize>, Option<usize>) {
+    let mut fts = None;
+    let mut vec = None;
+    for (src, rank) in &hit.per_source {
+        match *src {
+            "fts" => fts = Some(*rank),
+            "vec" => vec = Some(*rank),
+            _ => {}
+        }
+    }
+    (fts, vec)
+}
+
+/// Map a relation row to an [`AnnotationKind`] from the **source** side's
+/// point of view. `None` means the relation does not produce a useful
+/// annotation for the source endpoint.
+fn annotation_for_source(relation: &str, status: &str) -> Option<AnnotationKind> {
+    match relation {
+        "supersedes" => Some(AnnotationKind::Supersedes),
+        "conflicts_with" => match status {
+            "judged" => Some(AnnotationKind::ContestedBy),
+            _ => Some(AnnotationKind::ConflictsWith),
+        },
+        _ => None,
+    }
+}
+
+/// Same as [`annotation_for_source`] but from the **target** endpoint's POV.
+fn annotation_for_target(relation: &str, status: &str) -> Option<AnnotationKind> {
+    match relation {
+        "supersedes" => Some(AnnotationKind::SupersededBy),
+        "conflicts_with" => match status {
+            "judged" => Some(AnnotationKind::ContestedBy),
+            _ => Some(AnnotationKind::ConflictsWith),
+        },
+        _ => None,
     }
 }
 
@@ -305,5 +578,51 @@ mod tests {
     fn escape_fts_wraps_in_quotes_and_escapes_internal_quotes() {
         assert_eq!(escape_fts("hello world"), "\"hello world\"");
         assert_eq!(escape_fts(r#"a "b" c"#), r#""a ""b"" c""#);
+    }
+
+    #[test]
+    fn annotation_for_source_maps_supersedes() {
+        assert_eq!(
+            annotation_for_source("supersedes", "pending"),
+            Some(AnnotationKind::Supersedes)
+        );
+    }
+
+    #[test]
+    fn annotation_for_target_maps_supersedes_to_superseded_by() {
+        assert_eq!(
+            annotation_for_target("supersedes", "judged"),
+            Some(AnnotationKind::SupersededBy)
+        );
+    }
+
+    #[test]
+    fn annotation_conflict_pending_is_peer_level() {
+        assert_eq!(
+            annotation_for_source("conflicts_with", "pending"),
+            Some(AnnotationKind::ConflictsWith)
+        );
+        assert_eq!(
+            annotation_for_target("conflicts_with", "pending"),
+            Some(AnnotationKind::ConflictsWith)
+        );
+    }
+
+    #[test]
+    fn annotation_conflict_judged_marks_contested() {
+        assert_eq!(
+            annotation_for_source("conflicts_with", "judged"),
+            Some(AnnotationKind::ContestedBy)
+        );
+        assert_eq!(
+            annotation_for_target("conflicts_with", "judged"),
+            Some(AnnotationKind::ContestedBy)
+        );
+    }
+
+    #[test]
+    fn annotation_unrelated_relation_is_none() {
+        assert_eq!(annotation_for_source("related", "pending"), None);
+        assert_eq!(annotation_for_target("compatible", "judged"), None);
     }
 }

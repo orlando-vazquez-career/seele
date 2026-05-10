@@ -4,6 +4,6 @@ pub mod engine;
 pub mod error;
 pub mod rrf;
 
-pub use engine::{SearchEngine, SearchHit, SearchQuery};
+pub use engine::{AnnotationKind, RelationAnnotation, SearchEngine, SearchHit, SearchQuery};
 pub use error::{Result, SearchError};
 pub use rrf::{RrfHit, DEFAULT_K};
