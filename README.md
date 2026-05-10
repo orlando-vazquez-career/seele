@@ -5,7 +5,7 @@
 
 A Rust memory engine for AI agents — local SQLite + FTS5 + sqlite-vec embeddings + MCP server + HTTP API + TUI.
 
-**Status**: pre-development (genesis 2026-05-09 / 2026-05-10). The plan lives under `genesis/plans/`. No Rust code yet.
+**Status**: in development. Sprint-01 BE Foundation closed 2026-05-10 — workspace skeleton + `seele-core` types + `seele-storage` with SQLite/FTS5/vec0/CRUD migrations. 99 tests green on Linux + macOS + Windows CI matrix. Sprints 02–05 ahead. See `docs/INDEX.md` for the doc map and `docs/aegis/devlogs/` for sprint devlogs.
 
 ## What it does (planned)
 
@@ -32,7 +32,12 @@ If SEELE is useful, please also try ENGRAM — the broader ecosystem benefits fr
 
 - `genesis/plans/estrategia/` — overview, naming, scope MVP, ENGRAM feature audit, reimplementación inspirada postura.
 - `genesis/plans/arquitectura/` — 10 ADRs covering Rust + crates / SQLite schema / search RRF / embedder / MCP / HTTP / TUI / repo layout / distribución / mapping MNEMA↔SEELE.
-- Táctica + Ejecución pending.
+- `genesis/plans/tactica/` — sprints v0.1 (5 sprints, see `tactica/00-INDEX.md`).
+- `genesis/plans/executed/` — closed plans. Sprint-01 lives here as of 2026-05-10.
+- `docs/INDEX.md` — doc map + devlogs index.
+- `docs/aegis/devlogs/` — sprint devlogs + cost ledger.
+
+See `CLAUDE.md` for repo operating rules.
 
 ## License
 

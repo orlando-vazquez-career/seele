@@ -1,0 +1,47 @@
+# SEELE — docs index
+
+Índice canónico de documentación del repo. Toda nueva entrada de devlog, ADR ejecutado, plan cerrado o decisión persistente se referencia desde acá.
+
+## Project
+
+- [`README.md`](../README.md) — qué es SEELE, qué hace, créditos a ENGRAM.
+- [`CHANGELOG.md`](../CHANGELOG.md) — Keep-a-Changelog (Unreleased + histórico de bumps de deps vendorizadas).
+- [`CREDITS.md`](../CREDITS.md) — atribución detallada a ENGRAM (MIT, Copyright Gentleman-Programming).
+- [`LICENSE`](../LICENSE) — MIT 2026 DevZen SpA.
+- [`CLAUDE.md`](../CLAUDE.md) — reglas operativas del repo para Claude Code.
+
+## Genesis (planes históricos del diseño)
+
+Estrategia, arquitectura y táctica del Sprint 01 viven bajo `genesis/plans/`. El subdirectorio `executed/` recibe planes que ya cerraron su ciclo AEGIS.
+
+### Estrategia
+
+- [`genesis/plans/estrategia/00-INDEX.md`](../genesis/plans/estrategia/00-INDEX.md) — overview de la fase.
+- `01-overview.md`, `02-reimplementacion-inspirada.md`, `03-naming-options.md`, `04-scope-mvp.md`, `05-engram-feature-audit.md`.
+
+### Arquitectura
+
+- [`genesis/plans/arquitectura/00-INDEX.md`](../genesis/plans/arquitectura/00-INDEX.md) — overview de los 10 ADRs.
+- ADRs `01-rust-y-crates.md` … `10-mapping-mnema-seele.md` + `11` (sqlite-vec vendorizado, follow-up Cloven).
+
+### Táctica
+
+- [`genesis/plans/tactica/00-INDEX.md`](../genesis/plans/tactica/00-INDEX.md) — sprints v0.1.
+
+### Ejecutados (planes cerrados)
+
+- [`genesis/plans/executed/tactica/sprint-01/00-INDEX.md`](../genesis/plans/executed/tactica/sprint-01/00-INDEX.md) — Sprint-01 BE Foundation, cerrado 2026-05-10. Devlog: [`docs/aegis/devlogs/2026-05-10-sprint-01-foundation.md`](aegis/devlogs/2026-05-10-sprint-01-foundation.md).
+
+## Devlogs
+
+- [`docs/aegis/devlogs/2026-05-10-sprint-01-foundation.md`](aegis/devlogs/2026-05-10-sprint-01-foundation.md) — Sprint-01 BE Foundation cerrado. 99 tests verde, CI matrix verde, schema completo + CRUD funcional.
+
+## Cost Ledger
+
+- [`docs/aegis/devlogs/cost-ledger.jsonl`](aegis/devlogs/cost-ledger.jsonl) — append-only por plan, modelo, fase. Ver convenciones en `C:/dev/protocols/AEGIS/guides/cost-ledger.md`.
+
+## Operación
+
+- [`scripts/check-no-stele-residual.sh`](../scripts/check-no-stele-residual.sh) y `.ps1` — static check para residuos del nombre legacy. Corre en CI.
+- [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — matriz Linux+macOS+Windows + jobs lint y static-checks.
+- [`.github/dependabot.yml`](../.github/dependabot.yml) — monitor de bumps (especialmente `ort`).

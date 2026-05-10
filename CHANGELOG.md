@@ -13,16 +13,34 @@ Todos los cambios notables a este proyecto se documentan acá. Formato basado en
   `ObservationType` (12 variants + `Other`), `Scope`, `Session`,
   `SessionStatus`, `Metadata`, `Link`, `MemoryRelation`, `MetadataFilter`.
   22 unit tests + 9 integration tests (incluye proptest).
+- `seele-storage` — SQLite + FTS5 + vec0 con migrations refinery, CRUD
+  completo sobre `sessions`/`observations`/`user_prompts`/`links`/
+  `memory_relations`/`sync_chunks`. Privacy strip `<private>`, normalized
+  hash dedup, topic key upserts, soft delete.
 - `seele-storage/vec0_loader` — carga vendorizada de `sqlite-vec` v0.1.9 vía
   `include_bytes!` para 5 targets (linux/mac/win × x86_64 + linux/mac aarch64).
   Ver `crates/seele-storage/vendor/sqlite-vec/README.md` y ADR-11.
+- `seele-embedder` — ONNX runtime via `ort` 2.0.0-rc.10 + tokenizers + hf-hub
+  con auto-download de `all-MiniLM-L6-v2`. `OnnxEmbedder` + `FakeEmbedder`
+  para tests downstream. (Trabajo Sprint-02 parcial; cierra en próximo ciclo.)
+- `seele-search` — RRF combiner híbrido FTS+vec con boost por metadata score.
+  (Trabajo Sprint-02 parcial; cierra en próximo ciclo.)
 - CI matrix Linux + macOS + Windows (build + test) + lint job (clippy + fmt) +
   static-checks-bash + static-checks-pwsh.
 - Static check `scripts/check-no-stele-residual.{sh,ps1}` para asegurar que
   ningún archivo del repo tenga residuos del nombre legacy "STELE" fuera de
-  los allowlist documentados.
+  los allowlist documentados. Allowlist soporta archivos exactos y prefijos
+  de directorio (e.g. `docs/aegis/devlogs/`).
 - Génesis AEGIS completa: 5 docs estrategia + 11 ADRs arquitectura + 5
   sprints táctica.
+- `CLAUDE.md` con reglas operativas del repo + `docs/INDEX.md` + primer
+  devlog Sprint-01 + cost-ledger.jsonl arrancado.
+
+### Changed
+- **Sprint-01 BE Foundation cerrado** (2026-05-10). Plan táctico movido a
+  `genesis/plans/executed/tactica/sprint-01/`. Devlog completo en
+  `docs/aegis/devlogs/2026-05-10-sprint-01-foundation.md`. 99 tests verde
+  + clippy + fmt + STELE residual checks pasando.
 
 ### Changed
 - **MSRV bump a Rust 1.85** desde 1.83 inicial. Razón: `clap_lex` (transitiva

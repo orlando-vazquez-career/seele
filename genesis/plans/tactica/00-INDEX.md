@@ -20,9 +20,9 @@ Total estimado v0.1: ~10-13K LOC + ~3-5K LOC de tests.
 
 ## Sprint-01 — Foundation
 
-Documento detallado: `sprint-01/00-INDEX.md`.
+**Estado**: ✅ ejecutado — cerrado 2026-05-10. Plan archivado en `../executed/tactica/sprint-01/00-INDEX.md`. Devlog: [`../../../docs/aegis/devlogs/2026-05-10-sprint-01-foundation.md`](../../../docs/aegis/devlogs/2026-05-10-sprint-01-foundation.md).
 
-Salida: `seele-core` y `seele-storage` funcionales con migraciones, CRUD sobre `sessions`/`observations`/`user_prompts`/`memory_relations`/`sync_chunks`/`links`, FTS5 + vec0 virtual tables, virtual generated columns + indexes, schema_version table, soft delete, topic key upserts, normalized hash dedup, privacy stripping. Tests integración pasando.
+Salida: `seele-core` y `seele-storage` funcionales con migraciones, CRUD sobre `sessions`/`observations`/`user_prompts`/`memory_relations`/`sync_chunks`/`links`, FTS5 + vec0 virtual tables, virtual generated columns + indexes, schema_version table, soft delete, topic key upserts, normalized hash dedup, privacy stripping. 99 tests verde en CI matrix Linux+macOS+Windows.
 
 ## Sprint-02 — Embedder + Search
 

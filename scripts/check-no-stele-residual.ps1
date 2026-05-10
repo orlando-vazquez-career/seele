@@ -17,16 +17,21 @@ $ErrorActionPreference = 'Stop'
 $root = Resolve-Path (Join-Path $PSScriptRoot '..')
 Set-Location $root
 
-$allowlist = @(
+$allowlistFiles = @(
     'genesis/plans/estrategia/03-naming-options.md',
     'genesis/plans/tactica/00-INDEX.md',
-    'genesis/plans/tactica/sprint-01/00-INDEX.md',
-    'genesis/plans/tactica/sprint-01/01-bloque-A-workspace-skeleton.md',
-    'genesis/plans/tactica/sprint-01/04-bloque-D-tests-integration.md',
+    'genesis/plans/executed/tactica/sprint-01/00-INDEX.md',
+    'genesis/plans/executed/tactica/sprint-01/01-bloque-A-workspace-skeleton.md',
+    'genesis/plans/executed/tactica/sprint-01/04-bloque-D-tests-integration.md',
     '.github/workflows/ci.yml',
     'scripts/check-no-stele-residual.sh',
     'scripts/check-no-stele-residual.ps1',
-    'CHANGELOG.md'
+    'CHANGELOG.md',
+    'CLAUDE.md'
+)
+
+$allowlistDirs = @(
+    'docs/aegis/devlogs/'
 )
 
 $includeExt = @('*.md', '*.rs', '*.toml', '*.yaml', '*.yml', '*.json', '*.sh', '*.ps1')
@@ -36,7 +41,10 @@ $matches = Get-ChildItem -Path . -Recurse -Include $includeExt -File `
     | ForEach-Object {
         $relPath = (Resolve-Path -Relative $_.FullName) -replace '\\', '/'
         $relPath = $relPath -replace '^\./', ''
-        if ($allowlist -contains $relPath) { return }
+        if ($allowlistFiles -contains $relPath) { return }
+        foreach ($dir in $allowlistDirs) {
+            if ($relPath.StartsWith($dir)) { return }
+        }
 
         $hits = Select-String -Path $_.FullName -Pattern '\b(STELE|stele)\b'
         if ($hits) {
@@ -51,7 +59,7 @@ if ($matches) {
     $matches | ForEach-Object { Write-Host $_ }
     Write-Host ''
     Write-Host 'If a new file legitimately needs "stele" (e.g., new historical doc),'
-    Write-Host 'add it to the $allowlist array in this script and re-run.'
+    Write-Host 'add it to $allowlistFiles (exact path) or $allowlistDirs (prefix) and re-run.'
     exit 1
 }
 

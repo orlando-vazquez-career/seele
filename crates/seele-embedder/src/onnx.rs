@@ -217,6 +217,7 @@ mod tests {
     /// Real ONNX integration is `#[ignore]` because:
     ///  1. First run downloads ~90MB from Hugging Face.
     ///  2. CI runners shouldn't pay that cost on every push.
+    ///
     /// Run locally with `cargo test --package seele-embedder -- --ignored`.
     #[test]
     #[ignore = "downloads model from hugging face; run locally"]
