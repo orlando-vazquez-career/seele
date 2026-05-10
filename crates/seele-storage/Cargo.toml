@@ -22,7 +22,8 @@ ulid.workspace = true
 regex.workspace = true
 sha2.workspace = true
 once_cell.workspace = true
-tokio = { workspace = true, features = ["sync", "rt"] }
+dirs.workspace = true
+hex.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
