@@ -425,18 +425,45 @@ Total: ~20-30 tests.
 6. Topic key upsert: la misma topic_key dos veces incrementa `revision_count` a 1, no crea row nuevo.
 7. Normalized hash dedup: misma content + misma key dentro de 24h incrementa `duplicate_count`.
 
-## Nota sobre sqlite-vec
+## Nota sobre sqlite-vec — vendored
 
-La extensión `sqlite-vec` se carga en runtime via `conn.load_extension()`. Para sprint-01 todavía NO hacemos vectorial — eso es sprint-02 con embedder. Pero la migration crea la columna `embedding BLOB` y el vec0 virtual table queda preparado.
+Decisión 2026-05-10 (ADR-11): los binarios `vec0.{so,dylib,dll}` para los 5
+targets soportados están **vendorizados** en `crates/seele-storage/vendor/sqlite-vec/`
+y se embeben en el ejecutable final via `include_bytes!` (módulo
+`vec0_loader`, ya wireado en bloque-A). Esto hace que `cargo install seele`
+funcione out-of-the-box sin descargas de runtime.
+
+Plan de carga en bloque-C:
+
+1. En `pool::init_pool`, antes del `with_init`, llamar a un helper
+   `vec0_loader::ensure_vec0_extension_path()` que:
+   - Obtiene `vec0_loader::vec0_bytes()` (Some/None según target).
+   - Si `None` (e.g. android, iOS, 32-bit linux): retorna `StorageError::VecNotSupportedTarget`.
+   - Si `Some(bytes)`: escribe a `~/.cache/seele/vec0-<sha256[..16]><suffix>`,
+     idempotente con verificación de hash. Retorna ese `PathBuf`.
+2. En `with_init`, llamar `conn.load_extension(&path, None)` con el path obtenido.
+3. La columna `embedding BLOB` y el `observations_vec` virtual table
+   quedan creados en migration V001:
 
 ```sql
--- Al final de la migration V001:
+-- Al final de V001:
 CREATE VIRTUAL TABLE observations_vec USING vec0(
     embedding FLOAT[384]
 );
 ```
 
-Si el load de la extensión falla en init, `init_db` retorna error claro: "sqlite-vec extension not found at <path>; install via `seele install-vec` or set SEELE_VEC_PATH".
+Para sprint-01 NO populamos `observations_vec` (eso es sprint-02 con embedder).
+Pero el vec0 virtual table debe crearse en la migration porque carga la
+extensión durante el init y verifica que funcione end-to-end.
+
+Override para usuarios avanzados: env var `SEELE_VEC_PATH=/path/to/vec0.so`
+fuerza el uso de un binary externo en vez del vendored. Útil para debugging
+o targets no soportados.
+
+Tests requeridos en bloque C:
+
+- `tests/vec0_extension.rs` — verifica que `init_db` carga la extensión y
+  el `observations_vec` virtual table responde a `SELECT vec_version()`.
 
 ## Commit del bloque C
 

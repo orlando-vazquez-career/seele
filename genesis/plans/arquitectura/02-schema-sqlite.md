@@ -76,6 +76,7 @@ Notas:
 - Dimensión 384 = output de `all-MiniLM-L6-v2`. Si más adelante soportamos otros modelos, esa decisión va a ADR separado.
 - Se inserta manualmente (no trigger) porque embedding requiere cómputo del embedder — el caller es quien sabe cuándo está disponible.
 - `rowid` de `memories_vec` mapea al `id` de `memories` (cast text→int64 vía hash o uso de ULID timestamp+rand).
+- La extensión `vec0` está vendorizada en `crates/seele-storage/vendor/sqlite-vec/` (binarios precompilados upstream para 5 targets, embebidos vía `include_bytes!`). Detalles completos en ADR-11.
 
 **Decisión clave**: usar un campo numérico `int_id` derivado del ULID para mapear `memories.id` ↔ `memories_vec.rowid`:
 

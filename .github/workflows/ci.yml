@@ -33,16 +33,18 @@ jobs:
       - name: Fmt check
         run: cargo fmt --all -- --check
 
-  static-checks:
-    strategy:
-      matrix:
-        include:
-          - { os: ubuntu-latest, shell: bash, script: scripts/check-no-stele-residual.sh }
-          - { os: windows-latest, shell: pwsh, script: scripts/check-no-stele-residual.ps1 }
-    runs-on: ${{ matrix.os }}
+  static-checks-bash:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run STELE residual check
-        shell: ${{ matrix.shell }}
-        run: |
-          ${{ matrix.os == 'windows-latest' && format('powershell -File {0}', matrix.script) || format('bash {0}', matrix.script) }}
+      - name: Run STELE residual check (bash)
+        shell: bash
+        run: bash scripts/check-no-stele-residual.sh
+
+  static-checks-pwsh:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run STELE residual check (pwsh)
+        shell: pwsh
+        run: pwsh -File scripts/check-no-stele-residual.ps1

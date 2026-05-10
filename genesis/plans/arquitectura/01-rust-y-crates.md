@@ -46,7 +46,7 @@ El engine necesita:
 
 ### Storage
 - **`rusqlite`** 0.32+ — bindings SQLite. `features = ["bundled", "load_extension"]`. Bundled para evitar dependencia de SQLite del sistema; load_extension para sqlite-vec.
-- **`sqlite-vec`** — extensión vectorial loadable. Se carga en runtime via `db.load_extension()`.
+- **`sqlite-vec`** — extensión vectorial loadable. Se carga en runtime via `db.load_extension()`. **Vendorizada** en `crates/seele-storage/vendor/sqlite-vec/` para 5 targets (linux/mac/win × x86_64/aarch64); ver ADR-11.
 - **`r2d2`** + **`r2d2_sqlite`** — connection pool. Para HTTP server concurrent reads.
 - **`refinery`** o **`sqlx-cli`** style migrations — no decidido aún. Default: refinery por simplicidad.
 
