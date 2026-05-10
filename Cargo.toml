@@ -66,7 +66,7 @@ crossterm = "0.28"
 tempfile = "3"
 
 # IDs
-ulid = "1.1"
+ulid = { version = "1.1", features = ["serde"] }
 
 # Misc
 chrono = { version = "0.4", features = ["serde"] }

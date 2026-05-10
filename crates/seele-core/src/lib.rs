@@ -5,10 +5,20 @@
 //!
 //! See ADR-02 (schema-sqlite) and ADR-10 (mapping-mnema-seele) for rationale.
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn smoke() {
-        assert!(true);
-    }
-}
+pub mod error;
+pub mod filter;
+pub mod id;
+pub mod link;
+pub mod memory;
+pub mod metadata;
+pub mod relation;
+pub mod session;
+
+pub use error::{Result, SeeleError};
+pub use filter::{MetadataFilter, ObservationQuery};
+pub use id::SeeleId;
+pub use link::{link_types, Link};
+pub use memory::{Observation, ObservationType, Scope};
+pub use metadata::Metadata;
+pub use relation::{JudgmentStatus, MemoryRelation, RelationKind};
+pub use session::{Session, SessionStatus};
