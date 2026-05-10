@@ -32,10 +32,15 @@ Salida: `seele-embedder` con cache `~/.seele/embedder/` + INT8 quantized default
 
 ## Sprint-03 — Interfaces
 
-Bloques previstos:
-- A: `seele-http` (axum + ~26 handlers + auth bearer + utoipa OpenAPI + middleware).
-- B: `seele-mcp` (stdio + JSON-RPC 2.0 + 19 tools `seele_*`).
-- C: tests E2E del binary contra HTTP + MCP.
+**Estado**: 🚧 en ejecución — tactica escrita 2026-05-10 subdividida en 6 bloques (recomendación Cloven post Sprint-02). Documento detallado: [`sprint-03/00-INDEX.md`](sprint-03/00-INDEX.md).
+
+Bloques:
+- **A**: `seele-http` skeleton — axum App + Router + AppState + service layer compartido + middleware (cors, trace, compression) + `/health` + `/version`.
+- **B**: HTTP handlers básicos — save, search (con regla anti-empty-query de Cloven), get-by-id, list.
+- **C**: HTTP handlers avanzados — sessions, links, relations, conflicts, stats, embedder.
+- **D**: HTTP auth bearer middleware + utoipa OpenAPI + Swagger UI.
+- **E**: `seele-mcp` stdio + JSON-RPC 2.0 + 19 tools `seele_*` (reusan service layer).
+- **F**: Tests E2E binary + state-sync.
 
 ## Sprint-04 — Ops & UX
 
