@@ -7,7 +7,7 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use axum::routing::{get, post};
+use axum::routing::{delete, get, post, put};
 use axum::{Json, Router};
 use serde_json::json;
 use tower_http::compression::CompressionLayer;
@@ -69,8 +69,22 @@ impl Server {
                 "/memories",
                 post(handlers::save_memory).get(handlers::list_memories),
             )
-            .route("/memories/{id}", get(handlers::get_memory))
+            .route(
+                "/memories/{id}",
+                get(handlers::get_memory).delete(handlers::soft_delete_memory),
+            )
+            .route("/memories/{id}/restore", post(handlers::restore_memory))
+            .route("/memories/{id}/links", get(handlers::list_links_for_memory))
             .route("/search", post(handlers::search_memories))
+            .route(
+                "/sessions",
+                post(handlers::start_session).get(handlers::list_sessions),
+            )
+            .route("/sessions/{id}", get(handlers::get_session))
+            .route("/sessions/{id}/end", put(handlers::end_session))
+            .route("/sessions/{id}/abort", put(handlers::abort_session))
+            .route("/links", post(handlers::create_link))
+            .route("/links/{id}", delete(handlers::delete_link))
             .with_state(state)
             .layer(TraceLayer::new_for_http())
             .layer(cors)

@@ -13,13 +13,14 @@ use seele_core::memory::Observation;
 use seele_embedder::Embedder;
 use seele_search::{SearchEngine, SearchQuery};
 use seele_storage::{
-    ChunkStore, LinkStore, ObservationQuery, ObservationStore, Pool, PromptStore, RelationStore,
-    SaveInput, SaveOutcome, SessionStore,
+    ChunkStore, LinkInput, LinkQuery, LinkStore, ObservationQuery, ObservationStore, Pool,
+    PromptStore, RelationStore, SaveInput, SaveOutcome, SessionFilter, SessionInput, SessionStore,
 };
 
 use crate::dto::{
-    parse_id, parse_metadata, parse_scope, parse_type, ListRequest, ObservationDto, SaveRequest,
-    SaveResponse, SearchHitDto, SearchRequest, SearchResponse,
+    parse_id, parse_metadata, parse_scope, parse_session_status, parse_type, LinkCreateRequest,
+    LinkDto, ListRequest, ObservationDto, SaveRequest, SaveResponse, SearchHitDto, SearchRequest,
+    SearchResponse, SessionDto, SessionEndRequest, SessionListQuery, SessionStartRequest,
 };
 use crate::error::{ApiError, Result};
 
@@ -175,6 +176,92 @@ impl SeeleService {
         };
         let observations: Vec<Observation> = self.observations.list(q)?;
         Ok(observations.into_iter().map(ObservationDto::from).collect())
+    }
+
+    pub fn soft_delete_observation(&self, id: SeeleId) -> Result<()> {
+        self.observations.soft_delete(id)?;
+        Ok(())
+    }
+
+    pub fn restore_observation(&self, id: SeeleId) -> Result<()> {
+        self.observations.restore(id)?;
+        Ok(())
+    }
+
+    // -------- Sessions --------
+
+    pub fn start_session(&self, req: SessionStartRequest) -> Result<SessionDto> {
+        let session = self.sessions.start(SessionInput {
+            project: req.project,
+            directory: req.directory,
+        })?;
+        Ok(SessionDto::from(session))
+    }
+
+    pub fn end_session(&self, id: SeeleId, req: SessionEndRequest) -> Result<()> {
+        self.sessions.end(id, req.summary)?;
+        Ok(())
+    }
+
+    pub fn abort_session(&self, id: SeeleId) -> Result<()> {
+        self.sessions.abort(id)?;
+        Ok(())
+    }
+
+    pub fn get_session(&self, id: SeeleId) -> Result<Option<SessionDto>> {
+        Ok(self.sessions.get(id)?.map(SessionDto::from))
+    }
+
+    pub fn list_sessions(&self, q: SessionListQuery) -> Result<Vec<SessionDto>> {
+        let status = q.status.as_deref().map(parse_session_status).transpose()?;
+        let filter = SessionFilter {
+            project: q.project,
+            status,
+            limit: q.limit,
+        };
+        let sessions = self.sessions.list(filter)?;
+        Ok(sessions.into_iter().map(SessionDto::from).collect())
+    }
+
+    // -------- Links --------
+
+    pub fn create_link(&self, req: LinkCreateRequest) -> Result<LinkDto> {
+        let from_id = parse_id(&req.from_id, "from_id")?;
+        let to_id = parse_id(&req.to_id, "to_id")?;
+        if req.link_type.trim().is_empty() {
+            return Err(ApiError::BadRequest("link_type must not be empty".into()));
+        }
+        let metadata = parse_metadata(req.metadata);
+        let link = self.links.create(LinkInput {
+            from_id,
+            to_id,
+            link_type: req.link_type,
+            metadata,
+        })?;
+        Ok(LinkDto::from(link))
+    }
+
+    pub fn list_links_for_observation(&self, id: SeeleId) -> Result<Vec<LinkDto>> {
+        // Return links where the observation is on either side.
+        let from = self.links.list(LinkQuery {
+            from_id: Some(id),
+            ..Default::default()
+        })?;
+        let to = self.links.list(LinkQuery {
+            to_id: Some(id),
+            ..Default::default()
+        })?;
+        // Merge by id to dedup self-links.
+        let mut by_id = std::collections::BTreeMap::new();
+        for l in from.into_iter().chain(to) {
+            by_id.insert(l.id.to_string(), l);
+        }
+        Ok(by_id.into_values().map(LinkDto::from).collect())
+    }
+
+    pub fn delete_link(&self, id: SeeleId) -> Result<()> {
+        self.links.delete(id)?;
+        Ok(())
     }
 }
 

@@ -6,10 +6,13 @@
 use std::sync::Arc;
 
 use axum::extract::{Path, Query, State};
+use axum::http::StatusCode;
 use axum::Json;
 
 use crate::dto::{
-    parse_id, ListRequest, ObservationDto, SaveRequest, SaveResponse, SearchRequest, SearchResponse,
+    parse_id, LinkCreateRequest, LinkDto, ListRequest, ObservationDto, SaveRequest, SaveResponse,
+    SearchRequest, SearchResponse, SessionDto, SessionEndRequest, SessionListQuery,
+    SessionStartRequest,
 };
 use crate::error::Result;
 use crate::service::{enforce_search_query_or_filter, SeeleService};
@@ -48,4 +51,94 @@ pub async fn list_memories(
 ) -> Result<Json<Vec<ObservationDto>>> {
     let dtos = svc.list_observations(req)?;
     Ok(Json(dtos))
+}
+
+pub async fn soft_delete_memory(
+    State(svc): State<Arc<SeeleService>>,
+    Path(id): Path<String>,
+) -> Result<StatusCode> {
+    let parsed = parse_id(&id, "id")?;
+    svc.soft_delete_observation(parsed)?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+pub async fn restore_memory(
+    State(svc): State<Arc<SeeleService>>,
+    Path(id): Path<String>,
+) -> Result<StatusCode> {
+    let parsed = parse_id(&id, "id")?;
+    svc.restore_observation(parsed)?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+// -------- Sessions --------
+
+pub async fn start_session(
+    State(svc): State<Arc<SeeleService>>,
+    Json(req): Json<SessionStartRequest>,
+) -> Result<Json<SessionDto>> {
+    Ok(Json(svc.start_session(req)?))
+}
+
+pub async fn list_sessions(
+    State(svc): State<Arc<SeeleService>>,
+    Query(q): Query<SessionListQuery>,
+) -> Result<Json<Vec<SessionDto>>> {
+    Ok(Json(svc.list_sessions(q)?))
+}
+
+pub async fn get_session(
+    State(svc): State<Arc<SeeleService>>,
+    Path(id): Path<String>,
+) -> Result<Json<SessionDto>> {
+    let parsed = parse_id(&id, "id")?;
+    let dto = svc
+        .get_session(parsed)?
+        .ok_or_else(|| crate::ApiError::NotFound(format!("session {id}")))?;
+    Ok(Json(dto))
+}
+
+pub async fn end_session(
+    State(svc): State<Arc<SeeleService>>,
+    Path(id): Path<String>,
+    Json(req): Json<SessionEndRequest>,
+) -> Result<StatusCode> {
+    let parsed = parse_id(&id, "id")?;
+    svc.end_session(parsed, req)?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+pub async fn abort_session(
+    State(svc): State<Arc<SeeleService>>,
+    Path(id): Path<String>,
+) -> Result<StatusCode> {
+    let parsed = parse_id(&id, "id")?;
+    svc.abort_session(parsed)?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+// -------- Links --------
+
+pub async fn create_link(
+    State(svc): State<Arc<SeeleService>>,
+    Json(req): Json<LinkCreateRequest>,
+) -> Result<Json<LinkDto>> {
+    Ok(Json(svc.create_link(req)?))
+}
+
+pub async fn list_links_for_memory(
+    State(svc): State<Arc<SeeleService>>,
+    Path(id): Path<String>,
+) -> Result<Json<Vec<LinkDto>>> {
+    let parsed = parse_id(&id, "id")?;
+    Ok(Json(svc.list_links_for_observation(parsed)?))
+}
+
+pub async fn delete_link(
+    State(svc): State<Arc<SeeleService>>,
+    Path(id): Path<String>,
+) -> Result<StatusCode> {
+    let parsed = parse_id(&id, "id")?;
+    svc.delete_link(parsed)?;
+    Ok(StatusCode::NO_CONTENT)
 }

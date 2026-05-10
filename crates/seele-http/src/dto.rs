@@ -208,6 +208,107 @@ pub struct ListRequest {
     pub include_deleted: bool,
 }
 
+// ---------- Sessions ----------
+
+#[derive(Debug, Deserialize)]
+pub struct SessionStartRequest {
+    pub project: String,
+    #[serde(default)]
+    pub directory: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+pub struct SessionListQuery {
+    #[serde(default)]
+    pub project: Option<String>,
+    /// `"active"` | `"ended"` | `"aborted"`. Omit to include all.
+    #[serde(default)]
+    pub status: Option<String>,
+    #[serde(default)]
+    pub limit: Option<u32>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SessionEndRequest {
+    #[serde(default)]
+    pub summary: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SessionDto {
+    pub id: String,
+    pub project: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub directory: Option<String>,
+    pub started_at: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ended_at: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub summary: Option<String>,
+    /// `"active"` | `"ended"` | `"aborted"`.
+    pub status: &'static str,
+}
+
+impl From<seele_core::session::Session> for SessionDto {
+    fn from(s: seele_core::session::Session) -> Self {
+        Self {
+            id: s.id.to_string(),
+            project: s.project,
+            directory: s.directory,
+            started_at: s.started_at.timestamp_millis(),
+            ended_at: s.ended_at.map(|d| d.timestamp_millis()),
+            summary: s.summary,
+            status: s.status.as_str(),
+        }
+    }
+}
+
+pub fn parse_session_status(
+    s: &str,
+) -> Result<seele_core::session::SessionStatus, crate::ApiError> {
+    seele_core::session::SessionStatus::from_str_strict(s).ok_or_else(|| {
+        crate::ApiError::BadRequest(format!(
+            "invalid session status '{s}' (expected active | ended | aborted)"
+        ))
+    })
+}
+
+// ---------- Links ----------
+
+#[derive(Debug, Deserialize)]
+pub struct LinkCreateRequest {
+    pub from_id: String,
+    pub to_id: String,
+    pub link_type: String,
+    #[serde(default)]
+    pub metadata: Value,
+}
+
+#[derive(Debug, Serialize)]
+pub struct LinkDto {
+    pub id: String,
+    pub from_id: String,
+    pub to_id: String,
+    pub link_type: String,
+    pub metadata: Value,
+    pub created_at: i64,
+}
+
+impl From<seele_core::link::Link> for LinkDto {
+    fn from(l: seele_core::link::Link) -> Self {
+        Self {
+            id: l.id.to_string(),
+            from_id: l.from_id.to_string(),
+            to_id: l.to_id.to_string(),
+            link_type: l.link_type,
+            metadata: l.metadata.0,
+            created_at: l.created_at.timestamp_millis(),
+        }
+    }
+}
+
+// ---------- Helpers ----------
+
 /// Helper to parse a `String` id from a DTO into a `SeeleId` with a
 /// 400-friendly error message at the boundary.
 pub fn parse_id(s: &str, label: &str) -> Result<SeeleId, crate::ApiError> {
