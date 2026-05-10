@@ -70,10 +70,33 @@ fn sha256_prefix(bytes: &[u8]) -> String {
 }
 
 fn write_atomic(target: &Path, bytes: &[u8]) -> Result<()> {
-    let tmp = target.with_extension("tmp");
+    // Unique tmp filename per call so concurrent installers (e.g. parallel
+    // test threads racing on the same target) don't collide on the same
+    // intermediate path. PID + monotonic counter keeps it cheap.
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+    let pid = std::process::id();
+    let n = COUNTER.fetch_add(1, Ordering::Relaxed);
+    let tmp_name = format!(
+        "{}.{pid}.{n}.tmp",
+        target
+            .file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or("vec0")
+    );
+    let tmp = target.with_file_name(tmp_name);
     fs::write(&tmp, bytes)?;
-    fs::rename(&tmp, target)?;
-    Ok(())
+    // On Windows, rename fails if target exists. Detect the post-race case
+    // (someone else already installed the binary) and accept it instead of
+    // erroring — verify_integrity will still catch genuine corruption.
+    match fs::rename(&tmp, target) {
+        Ok(_) => Ok(()),
+        Err(_) if target.is_file() => {
+            let _ = fs::remove_file(&tmp);
+            Ok(())
+        }
+        Err(e) => Err(e.into()),
+    }
 }
 
 fn verify_integrity(path: &Path, expected_prefix: &str) -> Result<()> {
