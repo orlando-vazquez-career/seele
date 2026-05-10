@@ -2372,11 +2372,14 @@ name = "seele-embedder"
 version = "0.1.0"
 dependencies = [
  "hf-hub",
+ "ndarray",
  "once_cell",
  "ort",
  "seele-core",
  "serde",
  "serde_json",
+ "sha2",
+ "tempfile",
  "thiserror 2.0.18",
  "tokenizers",
  "tracing",
@@ -2432,11 +2435,14 @@ dependencies = [
 name = "seele-search"
 version = "0.1.0"
 dependencies = [
+ "chrono",
+ "rusqlite",
  "seele-core",
  "seele-embedder",
  "seele-storage",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror 2.0.18",
  "tracing",
 ]

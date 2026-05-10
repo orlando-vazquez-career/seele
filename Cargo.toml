@@ -50,6 +50,7 @@ refinery = { version = "0.8", features = ["rusqlite"] }
 # Dependabot (.github/dependabot.yml) va a abrir PR cuando salga 2.0.0 stable.
 # Despinear ahí; ver CHANGELOG entry "Pinned".
 ort = "=2.0.0-rc.10"
+ndarray = "0.16"
 tokenizers = "0.20"
 hf-hub = "0.3"
 

@@ -1,0 +1,14 @@
+# MSVC: ort 2.x prebuilt binaries use dynamic CRT (/MD), while transitive
+# C++ deps from `tokenizers` (esaxx-rs) compile with static CRT (/MT) by
+# default. We need them aligned or the test binary link fails with
+# LNK2038/LNK2005. Force dynamic CRT for everything: Rust + cc-built deps.
+[target.x86_64-pc-windows-msvc]
+rustflags = [
+    "-C", "target-feature=-crt-static",
+    "-C", "link-arg=/NODEFAULTLIB:libcmt.lib",
+    "-C", "link-arg=/NODEFAULTLIB:libcpmt.lib",
+]
+
+[env]
+CFLAGS_x86_64_pc_windows_msvc = "/MD"
+CXXFLAGS_x86_64_pc_windows_msvc = "/MD"

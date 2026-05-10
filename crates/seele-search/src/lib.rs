@@ -1,11 +1,9 @@
-//! SEELE search — hybrid FTS + vector with Reciprocal Rank Fusion.
-//!
-//! Implementation lands in sprint-02.
+//! SEELE search — hybrid FTS5 + vec0 search via Reciprocal Rank Fusion.
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn smoke() {
-        assert!(true);
-    }
-}
+pub mod engine;
+pub mod error;
+pub mod rrf;
+
+pub use engine::{SearchEngine, SearchHit, SearchQuery};
+pub use error::{Result, SearchError};
+pub use rrf::{RrfHit, DEFAULT_K};

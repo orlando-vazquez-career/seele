@@ -242,6 +242,49 @@ impl ObservationStore {
         if removed == 0 {
             return Err(StorageError::NotFound(format!("observation {id}")));
         }
+        // Also clear the vec0 row so a future ID collision doesn't surface
+        // a stale embedding.
+        let _ = conn.execute(
+            "DELETE FROM observations_vec WHERE rowid IN \
+             (SELECT int_id FROM observations WHERE id = ?1)",
+            [id.to_string()],
+        );
+        Ok(())
+    }
+
+    /// Insert (or replace) the embedding vector for `id` into `observations_vec`.
+    /// `embedding` length must match the column dim (currently 384). Caller
+    /// is responsible for normalization.
+    pub fn set_embedding(&self, id: SeeleId, embedding: &[f32]) -> Result<()> {
+        let conn = self.pool.get()?;
+        let int_id: i64 = conn
+            .query_row(
+                "SELECT int_id FROM observations WHERE id = ?1 AND deleted_at IS NULL",
+                [id.to_string()],
+                |r| r.get(0),
+            )
+            .map_err(|e| match e {
+                rusqlite::Error::QueryReturnedNoRows => {
+                    StorageError::NotFound(format!("active observation {id}"))
+                }
+                other => StorageError::from(other),
+            })?;
+        let bytes: Vec<u8> = embedding.iter().flat_map(|f| f.to_le_bytes()).collect();
+        conn.execute(
+            "INSERT OR REPLACE INTO observations_vec(rowid, embedding) VALUES (?1, ?2)",
+            params![int_id, bytes],
+        )?;
+        Ok(())
+    }
+
+    /// Remove the embedding row for `id`. No-op if no embedding present.
+    pub fn delete_embedding(&self, id: SeeleId) -> Result<()> {
+        let conn = self.pool.get()?;
+        conn.execute(
+            "DELETE FROM observations_vec WHERE rowid IN \
+             (SELECT int_id FROM observations WHERE id = ?1)",
+            [id.to_string()],
+        )?;
         Ok(())
     }
 }
