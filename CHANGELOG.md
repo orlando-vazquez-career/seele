@@ -41,6 +41,22 @@ Todos los cambios notables a este proyecto se documentan acá. Formato basado en
   `genesis/plans/executed/tactica/sprint-01/`. Devlog completo en
   `docs/aegis/devlogs/2026-05-10-sprint-01-foundation.md`. 99 tests verde
   + clippy + fmt + STELE residual checks pasando.
+- **Sprint-02 BE Embedder + Search cerrado** (2026-05-10). Plan táctico
+  movido a `genesis/plans/executed/tactica/sprint-02/`. Devlog en
+  `docs/aegis/devlogs/2026-05-10-sprint-02-embedder-search.md`. Cambios:
+  - `seele-embedder`: cache controlada `~/.seele/embedder/` con env
+    override `SEELE_EMBEDDER_DIR`, INT8 quantized default con fallback
+    automático a full precision + warn, SHA256 verification opcional
+    (tabla `TRUSTED_HASHES` vacía hasta primer release), singleton global
+    para servers de larga vida, trait method `expected_sha256()`.
+  - `seele-search`: boost por `meta_score` (ADR-03 capa 5), empty-query
+    path `created_at DESC` en lugar de `InvalidInput`, annotation lines
+    de `memory_relations` (Supersedes/SupersededBy/ConflictsWith/
+    ContestedBy) opt-in vía `include_annotations`, `max_vec_distance`
+    threshold.
+  - Tests: 130 verde (+31 vs Sprint-01), 4 ignored (2 ONNX + 2 perf).
+    Suite fixtures + 7 E2E + 3 proptest + 2 perf smoke. Clippy + fmt +
+    STELE residual checks pasando.
 
 ### Changed
 - **MSRV bump a Rust 1.85** desde 1.83 inicial. Razón: `clap_lex` (transitiva

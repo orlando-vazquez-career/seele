@@ -10,8 +10,8 @@ Reimplementación clean-room inspirada en [ENGRAM](https://github.com/Gentleman-
 
 ## Estado actual
 
-- **v0.1**: en desarrollo bajo AEGIS. Sprint-01 BE Foundation cerrado el 2026-05-10. Devlog: `docs/aegis/devlogs/2026-05-10-sprint-01-foundation.md`.
-- Sprint-02 Embedder + Search **parcialmente implementado** sin Táctica formal escrita. **Reglar al inicio del Sprint 02 antes de tocar más código**.
+- **v0.1**: en desarrollo bajo AEGIS. Sprint-01 BE Foundation cerrado el 2026-05-10 (devlog `docs/aegis/devlogs/2026-05-10-sprint-01-foundation.md`, tag `sprint-01-foundation`). Sprint-02 BE Embedder + Search cerrado el 2026-05-10 (devlog `docs/aegis/devlogs/2026-05-10-sprint-02-embedder-search.md`, tag `sprint-02-embedder-search`).
+- 130 tests verde + 4 ignored (2 ONNX descarga + 2 perf smoke 1K/10K). Clippy + fmt + STELE residual checks pasando.
 - Sprints 03 (HTTP + MCP), 04 (TUI + sync + setup + project + CLI), 05 (Polish + CI/CD + Release) pendientes.
 
 ## Stack

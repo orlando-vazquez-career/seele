@@ -26,13 +26,9 @@ Salida: `seele-core` y `seele-storage` funcionales con migraciones, CRUD sobre `
 
 ## Sprint-02 — Embedder + Search
 
-**Estado**: 🚧 en ejecución — tactica escrita 2026-05-10 con sección "Estado inicial heredado" del commit `8d67f48` (que avanzó embedder+search sin tactica formal). Documento detallado: [`sprint-02/00-INDEX.md`](sprint-02/00-INDEX.md).
+**Estado**: ✅ ejecutado — cerrado 2026-05-10. Plan archivado en `../executed/tactica/sprint-02/00-INDEX.md`. Devlog: [`../../../docs/aegis/devlogs/2026-05-10-sprint-02-embedder-search.md`](../../../docs/aegis/devlogs/2026-05-10-sprint-02-embedder-search.md).
 
-Bloques:
-- **A**: `seele-embedder` polish — cache `~/.seele/embedder/` + INT8 quantized default + SHA256 verify + singleton global.
-- **B**: `seele-search` polish — boost por meta_score + empty-query path + annotation lines + max_distance.
-- **C**: tests integración con DB poblada (50 fixtures realistas) + property tests (proptest) + perf smoke 10K observations.
-- **D**: state-sync (devlog + executed/ + CHANGELOG + INDEX + memoria + commit + tag).
+Salida: `seele-embedder` con cache `~/.seele/embedder/` + INT8 quantized default + SHA256 verify infra + singleton global. `seele-search` con boost por meta_score + empty-query path + annotation lines de relations + max_vec_distance. 130 tests verde (97 directos + 33 nuevos del Sprint-02) + 4 ignored (ONNX + perf smoke).
 
 ## Sprint-03 — Interfaces
 

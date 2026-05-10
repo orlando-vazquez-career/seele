@@ -31,10 +31,12 @@ Estrategia, arquitectura y táctica del Sprint 01 viven bajo `genesis/plans/`. E
 ### Ejecutados (planes cerrados)
 
 - [`genesis/plans/executed/tactica/sprint-01/00-INDEX.md`](../genesis/plans/executed/tactica/sprint-01/00-INDEX.md) — Sprint-01 BE Foundation, cerrado 2026-05-10. Devlog: [`docs/aegis/devlogs/2026-05-10-sprint-01-foundation.md`](aegis/devlogs/2026-05-10-sprint-01-foundation.md).
+- [`genesis/plans/executed/tactica/sprint-02/00-INDEX.md`](../genesis/plans/executed/tactica/sprint-02/00-INDEX.md) — Sprint-02 BE Embedder + Search, cerrado 2026-05-10. Devlog: [`docs/aegis/devlogs/2026-05-10-sprint-02-embedder-search.md`](aegis/devlogs/2026-05-10-sprint-02-embedder-search.md).
 
 ## Devlogs
 
 - [`docs/aegis/devlogs/2026-05-10-sprint-01-foundation.md`](aegis/devlogs/2026-05-10-sprint-01-foundation.md) — Sprint-01 BE Foundation cerrado. 99 tests verde, CI matrix verde, schema completo + CRUD funcional.
+- [`docs/aegis/devlogs/2026-05-10-sprint-02-embedder-search.md`](aegis/devlogs/2026-05-10-sprint-02-embedder-search.md) — Sprint-02 BE Embedder + Search cerrado. Embedder polish (cache + INT8 + SHA256 + singleton) + search polish (boost + empty-query + annotations + max-distance) + 31 tests nuevos. Total 130 verde.
 
 ## Cost Ledger
 
