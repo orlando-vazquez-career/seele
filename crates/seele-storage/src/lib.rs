@@ -1,10 +1,27 @@
 //! SEELE storage — SQLite + FTS5 + sqlite-vec layer.
 
+pub mod chunks;
 pub mod error;
+pub mod hash;
+pub mod links;
 pub mod migrations;
+pub mod observations;
 pub mod pool;
+pub mod privacy;
+pub mod prompts;
+pub mod relations;
+pub mod sessions;
 pub mod vec0_install;
 pub mod vec0_loader;
+
+pub use chunks::{ChunkStore, SyncChunk};
+pub use links::{LinkInput, LinkQuery, LinkStore};
+pub use observations::{
+    ObservationPatch, ObservationQuery, ObservationStore, SaveInput, SaveOutcome,
+};
+pub use prompts::{PromptInput, PromptQuery, PromptStore, UserPrompt};
+pub use relations::{JudgmentInput, RelationInput, RelationQuery, RelationStore};
+pub use sessions::{SessionFilter, SessionInput, SessionStore};
 
 pub use error::{Result, StorageError};
 pub use pool::{init_pool, Pool, PoolConfig};

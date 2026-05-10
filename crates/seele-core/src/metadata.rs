@@ -3,7 +3,7 @@ use serde_json::{Map, Value};
 
 /// Metadata is a typed wrapper over `serde_json::Value::Object`.
 /// SEELE doesn't enforce schema — consumers (MNEMA, etc) define their own.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Metadata(pub Value);
 
