@@ -1,0 +1,44 @@
+# Rust build artifacts
+/target/
+**/*.rs.bk
+*.pdb
+Cargo.lock.bak
+
+# Environment + secrets
+.env
+.env.local
+.env.*.local
+*.secret
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDEs
+/.idea/
+/.vscode/settings.json
+*.iml
+
+# SQLite
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Embedder cache (modelos descargados — no van al repo)
+.seele/embedder/
+
+# Logs
+*.log
+/logs/
+
+# Local data dir (cualquier ~/.seele que termine acá por accidente)
+/.seele/
+
+# Coverage reports
+/coverage/
+*.lcov
+
+# Backup files que setup wizard genera
+*.seele-backup-*
