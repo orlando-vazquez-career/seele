@@ -2371,6 +2371,8 @@ dependencies = [
 name = "seele-embedder"
 version = "0.1.0"
 dependencies = [
+ "dirs",
+ "hex",
  "hf-hub",
  "ndarray",
  "once_cell",

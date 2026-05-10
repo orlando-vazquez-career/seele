@@ -19,6 +19,19 @@ pub enum EmbedderError {
 
     #[error("empty input: {0}")]
     EmptyInput(&'static str),
+
+    #[error("cannot resolve embedder cache dir; set SEELE_EMBEDDER_DIR or check that dirs::cache_dir() returns Some")]
+    CacheDirUnresolvable,
+
+    #[error("sha256 mismatch for {file}: expected {expected}, got {got}. Delete the cache file and retry to redownload")]
+    HashMismatch {
+        file: String,
+        expected: String,
+        got: String,
+    },
+
+    #[error("global embedder already initialized")]
+    GlobalAlreadyInitialized,
 }
 
 pub type Result<T> = std::result::Result<T, EmbedderError>;

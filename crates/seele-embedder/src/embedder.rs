@@ -20,4 +20,11 @@ pub trait Embedder: Send + Sync {
 
     /// Human-readable model identifier, for logging/telemetry.
     fn model_id(&self) -> &str;
+
+    /// Hex-encoded SHA256 of the model weights, when the embedder is backed
+    /// by a verified file. Used by upstream tooling to detect model swaps
+    /// (re-embedding required). `None` for fakes or unverified models.
+    fn expected_sha256(&self) -> Option<&str> {
+        None
+    }
 }

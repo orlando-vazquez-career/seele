@@ -26,10 +26,13 @@ Salida: `seele-core` y `seele-storage` funcionales con migraciones, CRUD sobre `
 
 ## Sprint-02 — Embedder + Search
 
-Bloques previstos:
-- A: `seele-embedder` (ort + tokenizers + hf-hub + auto-download + singleton).
-- B: `seele-search` (fts + vec + RRF combiner + boost por score).
-- C: tests integración con DB poblada.
+**Estado**: 🚧 en ejecución — tactica escrita 2026-05-10 con sección "Estado inicial heredado" del commit `8d67f48` (que avanzó embedder+search sin tactica formal). Documento detallado: [`sprint-02/00-INDEX.md`](sprint-02/00-INDEX.md).
+
+Bloques:
+- **A**: `seele-embedder` polish — cache `~/.seele/embedder/` + INT8 quantized default + SHA256 verify + singleton global.
+- **B**: `seele-search` polish — boost por meta_score + empty-query path + annotation lines + max_distance.
+- **C**: tests integración con DB poblada (50 fixtures realistas) + property tests (proptest) + perf smoke 10K observations.
+- **D**: state-sync (devlog + executed/ + CHANGELOG + INDEX + memoria + commit + tag).
 
 ## Sprint-03 — Interfaces
 
