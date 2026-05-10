@@ -21,6 +21,7 @@ pub struct SessionFilter {
     pub limit: Option<u32>,
 }
 
+#[derive(Clone)]
 pub struct SessionStore {
     pool: Pool,
 }

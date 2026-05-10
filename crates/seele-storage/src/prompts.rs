@@ -31,6 +31,7 @@ pub struct PromptQuery {
     pub limit: Option<u32>,
 }
 
+#[derive(Clone)]
 pub struct PromptStore {
     pool: Pool,
 }

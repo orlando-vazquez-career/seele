@@ -73,6 +73,7 @@ pub struct ObservationPatch {
     pub metadata: Option<Metadata>,
 }
 
+#[derive(Clone)]
 pub struct ObservationStore {
     pool: Pool,
 }

@@ -26,6 +26,7 @@ pub struct LinkQuery {
     pub limit: Option<u32>,
 }
 
+#[derive(Clone)]
 pub struct LinkStore {
     pool: Pool,
 }

@@ -40,6 +40,7 @@ pub struct JudgmentInput {
     pub confidence: Option<f64>,
 }
 
+#[derive(Clone)]
 pub struct RelationStore {
     pool: Pool,
 }

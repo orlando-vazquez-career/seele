@@ -15,6 +15,7 @@ pub struct SyncChunk {
     pub imported_at: DateTime<Utc>,
 }
 
+#[derive(Clone)]
 pub struct ChunkStore {
     pool: Pool,
 }
