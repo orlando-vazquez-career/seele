@@ -26,11 +26,15 @@ claro al iniciar SEELE en esa plataforma.
 
 ## Licencia
 
-`sqlite-vec` es **MIT**, copyright 2024 Alex Garcia. Crédito completo va
-en el `README.md` raíz de SEELE y en `CREDITS.md`. Esta carpeta cumple
-con la cláusula de inclusión del aviso de copyright; el archivo
-`UPSTREAM-LICENSE.txt` (si existe) replica el `LICENSE` del upstream
-para evitar pérdida de procedencia.
+`sqlite-vec` está bajo **dual license Apache-2.0 OR MIT**, copyright
+2024 Alex Garcia. Como esta carpeta redistribuye binarios upstream, ambas
+licencias requieren preservar el aviso de copyright + texto de licencia.
+Por eso esta carpeta incluye:
+
+- `LICENSE-APACHE-upstream.txt` — copia textual de `LICENSE-APACHE` del upstream.
+- `LICENSE-MIT-upstream.txt` — copia textual de `LICENSE-MIT` del upstream.
+
+Crédito completo en `README.md` raíz de SEELE y `CREDITS.md`.
 
 ## Verificación de integridad
 

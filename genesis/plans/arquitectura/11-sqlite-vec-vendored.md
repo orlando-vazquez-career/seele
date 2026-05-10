@@ -98,15 +98,21 @@ Dependabot puede sugerir nuevos releases vía `.github/dependabot.yml`
 
 ## Crédito y licencia
 
-`sqlite-vec` es **MIT** © 2024 Alex Garcia. Aviso de copyright + texto
-de la licencia se incluyen en:
+`sqlite-vec` está bajo **dual license Apache-2.0 OR MIT** © 2024 Alex Garcia.
+Como redistribuimos binarios precompilados upstream, ambas licencias
+exigen preservar aviso de copyright + texto de licencia. La preservación
+está implementada en:
 
-- `README.md` raíz de SEELE (bloque "Crédito").
-- `CREDITS.md` con cita completa.
-- `crates/seele-storage/vendor/sqlite-vec/README.md` referenciando upstream.
+- `crates/seele-storage/vendor/sqlite-vec/LICENSE-APACHE-upstream.txt` —
+  copia literal de `LICENSE-APACHE` del upstream (asg017/sqlite-vec).
+- `crates/seele-storage/vendor/sqlite-vec/LICENSE-MIT-upstream.txt` —
+  copia literal de `LICENSE-MIT` del upstream.
+- `CREDITS.md` raíz con cita completa de la dual license.
+- `README.md` raíz de SEELE (bloque de crédito de tecnologías).
 
 No re-empaquetamos el código fuente — sólo los binarios públicos del
-release. Esto es uso permitido bajo MIT con preservación de aviso.
+release. Esto es uso permitido bajo Apache-2.0 OR MIT con preservación
+del aviso de copyright + texto de licencia.
 
 ## Riesgos asumidos
 

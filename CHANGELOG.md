@@ -30,11 +30,9 @@ Todos los cambios notables a este proyecto se documentan acá. Formato basado en
   versiones de deps el conflicto se resuelve, pero perdemos features de
   `axum 0.8`, `utoipa 5`, etc. — preferimos bumpear MSRV una vez ahora antes
   de v0.1.0 que en cada release minor.
-
-### Pinned
-- `ort = "=2.0.0-rc.10"` — no existe `2.0.0` stable a fecha 2026-05.
-  Despinear cuando upstream haga release stable. Monitoreado vía
-  `.github/dependabot.yml`.
+- **Pin de dependencia**: `ort = "=2.0.0-rc.10"` — no existe `2.0.0` stable
+  a fecha 2026-05. Despinear cuando upstream haga release stable. Monitoreado
+  vía `.github/dependabot.yml` (PR automático cuando salga el bump).
 
 ## Histórico de bumps de dependencias vendorizadas
 

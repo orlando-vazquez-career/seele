@@ -4,8 +4,9 @@
 //! the crate via `include_bytes!`. At runtime, callers write the bytes to a
 //! temporary file and call `rusqlite::Connection::load_extension` against it.
 //!
-//! Source: <https://github.com/asg017/sqlite-vec> v0.1.9 (MIT, Alex Garcia).
-//! See `vendor/sqlite-vec/README.md` for licence + provenance + checksums.
+//! Source: <https://github.com/asg017/sqlite-vec> v0.1.9 (Apache-2.0 OR MIT,
+//! © 2024 Alex Garcia). See `vendor/sqlite-vec/README.md` for licence +
+//! provenance + checksums + license texts.
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 const VEC0_BYTES: Option<&[u8]> = Some(include_bytes!("../vendor/sqlite-vec/linux-x86_64/vec0.so"));
@@ -74,11 +75,32 @@ mod tests {
     use super::*;
 
     #[test]
-    fn vec0_bytes_present_on_known_targets() {
+    fn vec0_bytes_size_sanity() {
         if let Some(bytes) = vec0_bytes() {
             assert!(!bytes.is_empty(), "vendored vec0 must not be empty");
             assert!(bytes.len() > 1024, "vec0 binary suspiciously small");
         }
+    }
+
+    /// Hard requirement: on every supported target, `vec0_bytes()` MUST return
+    /// `Some` with a binary of plausible size. If a future bump breaks the
+    /// `include_bytes!` for all targets at once, the soft test above would
+    /// pass silently — this one fails.
+    #[cfg(any(
+        all(target_os = "linux", target_arch = "x86_64"),
+        all(target_os = "linux", target_arch = "aarch64"),
+        all(target_os = "macos", target_arch = "x86_64"),
+        all(target_os = "macos", target_arch = "aarch64"),
+        all(target_os = "windows", target_arch = "x86_64"),
+    ))]
+    #[test]
+    fn vec0_bytes_required_on_supported_targets() {
+        let bytes = vec0_bytes().expect("supported target must have vendored vec0 bytes");
+        assert!(
+            bytes.len() > 100_000,
+            "vec0 binary too small to be a real loadable extension (got {} bytes)",
+            bytes.len()
+        );
     }
 
     #[test]

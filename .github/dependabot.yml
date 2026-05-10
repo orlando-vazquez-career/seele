@@ -3,7 +3,10 @@ updates:
   - package-ecosystem: cargo
     directory: /
     schedule:
-      interval: weekly
+      # Monthly evita el ruido de bumps menores semanales en deps Rust;
+      # los CVEs reales llegan vía security advisories independientemente
+      # del interval.
+      interval: monthly
       day: monday
       time: "09:00"
       timezone: America/Santiago
