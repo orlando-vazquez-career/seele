@@ -8,7 +8,9 @@
 //!   listener.
 //! - `ApiError` / `ErrorBody` — uniform JSON error envelope.
 
+pub mod dto;
 pub mod error;
+pub mod handlers;
 pub mod server;
 pub mod service;
 

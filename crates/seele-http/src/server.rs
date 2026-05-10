@@ -7,13 +7,14 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde_json::json;
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
+use crate::handlers;
 use crate::service::SeeleService;
 
 /// Shared state every handler sees via `axum::extract::State<AppState>`.
@@ -64,6 +65,12 @@ impl Server {
         Router::new()
             .route("/health", get(health))
             .route("/version", get(version))
+            .route(
+                "/memories",
+                post(handlers::save_memory).get(handlers::list_memories),
+            )
+            .route("/memories/{id}", get(handlers::get_memory))
+            .route("/search", post(handlers::search_memories))
             .with_state(state)
             .layer(TraceLayer::new_for_http())
             .layer(cors)

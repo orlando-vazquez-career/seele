@@ -8,11 +8,20 @@
 
 use std::sync::Arc;
 
+use seele_core::id::SeeleId;
+use seele_core::memory::Observation;
 use seele_embedder::Embedder;
-use seele_search::SearchEngine;
+use seele_search::{SearchEngine, SearchQuery};
 use seele_storage::{
-    ChunkStore, LinkStore, ObservationStore, Pool, PromptStore, RelationStore, SessionStore,
+    ChunkStore, LinkStore, ObservationQuery, ObservationStore, Pool, PromptStore, RelationStore,
+    SaveInput, SaveOutcome, SessionStore,
 };
+
+use crate::dto::{
+    parse_id, parse_metadata, parse_scope, parse_type, ListRequest, ObservationDto, SaveRequest,
+    SaveResponse, SearchHitDto, SearchRequest, SearchResponse,
+};
+use crate::error::{ApiError, Result};
 
 #[derive(Clone)]
 pub struct SeeleService {
@@ -49,6 +58,141 @@ impl SeeleService {
             pool,
         }
     }
+
+    /// Save an observation + compute & store its embedding atomically (best
+    /// effort: the embedding write is post-save, so if the embedder fails
+    /// the observation row is still persisted — search will skip it from the
+    /// vec branch until a reindex pass).
+    pub fn save_observation(&self, req: SaveRequest) -> Result<SaveResponse> {
+        let session_id = req
+            .session_id
+            .as_deref()
+            .map(|s| parse_id(s, "session_id"))
+            .transpose()?;
+        let scope = parse_scope(req.scope.as_deref())?;
+        let kind = parse_type(&req.r#type);
+        let metadata = parse_metadata(req.metadata);
+
+        let input = SaveInput {
+            session_id,
+            kind,
+            title: req.title.clone(),
+            content: req.content.clone(),
+            tool_name: req.tool_name,
+            project: req.project,
+            scope,
+            topic_key: req.topic_key,
+            metadata,
+        };
+        let outcome = self.observations.save(input)?;
+
+        // Best-effort embedding write. Failure logs but does not surface
+        // as a 5xx — the row is persisted and a reindex pass can fix it.
+        match self.embedder.embed(&req.content) {
+            Ok(v) => {
+                if let Err(e) = self.observations.set_embedding(outcome.id(), &v) {
+                    tracing::warn!(error=%e, id=%outcome.id(), "embedding write failed post-save");
+                }
+            }
+            Err(e) => {
+                tracing::warn!(error=%e, id=%outcome.id(), "embedder failed post-save");
+            }
+        }
+
+        Ok(match outcome {
+            SaveOutcome::Created(id) => SaveResponse {
+                id: id.to_string(),
+                outcome: "created",
+                revision_count: None,
+                duplicate_count: None,
+            },
+            SaveOutcome::UpsertedTopic { id, revision_count } => SaveResponse {
+                id: id.to_string(),
+                outcome: "upserted_topic",
+                revision_count: Some(revision_count),
+                duplicate_count: None,
+            },
+            SaveOutcome::DuplicateMerged {
+                id,
+                duplicate_count,
+            } => SaveResponse {
+                id: id.to_string(),
+                outcome: "duplicate_merged",
+                revision_count: None,
+                duplicate_count: Some(duplicate_count),
+            },
+        })
+    }
+
+    /// Run the search engine. Caller is responsible for the anti-empty-query
+    /// gate at the transport layer (HTTP handler / MCP tool both apply it).
+    pub fn search_observations(&self, req: SearchRequest) -> Result<SearchResponse> {
+        let scope = match req.scope.as_deref() {
+            None => None,
+            Some(s) => Some(parse_scope(Some(s))?),
+        };
+        let q = SearchQuery {
+            text: req.query,
+            project: req.project,
+            scope,
+            kind: req.r#type,
+            per_method_limit: None,
+            limit: req.limit,
+            include_purist: req.include_purist,
+            score_boost_multiplier: req.score_boost_multiplier,
+            max_vec_distance: req.max_vec_distance,
+            include_annotations: req.include_annotations,
+        };
+        let hits = self.search.search(q)?;
+        let dtos: Vec<SearchHitDto> = hits.iter().map(SearchHitDto::from).collect();
+        let count = dtos.len();
+        Ok(SearchResponse { hits: dtos, count })
+    }
+
+    pub fn get_observation(&self, id: SeeleId) -> Result<Option<ObservationDto>> {
+        Ok(self.observations.get(id)?.map(ObservationDto::from))
+    }
+
+    pub fn list_observations(&self, req: ListRequest) -> Result<Vec<ObservationDto>> {
+        let scope = match req.scope.as_deref() {
+            None => None,
+            Some(s) => Some(parse_scope(Some(s))?),
+        };
+        let session_id = req
+            .session_id
+            .as_deref()
+            .map(|s| parse_id(s, "session_id"))
+            .transpose()?;
+        let kind = req.r#type.as_deref().map(parse_type);
+        let q = ObservationQuery {
+            project: req.project,
+            scope,
+            kind,
+            session_id,
+            topic_key: req.topic_key,
+            include_deleted: req.include_deleted,
+            limit: req.limit,
+        };
+        let observations: Vec<Observation> = self.observations.list(q)?;
+        Ok(observations.into_iter().map(ObservationDto::from).collect())
+    }
+}
+
+/// Anti-empty-query gate shared by HTTP `/search` and MCP `seele_search`.
+/// Returns `Err(ApiError::BadRequest)` if the query text is empty AND no
+/// filter is present. Mitigates the list-all-DB exfiltration vector flagged
+/// by Cloven (2026-05-10).
+pub fn enforce_search_query_or_filter(req: &SearchRequest) -> Result<()> {
+    if req.query.trim().is_empty()
+        && req.project.is_none()
+        && req.scope.is_none()
+        && req.r#type.is_none()
+    {
+        return Err(ApiError::BadRequest(
+            "empty query requires at least one filter (project, scope, or type)".into(),
+        ));
+    }
+    Ok(())
 }
 
 /// Bridge an `Arc<dyn Embedder>` into a `Box<dyn Embedder>` so the same
