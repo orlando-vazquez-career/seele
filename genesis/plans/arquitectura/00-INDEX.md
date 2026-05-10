@@ -15,7 +15,7 @@
 - `07-tui-design.md` — TUI con ratatui + crossterm, vistas, navegación, keybindings.
 - `08-repo-layout.md` — workspace Cargo, 8 crates, tests structure, CI matriz.
 - `09-distribution-license.md` — releases binarios via GitHub Actions, crates.io publish, MIT + crédito ENGRAM operacional.
-- `10-mapping-mnema-seele.md` — contrato de mapping entre vocabulario MNEMA (Counsel, advisors, verdict, skill, axiomatica) y schema SEELE (sessions, observations, memory_relations, links). Cierra observación [ALTO] de Cloven.
+- `10-mapping-mnema-seele.md` — contrato de mapping entre vocabulario MNEMA (Counsel, advisors, verdict, skill, axiomatica) y schema SEELE (sessions, observations, memory_relations, links).
 
 ## Output esperado
 

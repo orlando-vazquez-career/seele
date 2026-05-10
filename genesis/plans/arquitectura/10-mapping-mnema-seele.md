@@ -1,10 +1,8 @@
 # ADR-10 — Mapping conceptual MNEMA ↔ SEELE
 
 **Estado**: Aceptado · 2026-05-10
-**Decisión**: MNEMA mapea su modelo de Counsel + Skills + Decisiones al schema de SEELE de la siguiente manera. Este ADR fija el contrato para que la primera integración no requiera re-modelado.
-**Cierra**: observación [ALTO] de Cloven en review post-arquitectura — *"no hay traducción entre los dos vocabularios"*.
+**Decisión**: MNEMA mapea su modelo de Counsel + Skills + Decisiones al schema de SEELE de la siguiente manera. Este ADR fija el contrato para que la primera integración no requiera re-modelado.## Contexto
 
-## Contexto
 
 SEELE adopta el vocabulario de ENGRAM (sessions, observations, types tipo `decision/architecture/bugfix/...`, topic_keys con family heuristics de coding agents). MNEMA tiene su propio vocabulario (Counsel pattern: 5 advisors + 5 reviewers + verdict; kinds tipo `decision/skill/advisor_output/review/verdict/memory`; conceptos como `verdict_id`, `advisor_role`, `blind_id`, `axiomatic`, `core`, `earn_score`).
 
@@ -16,15 +14,15 @@ Sin un mapping explícito, el primer sprint donde MNEMA consuma SEELE (sprint-04
 
 Una **counsel completa** de MNEMA = una **session** de SEELE.
 
-| MNEMA Counsel | SEELE session field | Notas |
-|---|---|---|
-| Counsel ID (ej: `counsel_01HX...`) | `sessions.id` (ULID) | Mismo ULID |
-| Pregunta inicial / título | `sessions.summary` (al cierre) | Se completa al `seele_session_end` |
-| Project / dominio (ej: `dev-zen`) | `sessions.project` | Direct mapping |
-| Working directory (si aplica) | `sessions.directory` | Opcional |
-| Inicio de Recall phase | `sessions.started_at` | Timestamp |
-| Cierre de Encode phase | `sessions.ended_at` | Timestamp |
-| Estado (en curso / cerrado / abortado) | `sessions.status` | enum |
+| MNEMA Counsel                          | SEELE session field            | Notas                              |
+| -------------------------------------- | ------------------------------ | ---------------------------------- |
+| Counsel ID (ej: `counsel_01HX...`)     | `sessions.id` (ULID)           | Mismo ULID                         |
+| Pregunta inicial / título              | `sessions.summary` (al cierre) | Se completa al `seele_session_end` |
+| Project / dominio (ej: `dev-zen`)      | `sessions.project`             | Direct mapping                     |
+| Working directory (si aplica)          | `sessions.directory`           | Opcional                           |
+| Inicio de Recall phase                 | `sessions.started_at`          | Timestamp                          |
+| Cierre de Encode phase                 | `sessions.ended_at`            | Timestamp                          |
+| Estado (en curso / cerrado / abortado) | `sessions.status`              | enum                               |
 
 **Concretamente**: cuando MNEMA arranca una counsel, llama `seele_session_start({id: counsel_01HX..., project: "dev-zen", directory: cwd})`. Cuando emite verdict, llama `seele_session_end({id: counsel_01HX..., summary: "..."})`.
 
@@ -32,44 +30,95 @@ Una **counsel completa** de MNEMA = una **session** de SEELE.
 
 Cada output del Counsel (advisor outputs, reviews, prompts) es una **observation** de SEELE, linkeada a la session vía `session_id`.
 
-| MNEMA concept | SEELE `observations` row | Type field | Metadata JSON |
-|---|---|---|---|
-| Pregunta del User | row con `type='memory'`, `tool_name='user_prompt'` | `memory` | `{kind: 'user_prompt'}` |
-| Output de un advisor | row con `type='advisor_output'`, content del JSON output | `advisor_output` | `{kind: 'advisor_output', advisor_role: 'contrarian\|first-principles\|expansionist\|outsider\|executor', model: 'claude-opus-4-7', tokens_used: ..., counsel_id: 'counsel_01HX...'}` |
-| Output de un reviewer ciego | row con `type='review'`, content del JSON | `review` | `{kind: 'review', blind_id: 'blind_xyz', advisor_role_reviewed: '...', score_breakdown: {...}, model: ..., tokens_used: ..., counsel_id: ...}` |
-| Verdict final | row con `type='verdict'`, content del verdict razonado | `verdict` | `{kind: 'verdict', counsel_id: 'counsel_01HX...', accepted_advisor_roles: [...], dissent: '...', model: ..., tokens_used: ...}` |
-| Skill emitido | row con `type='skill'`, content del skill document | `skill` | `{kind: 'skill', skill_id: 'skl_01HY...', derived_from_verdict: 'vrd_01HX...', earn_score: 1.0, axiomatic: false}` |
-| Decisión persistida (post-verdict) | row con `type='decision'`, body del razonamiento decidido | `decision` | `{kind: 'decision', verdict_id: 'vrd_01HX...', earn_score: 1.0, axiomatic: false, core: false, last_referenced_at: ts}` |
-| Memoria genérica (no parte de counsel) | row con `type='memory'` | `memory` | `{kind: 'memory', earn_score: 1.0}` |
+| MNEMA concept                          | SEELE `observations` row                                  | Type field       | Metadata JSON                                                                                                                                                                         |
+| -------------------------------------- | --------------------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pregunta del User                      | row con `type='memory'`, `tool_name='user_prompt'`        | `memory`         | `{kind: 'user_prompt'}`                                                                                                                                                               |
+| Output de un advisor                   | row con `type='advisor_output'`, content del JSON output  | `advisor_output` | `{kind: 'advisor_output', advisor_role: 'contrarian\|first-principles\|expansionist\|outsider\|executor', context_mode: 'purist\|contextual', model: 'claude-opus-4-7', tokens_used: ..., counsel_id: 'counsel_01HX...'}` |
+| Output de un reviewer ciego            | row con `type='review'`, content del JSON                 | `review`         | `{kind: 'review', blind_id: 'blind_xyz', advisor_role_reviewed: '...', score_breakdown: {...}, model: ..., tokens_used: ..., counsel_id: ...}`                                        |
+| Verdict final                          | row con `type='verdict'`, content del verdict razonado    | `verdict`        | `{kind: 'verdict', counsel_id: 'counsel_01HX...', accepted_advisor_roles: [...], dissent: '...', model: ..., tokens_used: ...}`                                                       |
+| Skill emitido                          | row con `type='skill'`, content del skill document        | `skill`          | `{kind: 'skill', skill_id: 'skl_01HY...', derived_from_verdict: 'vrd_01HX...', earn_score: 1.0, axiomatic: false}`                                                                    |
+| Decisión persistida (post-verdict)     | row con `type='decision'`, body del razonamiento decidido | `decision`       | `{kind: 'decision', verdict_id: 'vrd_01HX...', earn_score: 1.0, axiomatic: false, core: false, last_referenced_at: ts}`                                                               |
+| Memoria genérica (no parte de counsel) | row con `type='memory'`                                   | `memory`         | `{kind: 'memory', earn_score: 1.0}`                                                                                                                                                   |
 
 **Notas clave**:
+
 - El `type` field de SEELE acepta el set extendido `decision | architecture | bugfix | pattern | config | discovery | learning | memory | skill | advisor_output | review | verdict`. Los primeros 7 son los de ENGRAM (coding agents); los últimos 5 son los de MNEMA. SEELE no enforce un enum cerrado en el schema — el `type` es TEXT libre, pero los family heuristics sí filtran por estos sets.
 - `kind` sigue dentro del JSON `metadata` para compatibilidad con consumers que usen schema MNEMA-específico (muchos campos de MNEMA viven solo en metadata).
 - `counsel_id` en metadata permite query "todos los outputs de tal counsel" sin join contra `sessions` cuando ya tenés el ID.
+- **`context_mode` en advisor_output** distingue voz purista vs contextual. Asignación canónica MNEMA: `first-principles` y `outsider` son **purist** (no reciben Recall en el momento de invocación); `contrarian`, `expansionist`, `executor` son **contextual** (sí reciben Recall). Override por counsel posible. Persistencia es igual para ambos — la diferencia es operacional en el Recall futuro (ver Capa 8).
 
 ### Capa 3 — Tags / domain / project
 
-| MNEMA | SEELE | Notas |
-|---|---|---|
-| `tags: ["api", "rate-limit"]` | metadata JSON `{tags: [...]}` | Multi-tag flexible |
-| Tag principal / canonical | `observations.topic_key` | Singular; usado para upserts |
-| `domain: "dev-zen"` | `observations.project` | Mapping directo |
+| MNEMA                         | SEELE                         | Notas                        |
+| ----------------------------- | ----------------------------- | ---------------------------- |
+| `tags: ["api", "rate-limit"]` | metadata JSON `{tags: [...]}` | Multi-tag flexible           |
+| Tag principal / canonical     | `observations.topic_key`      | Singular; usado para upserts |
+| `domain: "dev-zen"`           | `observations.project`        | Mapping directo              |
 
 ### Capa 4 — Lifecycle metadata
 
 Estos campos viven en `metadata` JSON en SEELE, indexados via virtual generated columns (ver ADR-02).
 
-| MNEMA campo | SEELE metadata path | Virtual column |
-|---|---|---|
-| `earn_score: 1.0` | `metadata.earn_score` | `meta_score` |
-| `axiomatic: true/false` | `metadata.axiomatic` | `meta_axiomatic` |
-| `core: true/false` | `metadata.core` | (sin virtual col por default; consumer puede agregar) |
-| `last_referenced_at` | `metadata.last_referenced_at` | (sin virtual col; o usar `last_seen_at` que es column nativa de observations) |
-| `blind_id` | `metadata.blind_id` | (sin virtual col por default) |
-| `model` (LLM model usado) | `metadata.model` | (sin virtual col) |
-| `tokens_used` | `metadata.tokens_used` | (sin virtual col) |
+| MNEMA campo                  | SEELE metadata path           | Virtual column                                                                |
+| ---------------------------- | ----------------------------- | ----------------------------------------------------------------------------- |
+| `earn_score: 1.0`            | `metadata.earn_score`         | `meta_score`                                                                  |
+| `axiomatic: true/false`      | `metadata.axiomatic`          | `meta_axiomatic`                                                              |
+| `core: true/false`           | `metadata.core`               | (sin virtual col por default; consumer puede agregar)                         |
+| `last_referenced_at`         | `metadata.last_referenced_at` | (sin virtual col; o usar `last_seen_at` que es column nativa de observations) |
+| `blind_id`                   | `metadata.blind_id`           | (sin virtual col por default)                                                 |
+| `model` (LLM model usado)    | `metadata.model`              | (sin virtual col)                                                             |
+| `tokens_used`                | `metadata.tokens_used`        | (sin virtual col)                                                             |
+| `context_mode` (purist/ctxl) | `metadata.context_mode`       | **`meta_context_mode`** (recomendado — para excluir puristas en Recall)       |
 
 MNEMA puede agregar virtual columns custom via `seele schema add-virtual-col mnema_blind_id $.blind_id` si emerge demanda de filter eficiente.
+
+### Capa 4.5 — Context modes (advisors purist vs contextual)
+
+MNEMA distingue dos voces dentro del Counsel:
+
+- **Voz contextual** — recibe Recall (decisiones previas, skills, ADRs). Continuidad y encaje histórico.
+- **Voz purista** — recibe solo la pregunta. Razonamiento desde primeros principios. Salvaguarda contra groupthink.
+
+Asignación canónica MNEMA (locked-in en `MNEMA-PROTOCOL.md` y `guides/counsel-pattern.md`):
+
+| Advisor | `context_mode` | Recall en invocación |
+|---|---|---|
+| Primeros Principios | **purist** | NO |
+| Outsider | **purist** | NO |
+| Contrarian | contextual | SÍ |
+| Expansionista | contextual | SÍ |
+| Ejecutor | contextual | SÍ |
+
+#### Implicancia para SEELE Recall
+
+Los outputs puristas SE PERSISTEN igual (con `metadata.context_mode='purist'`) — quedan auditables. PERO el Recall que MNEMA arma para counsels futuros **debe filtrar `context_mode='purist'` por default**. Si no, el purista de mañana lee lo que dijo el purista de ayer y se vuelve contextual disfrazado.
+
+SEELE no implementa este filtro como lógica especial — es **MNEMA quien filtra al construir el Recall query**, usando el campo metadata. Ejemplo de query MNEMA:
+
+```sql
+-- Recall pre-counsel: trae decisiones, skills, verdicts.
+-- NO trae advisor_outputs ni reviews (esos son la opinión cruda).
+-- Y aunque los trajera, excluye purist explícitamente.
+SELECT * FROM observations
+WHERE meta_domain = 'dev-zen'
+  AND deleted_at IS NULL
+  AND meta_kind IN ('decision', 'skill', 'verdict')
+  AND (meta_context_mode IS NULL OR meta_context_mode != 'purist')
+ORDER BY meta_score DESC, created_at DESC
+LIMIT 50;
+```
+
+Para auditoría manual ("¿qué dijeron los puristas históricamente sobre X?"), MNEMA expone flag explícito que NO aplica el filtro:
+
+```bash
+mnema search "<query>" --include-purist-outputs
+```
+
+#### Verdicts y skills: sin distinción de modo
+
+`verdict` y `skill` son la **cristalización** del counsel — la decisión final consolidada, no la opinión cruda de un advisor. Esos sí entran en Recall normalmente, sin filtro de `context_mode`. Esa es la unidad de aprendizaje que se arrastra entre counsels.
+
+`memory` (memorias genéricas no-counsel) tampoco lleva `context_mode` — es campo solo de `advisor_output` y `review`.
 
 ### Capa 5 — Relations / links / supersede
 
@@ -78,15 +127,15 @@ MNEMA tiene `linked_to: [...]` y conceptos de `supersedes`, `derives_from`, `evi
 - **`memory_relations`**: para conflict / judgment lifecycle (heredado de ENGRAM). Estados: pending / judged / orphaned / ignored. Relations: `supersedes / conflicts_with / scoped / related / compatible / not_conflict`.
 - **`links`**: tabla general purpose para grafos de memoria sin lifecycle de juicio. Relations libres: `derives_from / supersedes / related_to / contradicts / evidence_for / part_of_verdict / etc.`
 
-| MNEMA concept | SEELE table | link_type / relation |
-|---|---|---|
-| `derives_from <skill_old>` | `links` | `derives_from` |
-| `supersedes <skill_old>` (skill evolutiva) | `links` | `supersedes` |
-| `related_to <vrd_X>` | `links` | `related_to` |
-| `evidence_for <vrd_X>` | `links` | `evidence_for` |
-| `part_of_verdict <vrd_X>` (advisor output asociado) | `links` | `part_of_verdict` |
-| `contradicts <vrd_old>` (con razón explícita) | `memory_relations` con relation=`conflicts_with`, status=`judged` | El judgment lifecycle protege la decisión |
-| `superseded-by <vrd_NEW>` | `memory_relations` con relation=`supersedes`, status=`judged` | Mismo motivo |
+| MNEMA concept                                       | SEELE table                                                       | link_type / relation                      |
+| --------------------------------------------------- | ----------------------------------------------------------------- | ----------------------------------------- |
+| `derives_from <skill_old>`                          | `links`                                                           | `derives_from`                            |
+| `supersedes <skill_old>` (skill evolutiva)          | `links`                                                           | `supersedes`                              |
+| `related_to <vrd_X>`                                | `links`                                                           | `related_to`                              |
+| `evidence_for <vrd_X>`                              | `links`                                                           | `evidence_for`                            |
+| `part_of_verdict <vrd_X>` (advisor output asociado) | `links`                                                           | `part_of_verdict`                         |
+| `contradicts <vrd_old>` (con razón explícita)       | `memory_relations` con relation=`conflicts_with`, status=`judged` | El judgment lifecycle protege la decisión |
+| `superseded-by <vrd_NEW>`                           | `memory_relations` con relation=`supersedes`, status=`judged`     | Mismo motivo                              |
 
 **Regla práctica**: usar `links` para relaciones derivativas/explicativas que no requieren resolución (graph). Usar `memory_relations` cuando la relación implica que **una decisión invalida a otra** (necesita auditoría, rollback, supersede formal).
 

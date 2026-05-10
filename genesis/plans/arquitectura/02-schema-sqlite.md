@@ -100,14 +100,21 @@ ALTER TABLE memories ADD COLUMN meta_axiomatic INTEGER
     GENERATED ALWAYS AS (JSON_EXTRACT(metadata, '$.axiomatic')) VIRTUAL;
 ALTER TABLE memories ADD COLUMN meta_score REAL
     GENERATED ALWAYS AS (JSON_EXTRACT(metadata, '$.score')) VIRTUAL;
+ALTER TABLE memories ADD COLUMN meta_context_mode TEXT
+    GENERATED ALWAYS AS (JSON_EXTRACT(metadata, '$.context_mode')) VIRTUAL;
 ```
 
-**¿Por qué solo 4 campos predefinidos?**
+**¿Por qué estos 5 campos predefinidos?**
 
-SEELE NO conoce el schema del consumidor (MNEMA define `kind`, `domain`, `axiomatic`, `earn_score` — pero otro consumidor podría usar otros). En vez de hard-codear, SEELE expone:
+SEELE NO conoce el schema completo del consumidor (MNEMA define `kind`, `domain`, `axiomatic`, `earn_score`, `context_mode` — pero otro consumidor podría usar otros). Hay 5 que se ganaron espacio canónico por uso transversal:
 
-- 4 campos canónicos (`kind`, `domain`, `axiomatic`, `score`) que cualquier consumer puede o no usar — son convenciones recomendadas, no obligatorias.
-- Una API CLI/HTTP `seele schema add-virtual-col <name> <jsonpath>` para agregar custom virtual columns post-init.
+- **`kind`** — clasificación (decision/skill/advisor_output/review/verdict/memory). Universal.
+- **`domain`** — proyecto/dominio. Universal para multi-project.
+- **`axiomatic`** — flag de inmunidad a decay. Universal en patterns tipo MNEMA.
+- **`score`** — earn_score / priority. Universal.
+- **`context_mode`** — purist | contextual. Específico de patrones tipo Counsel pero crítico para Recall correcto (ver ADR-10 capa 4.5). Sin este virtual col, MNEMA tendría que filtrar por JSON_EXTRACT en cada Recall — ineficiente a escala.
+
+Otros campos van en metadata sin virtual col por default; consumer puede agregar via `seele schema add-virtual-col <name> <jsonpath>`.
 
 Esto da:
 - Filtros eficientes out-of-the-box para casos comunes.
@@ -121,6 +128,7 @@ CREATE INDEX idx_memories_domain ON memories(meta_domain) WHERE meta_domain IS N
 CREATE INDEX idx_memories_kind_domain ON memories(meta_kind, meta_domain) WHERE deleted_at IS NULL;
 CREATE INDEX idx_memories_axiomatic ON memories(meta_axiomatic) WHERE meta_axiomatic = 1;
 CREATE INDEX idx_memories_score ON memories(meta_score) WHERE deleted_at IS NULL;
+CREATE INDEX idx_memories_context_mode ON memories(meta_context_mode) WHERE meta_context_mode IS NOT NULL AND deleted_at IS NULL;
 CREATE INDEX idx_memories_created_at ON memories(created_at) WHERE deleted_at IS NULL;
 CREATE INDEX idx_memories_deleted_at ON memories(deleted_at) WHERE deleted_at IS NOT NULL;
 ```
