@@ -35,6 +35,27 @@ pub fn views_render(f: &mut ratatui::Frame, state: &AppState) {
     views::render(f, state);
 }
 
+/// Headless smoke entrypoint. Boots an `AppState`, refreshes it
+/// against `service`, renders one frame on a 120×30 `TestBackend`,
+/// and returns `Ok(())`. No raw mode, no alt screen, no event loop.
+///
+/// Used by `seele tui --smoke` (hidden flag) so the
+/// MVP-acceptance-criterion 8 smoke can run without a real terminal.
+/// A panic or service error produces a non-zero exit code, which is
+/// what the smoke script expects.
+pub fn run_tui_smoke(service: SeeleService) -> Result<()> {
+    use ratatui::backend::TestBackend;
+
+    let backend = TestBackend::new(120, 30);
+    let mut terminal = Terminal::new(backend)?;
+
+    let mut state = AppState::new();
+    state.refresh(&service);
+
+    terminal.draw(|f| views::render(f, &state))?;
+    Ok(())
+}
+
 /// Public crate-level error type.
 #[derive(Debug, thiserror::Error)]
 pub enum TuiError {

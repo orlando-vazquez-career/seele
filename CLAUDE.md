@@ -10,15 +10,20 @@ Reimplementación clean-room inspirada en [ENGRAM](https://github.com/Gentleman-
 
 ## Estado actual
 
-- **v0.1**: en desarrollo bajo AEGIS. Sprint-01 BE Foundation cerrado el 2026-05-10 (devlog `docs/aegis/devlogs/2026-05-10-sprint-01-foundation.md`, tag `sprint-01-foundation`). Sprint-02 BE Embedder + Search cerrado el 2026-05-10 (devlog `docs/aegis/devlogs/2026-05-10-sprint-02-embedder-search.md`, tag `sprint-02-embedder-search`). Sprint-03 BE Interfaces cerrado el 2026-05-10 (devlog `docs/aegis/devlogs/2026-05-10-sprint-03-interfaces.md`, tag `sprint-03-interfaces`). Sprint-04 Ops & UX cerrado el 2026-05-10 (devlog `docs/aegis/devlogs/2026-05-10-sprint-04-ops-ux.md`, tag `sprint-04-ops-ux`).
-- 304 tests verde + 4 ignored (2 ONNX descarga + 2 perf smoke 1K/10K). Clippy + fmt + STELE residual checks pasando.
-- Sprint 05 (Polish + CI/CD + Release) pendiente.
+- **v0.1.0 released** (2026-05-11). 5 sprints AEGIS cerrados:
+  - Sprint-01 BE Foundation (`sprint-01-foundation`, devlog `2026-05-10-sprint-01-foundation.md`).
+  - Sprint-02 BE Embedder + Search (`sprint-02-embedder-search`, devlog `2026-05-10-sprint-02-embedder-search.md`).
+  - Sprint-03 BE Interfaces (`sprint-03-interfaces`, devlog `2026-05-10-sprint-03-interfaces.md`).
+  - Sprint-04 Ops & UX (`sprint-04-ops-ux`, devlog `2026-05-10-sprint-04-ops-ux.md`).
+  - Sprint-05 Polish + CI/CD + Release (`sprint-05-polish-release`, devlog `2026-05-11-sprint-05-polish-release.md`). SemVer release tag `v0.1.0` (precedido por `v0.1.0-rc.1` para validar `release.yml`).
+- 322 tests verde + 4 ignored (2 ONNX descarga + 2 perf smoke 1K/10K). Clippy + fmt + STELE residual checks pasando.
+- v0.2 trabaja sobre `[Unreleased]` en `CHANGELOG.md`. Próximas features candidatas: 5 skeleton agents (`opencode`/`aider`/`cody`/`continue`/`zed`), sync chunk splitter (~1 MB cap), TUI editing in-place, `claude mcp add` delegación, Homebrew tap, project-detection wired in `seele save`.
 
 ### Lo que ya corre
 
 - `seele serve [--port 7777] [--bind 127.0.0.1] [--legacy-engram-paths] [--auth-bearer <token>] [--db <path>]` — HTTP REST API con Swagger UI en `/docs`, OpenAPI 3.1 en `/openapi.json`.
 - `seele mcp [--tool-prefix <p>] [--db <path>]` — MCP stdio JSON-RPC 2.0 con 19 tools. Conectable desde Claude Code, Cursor, OpenCode. Per ADR-13, `--tool-prefix mnema` expone `mnema_save`, `mnema_recall`, etc para drop-in compat con consumers ENGRAM.
-- `seele [save|search|show|list|delete|restore|link|stats|doctor|projects]` — clap CLI completa contra el service local (no HTTP). Flags globales `--db`/`--json`/`--fake-embedder` (este último hidden hasta que ONNX ship en Sprint-05).
+- `seele [save|search|show|list|delete|restore|link|stats|doctor|projects]` — clap CLI completa contra el service local (no HTTP). Flags globales `--db`/`--json`/`--fake-embedder`. ONNX es default en v0.1; `--fake-embedder` (o `SEELE_FAKE_EMBEDDER=1`) fuerza FakeEmbedder. Si ONNX init falla, fallback transparente a Fake con warn.
 - `seele sync [export|import]` — git-friendly chunks JSON gzip. Re-imports idempotent por SHA-256.
 - `seele import from-engram <path> [--dry-run] [--re-embed]` — migración one-shot de ENGRAM SQLite (ADR-13). Preserva ULIDs, mapea `linked_to[]` a tabla `links`. Idempotente.
 - `seele setup [--agent <name>|--all|--list] [--dry-run] [--no-backup]` — wizard MCP install. 3 agentes implementados (claude-code/cursor/windsurf), 5 skeleton (opencode/aider/cody/continue/zed).
@@ -59,7 +64,7 @@ Reimplementación clean-room inspirada en [ENGRAM](https://github.com/Gentleman-
 - **Unit tests**: en el mismo archivo del módulo bajo `#[cfg(test)] mod tests`.
 - **Integration tests**: en `crates/<crate>/tests/<feature>.rs`.
 - **Workspace-level tests** (E2E del binary): llegan en sprint-03 (HTTP/MCP) y sprint-05.
-- **Property tests** con `proptest` — pendientes para sprint-05 (Bloque D del Sprint 01 los planeó pero no se ejecutaron).
+- **Property tests** con `proptest` — workspace-wide a partir de Sprint-05. Casos en `crates/seele-core/tests/types_roundtrip.rs`, `crates/seele-storage/tests/properties.rs`, `crates/seele-search/tests/{property_tests,rrf_properties}.rs`, `crates/seele-sync/tests/properties.rs`. Default 32 casos por property (8 para los DB-touching de storage).
 - **TUI snapshots** con `insta` + `TestBackend` (sprint-04).
 - **Comandos**: `cargo test --workspace --all-features`. Tests `#[ignore]` para descargas reales de modelos ONNX se corren con `cargo test -p seele-embedder -- --ignored`.
 

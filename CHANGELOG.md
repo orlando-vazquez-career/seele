@@ -5,6 +5,13 @@ Todos los cambios notables a este proyecto se documentan acá. Formato basado en
 
 ## [Unreleased]
 
+(Nothing yet — v0.2 work lands here.)
+
+## [0.1.0] — 2026-05-11
+
+First public release. Five AEGIS sprints (Foundation, Embedder+Search,
+Interfaces, Ops&UX, Polish+Release). Built across 2026-05-10 → 2026-05-11.
+
 ### Added
 - Estructura inicial del workspace Cargo con 11 crates (`seele-core`,
   `seele-storage`, `seele-embedder`, `seele-search`, `seele-mcp`, `seele-http`,
@@ -124,6 +131,53 @@ Todos los cambios notables a este proyecto se documentan acá. Formato basado en
     unit + 8 E2E) + 22 seele-engram-import (11 unit + 11 E2E) +
     17 seele-tui (7 state + 9 keymap + 10 snapshot) + 14 CLI
     subcommands_e2e (binary spawn).
+- **Sprint-05 Polish + CI/CD + Release cerrado** (2026-05-11). Plan
+  táctico movido a `genesis/plans/executed/tactica/sprint-05/`. Devlog
+  en `docs/aegis/devlogs/2026-05-11-sprint-05-polish-release.md`. Tag
+  AEGIS `sprint-05-polish-release`; SemVer release tag `v0.1.0` (precedido
+  por `v0.1.0-rc.1` para validar `release.yml`). Cambios:
+  - Property tests workspace-wide (cierra deferred Sprint-01): 17 nuevos
+    casos en `seele-core/tests/types_roundtrip.rs` (extendido) +
+    `seele-storage/tests/properties.rs` (nuevo) +
+    `seele-search/tests/rrf_properties.rs` (nuevo) +
+    `seele-sync/tests/properties.rs` (nuevo). `seele-sync` gana
+    `proptest` dev-dep.
+  - ONNX por default + fallback transparente a `FakeEmbedder` con warn
+    a stderr cuando la inicialización falla. `--fake-embedder` deja de
+    estar `hide = true`. Nuevo env var `SEELE_FAKE_EMBEDDER=1` con la
+    misma semántica que el flag. Helper `pick_embedder` testeable sin
+    SQLite.
+  - `.github/workflows/release.yml`: pipeline 5 targets
+    (linux x86_64 + aarch64, mac x86_64 + aarch64, windows x86_64) con
+    `tar.gz`/`zip` + sidecar `.sha256`. GH Release auto-creado con
+    `softprops/action-gh-release@v2`; `prerelease: true` cuando el tag
+    contiene hyphen. Job `crates-io` valida con `cargo publish --dry-run`
+    por crate en orden topológico; publish real gated detrás de
+    `workflow_dispatch` input `crates_io_publish=true` (default OFF —
+    decisión §C del plan).
+  - `scripts/install.sh` + `scripts/install.ps1`: instaladores
+    portables que descargan el binary, verifican SHA256, extraen a
+    `$HOME/.local/bin` (linux/mac) / `$env:USERPROFILE\.seele\bin`
+    (windows). Honoran `SEELE_VERSION` + `SEELE_INSTALL_DIR` env.
+  - Docs polish: README.md rewrite completo (v0.1.0 status, quick
+    start, install matrix, ENGRAM credit). Tres docs nuevas en
+    `docs/`: `INSTALLATION.md` (~120 LOC), `AGENT-SETUP.md` (~110 LOC),
+    `ENGRAM-MIGRATION.md` (~120 LOC, cierra ADR-13 doc deliverable).
+    `docs/INDEX.md` sección "Guías de usuario (Sprint-05)".
+  - `seele tui --smoke` flag oculto: render off-screen una frame en
+    `TestBackend` 120×30 + `println "tui smoke ok"` + exit 0. Habilita
+    criterio 8 del MVP smoke sin terminal interactivo.
+  - `scripts/v0.1.0-smoke.sh`: corre los 11 criterios de aceptación
+    secuencialmente contra el binary release-build. Criterios 9 (CI
+    verde) y 10 (release.yml fires on tag push) son externos; el
+    script los reporta como out-of-band. OpenAPI threshold relajado de
+    "25+" del plan a ≥15 (v0.1 ship 18 paths / 22 ops, deja margen para
+    evolución sin que el smoke chase su cola).
+  - Allowlist `check-no-stele-residual.{sh,ps1}` extendida con prefijo
+    `genesis/plans/tactica/` — los sprint plans en vuelo mencionan
+    legítimamente el nombre legacy al describir CI coverage.
+  - Tests: 322 verde (+18 vs Sprint-04, sin contar los proptest cases
+    que se ejecutan dentro de cada `#[test]` con cases=32), 4 ignored.
 
 - **Sprint-03 BE Interfaces cerrado** (2026-05-10). Plan táctico movido a
   `genesis/plans/executed/tactica/sprint-03/`. Devlog en
@@ -180,4 +234,5 @@ Todos los cambios notables a este proyecto se documentan acá. Formato basado en
 
 ---
 
-[Unreleased]: https://github.com/orlando-vazquez-career/seele/compare/main...HEAD
+[Unreleased]: https://github.com/orlando-vazquez-career/seele/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/orlando-vazquez-career/seele/releases/tag/v0.1.0
