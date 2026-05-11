@@ -1,0 +1,189 @@
+name: Release
+
+# Triggers:
+# - Push of a tag matching v*.*.* (e.g. v0.1.0, v0.1.0-rc.1) → full release.
+# - Manual workflow_dispatch with optional crates.io publish gate.
+#
+# Per Sprint-05 plan §C and Risk #6 in 00-INDEX.md: we test the full
+# pipeline first on a release candidate (v0.1.0-rc.N) before tagging the
+# real v0.1.0. crates.io publish is OFF by default and requires explicit
+# opt-in via workflow_dispatch.
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      crates_io_publish:
+        description: 'Publish all SEELE crates to crates.io (irreversible). Default: false.'
+        required: false
+        default: 'false'
+
+permissions:
+  contents: write  # required to create a GitHub Release
+
+jobs:
+  build:
+    name: build ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            cross: false
+            archive: tar.gz
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            cross: true
+            archive: tar.gz
+          - target: x86_64-apple-darwin
+            os: macos-13   # last Intel runner
+            cross: false
+            archive: tar.gz
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            cross: false
+            archive: tar.gz
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            cross: false
+            archive: zip
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Install cross (aarch64-linux only)
+        if: matrix.cross
+        run: cargo install cross --locked
+
+      - name: Build release binary (native)
+        if: '!matrix.cross'
+        run: cargo build --release --target ${{ matrix.target }} -p seele-cli
+
+      - name: Build release binary (cross)
+        if: matrix.cross
+        run: cross build --release --target ${{ matrix.target }} -p seele-cli
+
+      # Package: tar.gz on Unix, zip on Windows. Output name follows the
+      # standard <name>-<version>-<target>.<ext> pattern so install
+      # scripts can predict the asset URL from a tag.
+      - name: Package binary
+        id: pkg
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          target="${{ matrix.target }}"
+          archive="${{ matrix.archive }}"
+          asset_basename="seele-${version}-${target}"
+          mkdir -p dist
+          if [ "$archive" = "zip" ]; then
+            bin="target/${target}/release/seele.exe"
+            (cd "target/${target}/release" && 7z a "../../../dist/${asset_basename}.zip" "seele.exe")
+          else
+            bin="target/${target}/release/seele"
+            tar -C "target/${target}/release" -czf "dist/${asset_basename}.tar.gz" "seele"
+          fi
+          # SHA256 sidecar — installers verify integrity against this.
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            (cd dist && shasum -a 256 "${asset_basename}.${archive}" > "${asset_basename}.${archive}.sha256")
+          elif [ "$RUNNER_OS" = "Windows" ]; then
+            powershell -Command "(Get-FileHash -Algorithm SHA256 'dist/${asset_basename}.${archive}').Hash.ToLower() + '  ${asset_basename}.${archive}' | Out-File -Encoding ascii 'dist/${asset_basename}.${archive}.sha256'"
+          else
+            (cd dist && sha256sum "${asset_basename}.${archive}" > "${asset_basename}.${archive}.sha256")
+          fi
+          echo "asset=${asset_basename}.${archive}" >> "$GITHUB_OUTPUT"
+          echo "asset_sha=${asset_basename}.${archive}.sha256" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seele-${{ matrix.target }}
+          path: |
+            dist/${{ steps.pkg.outputs.asset }}
+            dist/${{ steps.pkg.outputs.asset_sha }}
+          retention-days: 7
+
+  release:
+    name: github release
+    needs: build
+    runs-on: ubuntu-latest
+    # Only create the GH Release on real tag pushes — workflow_dispatch
+    # runs are dry exercises of the build matrix.
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      # Pre-release if the tag has a hyphen (e.g. v0.1.0-rc.1).
+      - name: Compute prerelease flag
+        id: prerel
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == *-* ]]; then
+            echo "value=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/**/*.tar.gz
+            dist/**/*.zip
+            dist/**/*.sha256
+          prerelease: ${{ steps.prerel.outputs.value }}
+          # Notes pulled from the [Unreleased] / [<version>] section of
+          # CHANGELOG.md; the action falls back to autogenerated notes
+          # when no body is provided.
+          generate_release_notes: true
+
+  # crates.io publish — OFF by default. Triggered manually via
+  # workflow_dispatch with crates_io_publish=true. Validates the
+  # `cargo publish --dry-run` of every workspace crate on every run so
+  # metadata regressions are caught before the explicit publish flip.
+  crates-io:
+    name: crates.io
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Dry-run cargo publish (workspace)
+        run: |
+          # cargo publish --dry-run does not yet support --workspace
+          # (rust-lang/cargo#10948). Loop over the publishable crates
+          # in dependency order. seele-cli is last because everything
+          # else depends-on it transitively.
+          for c in seele-core seele-storage seele-embedder seele-search \
+                   seele-sync seele-engram-import seele-project \
+                   seele-setup seele-http seele-mcp seele-tui seele-cli; do
+            echo "== dry-run $c =="
+            cargo publish -p "$c" --dry-run --allow-dirty
+          done
+      - name: Publish to crates.io (gated)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.crates_io_publish == 'true'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          # Same dependency order as the dry-run. A second publish of
+          # an already-published version is a hard error from crates.io,
+          # which is the intended idempotency guard for re-runs.
+          for c in seele-core seele-storage seele-embedder seele-search \
+                   seele-sync seele-engram-import seele-project \
+                   seele-setup seele-http seele-mcp seele-tui seele-cli; do
+            cargo publish -p "$c"
+          done
