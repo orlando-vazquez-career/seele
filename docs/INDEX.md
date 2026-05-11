@@ -10,6 +10,16 @@
 - [`LICENSE`](../LICENSE) — MIT 2026 DevZen SpA.
 - [`CLAUDE.md`](../CLAUDE.md) — reglas operativas del repo para Claude Code.
 
+## Guías de usuario (Sprint-05)
+
+- [`docs/INSTALLATION.md`](INSTALLATION.md) — install matrix (scripts +
+  cargo + source), embedder cache, troubleshooting.
+- [`docs/AGENT-SETUP.md`](AGENT-SETUP.md) — wiring SEELE como MCP
+  server en Claude Code / Cursor / Windsurf + status de los 5 skeletons.
+- [`docs/ENGRAM-MIGRATION.md`](ENGRAM-MIGRATION.md) — pasar de
+  ENGRAM/MNEMA a SEELE: `import from-engram`, compat layer
+  `--tool-prefix mnema`, caveats.
+
 ## Genesis (planes históricos del diseño)
 
 Estrategia, arquitectura y táctica del Sprint 01 viven bajo `genesis/plans/`. El subdirectorio `executed/` recibe planes que ya cerraron su ciclo AEGIS.
