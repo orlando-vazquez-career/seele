@@ -10,9 +10,14 @@ Reimplementación clean-room inspirada en [ENGRAM](https://github.com/Gentleman-
 
 ## Estado actual
 
-- **v0.1**: en desarrollo bajo AEGIS. Sprint-01 BE Foundation cerrado el 2026-05-10 (devlog `docs/aegis/devlogs/2026-05-10-sprint-01-foundation.md`, tag `sprint-01-foundation`). Sprint-02 BE Embedder + Search cerrado el 2026-05-10 (devlog `docs/aegis/devlogs/2026-05-10-sprint-02-embedder-search.md`, tag `sprint-02-embedder-search`).
-- 130 tests verde + 4 ignored (2 ONNX descarga + 2 perf smoke 1K/10K). Clippy + fmt + STELE residual checks pasando.
-- Sprints 03 (HTTP + MCP), 04 (TUI + sync + setup + project + CLI), 05 (Polish + CI/CD + Release) pendientes.
+- **v0.1**: en desarrollo bajo AEGIS. Sprint-01 BE Foundation cerrado el 2026-05-10 (devlog `docs/aegis/devlogs/2026-05-10-sprint-01-foundation.md`, tag `sprint-01-foundation`). Sprint-02 BE Embedder + Search cerrado el 2026-05-10 (devlog `docs/aegis/devlogs/2026-05-10-sprint-02-embedder-search.md`, tag `sprint-02-embedder-search`). Sprint-03 BE Interfaces cerrado el 2026-05-10 (devlog `docs/aegis/devlogs/2026-05-10-sprint-03-interfaces.md`, tag `sprint-03-interfaces`).
+- 202 tests verde + 4 ignored (2 ONNX descarga + 2 perf smoke 1K/10K). Clippy + fmt + STELE residual checks pasando.
+- Sprints 04 (TUI + sync + setup + project + CLI), 05 (Polish + CI/CD + Release) pendientes.
+
+### Lo que ya corre
+
+- `seele serve [--port 7777] [--bind 127.0.0.1] [--legacy-engram-paths] [--auth-bearer <token>] [--db <path>]` — HTTP REST API con Swagger UI en `/docs`, OpenAPI 3.1 en `/openapi.json`.
+- `seele mcp [--tool-prefix <p>] [--db <path>]` — MCP stdio JSON-RPC 2.0 con 19 tools. Conectable desde Claude Code, Cursor, OpenCode. Per ADR-13, `--tool-prefix mnema` expone `mnema_save`, `mnema_recall`, etc para drop-in compat con consumers ENGRAM.
 
 ## Stack
 

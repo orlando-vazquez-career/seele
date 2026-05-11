@@ -57,6 +57,41 @@ Todos los cambios notables a este proyecto se documentan acá. Formato basado en
   - Tests: 130 verde (+31 vs Sprint-01), 4 ignored (2 ONNX + 2 perf).
     Suite fixtures + 7 E2E + 3 proptest + 2 perf smoke. Clippy + fmt +
     STELE residual checks pasando.
+- **Sprint-03 BE Interfaces cerrado** (2026-05-10). Plan táctico movido a
+  `genesis/plans/executed/tactica/sprint-03/`. Devlog en
+  `docs/aegis/devlogs/2026-05-10-sprint-03-interfaces.md`. Tag git
+  `sprint-03-interfaces`. Cambios:
+  - `seele-http`: ~25 endpoints sobre axum 0.8 (memories save/search/list/
+    show/soft_delete/restore + links create/list/delete + sessions
+    start/list/get/end/abort + relations create/list/judge + conflicts +
+    stats + embedder). `SeeleService` shared service layer reusado por
+    HTTP y MCP. Bearer-auth middleware opt-in (`/health`, `/version`,
+    `/openapi.json`, `/docs/*` quedan public). utoipa OpenAPI 3.1 spec
+    + Swagger UI en `/docs`. Anti-empty-query gate (mitigación Cloven
+    list-all-DB exfiltration).
+  - `seele-mcp`: JSON-RPC 2.0 stdio server con 19 tools `seele_*`. Server
+    transport-generic sobre `AsyncRead + AsyncWrite` (`run_io`) + thin
+    `run_stdio` wrapper. Tools: 8 memory, 4 session (incluye
+    `capture_passive` que parsea `## Key Learnings` bullets), 2 relation,
+    5 meta (`stats`, `projects`, `doctor`, `version`, `suggest_topic_key`
+    con heurísticas ENGRAM-inherited).
+  - **ADR-13 compat ENGRAM**: HTTP `--legacy-engram-paths` flag expone
+    `POST /save` + `GET /show/{id}` aliases. MCP `--tool-prefix mnema`
+    rename los tools (`mnema_save`, `mnema_recall` — recall en lugar de
+    search por compat ENGRAM). Sin contaminación dentro de los handlers
+    o tool_impls; el alias vive en el boundary (`build_index`).
+  - `seele-cli`: argv parser hand-rolled mínimo. Soporta `--version`,
+    `--help`, `mcp [--tool-prefix --db]`, `serve [--port --bind
+    --legacy-engram-paths --auth-bearer --db]`. Default DB
+    `~/.seele/seele.db`. Embedder FakeEmbedder en v0.1 (real ONNX behind
+    flag en Sprint-04). Full clap-based CLI llega en Sprint-04.
+  - Bumped `utoipa-swagger-ui` 8 → 9.0.2 (8 solo soportaba axum 0.7;
+    SEELE usa axum 0.8 desde Bloque A).
+  - 6 stores marcados `#[derive(Clone)]` para soportar `SeeleService:
+    Clone`.
+  - Tests: 202 verde (+72 vs Sprint-02), 4 ignored. Distribución: 99
+    Sprint-01 + 31 Sprint-02 + 72 Sprint-03 (34 seele-http + 18
+    seele-mcp + 14 service-layer + 6 binary E2E).
 
 ### Changed
 - **MSRV bump a Rust 1.85** desde 1.83 inicial. Razón: `clap_lex` (transitiva

@@ -32,15 +32,9 @@ Salida: `seele-embedder` con cache `~/.seele/embedder/` + INT8 quantized default
 
 ## Sprint-03 — Interfaces
 
-**Estado**: 🚧 en ejecución — tactica escrita 2026-05-10 subdividida en 6 bloques (recomendación Cloven post Sprint-02). Documento detallado: [`sprint-03/00-INDEX.md`](sprint-03/00-INDEX.md).
+**Estado**: ✅ ejecutado — cerrado 2026-05-10. Plan archivado en `../executed/tactica/sprint-03/00-INDEX.md`. Devlog: [`../../../docs/aegis/devlogs/2026-05-10-sprint-03-interfaces.md`](../../../docs/aegis/devlogs/2026-05-10-sprint-03-interfaces.md). Tag git: `sprint-03-interfaces`.
 
-Bloques:
-- **A**: `seele-http` skeleton — axum App + Router + AppState + service layer compartido + middleware (cors, trace, compression) + `/health` + `/version`.
-- **B**: HTTP handlers básicos — save, search (con regla anti-empty-query de Cloven), get-by-id, list.
-- **C**: HTTP handlers avanzados — sessions, links, relations, conflicts, stats, embedder.
-- **D**: HTTP auth bearer middleware + utoipa OpenAPI + Swagger UI.
-- **E**: `seele-mcp` stdio + JSON-RPC 2.0 + 19 tools `seele_*` (reusan service layer).
-- **F**: Tests E2E binary + state-sync.
+Salida: `seele-http` (~25 endpoints axum 0.8 con auth bearer opt-in + utoipa OpenAPI + Swagger UI + legacy ENGRAM paths per ADR-13). `seele-mcp` (JSON-RPC 2.0 stdio + 19 tools `seele_*` + `--tool-prefix mnema` ENGRAM-compat). Binary mínimo `seele [mcp|serve|--version]` con argv parser hand-rolled. 202 tests verde + 4 ignored. Bloques subdivididos: A skeleton, B handlers básicos, C.1 lifecycle, C.2 relations/stats/embedder, D auth+openapi+legacy-paths, E mcp+19 tools+cli, F E2E binary + state-sync.
 
 ## Sprint-04 — Ops & UX
 
