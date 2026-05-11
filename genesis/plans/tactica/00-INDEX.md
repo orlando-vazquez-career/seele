@@ -38,12 +38,9 @@ Salida: `seele-http` (~25 endpoints axum 0.8 con auth bearer opt-in + utoipa Ope
 
 ## Sprint-04 — Ops & UX
 
-Bloques previstos:
-- A: `seele-tui` (ratatui + crossterm + Home/Browse/Search/Detail/Stats + keybindings vi-style).
-- B: `seele-sync` (compressed chunks + git-friendly + sync_chunks dedup).
-- C: `seele-setup` (8 agentes + `--all` + idempotent + backup).
-- D: `seele-project` (5-case detection + child scan + skip noise dirs).
-- E: `seele-cli` (clap + dispatch a todos + output JSON/human).
+**Estado**: ✅ ejecutado — cerrado 2026-05-10. Plan archivado en `../executed/tactica/sprint-04/00-INDEX.md`. Devlog: [`../../../docs/aegis/devlogs/2026-05-10-sprint-04-ops-ux.md`](../../../docs/aegis/devlogs/2026-05-10-sprint-04-ops-ux.md). Tag git: `sprint-04-ops-ux`.
+
+Salida: 5 nuevos crates (`seele-project` 5-case detection, `seele-setup` wizard 3 agentes implementados + 5 skeleton, `seele-sync` gzip JSON chunks git-friendly, `seele-engram-import` ADR-13 migration tool, `seele-tui` ratatui 5 vistas) + `seele-cli` reescrito a `clap derive` con 17 subcommands. `seele import --from-engram` cierra la primera decisión de ADR-13 (MNEMA → SEELE transition). 304 tests verde + 4 ignored. Bloques: A `seele-project`, B `seele-setup`, C `seele-sync`, D.1+D.2 `seele-cli` clap, post-Cloven fixes, D.3 `seele-engram-import`, E `seele-tui`, F state-sync.
 
 ## Sprint-05 — Polish + CI/CD + Release
 

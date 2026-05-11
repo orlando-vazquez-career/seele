@@ -57,6 +57,74 @@ Todos los cambios notables a este proyecto se documentan acá. Formato basado en
   - Tests: 130 verde (+31 vs Sprint-01), 4 ignored (2 ONNX + 2 perf).
     Suite fixtures + 7 E2E + 3 proptest + 2 perf smoke. Clippy + fmt +
     STELE residual checks pasando.
+- **Sprint-04 Ops & UX cerrado** (2026-05-10). Plan táctico movido a
+  `genesis/plans/executed/tactica/sprint-04/`. Devlog en
+  `docs/aegis/devlogs/2026-05-10-sprint-04-ops-ux.md`. Tag git
+  `sprint-04-ops-ux`. Cambios:
+  - `seele-project`: 5-case detection heredada de ENGRAM
+    (`.seele/config.json` override → git remote basename → git root
+    basename → child-scan depth 1 con skip-noise → cwd basename). Cases
+    2 y 3 con timeout de 1500ms por thread+mpsc — no bloquean
+    indefinido si git cuelga.
+  - `seele-setup`: wizard MCP-install para 3 agentes implementados
+    (`claude-code` ~/.claude.json, `cursor` ~/.cursor/mcp.json,
+    `windsurf` ~/.codeium/windsurf/mcp_config.json) + 5 skeleton
+    (opencode, aider, cody, continue, zed) que retornan
+    `SetupError::NotImplemented`. `--all` filtra a implemented-only
+    (`AgentKind::is_implemented`); `--list` muestra ambos con tags
+    `[implemented]`/`[skeleton (v0.2)]`. `write_atomic` real con tmp +
+    rename, backup automático `<path>.<ext>.bak.<unix_ms>`. Outcomes
+    Created/Added/Unchanged/Updated/DryRun.
+  - `seele-sync`: chunks JSON gzip git-friendly. `export_to_dir` con
+    `chunk_id = SHA-256(payload determinista)` — dos exports
+    independientes del mismo set producen el mismo chunk-id, dedup
+    natural. `import_from_file` atómico en una sola transacción
+    SQLite (cierra Cloven CRITICO 1): `ObservationStore::save_in_tx` +
+    `ChunkStore::mark_imported_in_tx` + commit. Crash mid-loop
+    deja la destination DB intacta y el ledger sin marca para que
+    re-runs reprocesen limpios.
+  - `seele-engram-import`: nuevo crate (#12 del workspace) que cierra
+    la primera decisión de ADR-13 — migrate one-shot de una DB
+    ENGRAM SQLite a SEELE. `EngramImporter::import_from(path, dry_run)`
+    devuelve `ImportReport`. Mapeo `memories.body` → `content`,
+    `memories.metadata` JSON preservado verbatim, ULIDs source-side
+    preservados / cuid-style minteán fresh `SeeleId` con
+    `metadata.engram_id` breadcrumb, `metadata.linked_to[]` →
+    tabla `links` con `link_type = "related_to"`. Idempotente vía
+    `INSERT OR IGNORE` sobre el id preservado.
+  - `seele-cli`: rewrite completo a `clap derive` reemplazando el
+    argv parser hand-rolled de Sprint-03. 17 subcommands (save,
+    search, show, list, delete, restore, link, stats, doctor,
+    projects, sync export|import, import from-engram, setup, mcp,
+    serve, tui). Global flags `--db`/`--fake-embedder`/`--json`.
+    `seele doctor` emite `fake_embedder_warning` cuando model_id
+    contiene "fake" (sight Cloven Sprint-03). `--fake-embedder`
+    `hide = true` hasta Sprint-05 cuando ONNX ship por default.
+  - `seele-tui`: ADR-07 implementado — ratatui 5 vistas con keymap
+    vi-style. Vistas: Home (stats card + breakdowns), Browse
+    (list j/k), Search (live query + RRF score badge), Detail
+    (header + body + JSON pretty metadata), Stats (fuller
+    breakdowns + sessions). Keybindings 1-5/q/Ctrl-C globales,
+    j/k/g/G/enter/// por pane, `r` refresh, esc back. RAII
+    `TerminalGuard` restaura raw mode + alt screen incluso ante
+    pánico. Search pane consume printable input antes de globals
+    para no triggerear hotkeys con digits typed en query.
+  - **Cloven post-review fixes** (commit `d152842`): 4 findings
+    cerrados antes de D.3:
+    - CRITICO 1 (sync import atomicity, ya descrito).
+    - CRITICO 2 (`seele-setup::write_atomic` con tmp+rename).
+    - ALTO (`setup --all` skeleton-aware; `--fake-embedder` hidden).
+    - MEDIO (`seele-project` git subprocess timeout 1500ms).
+  - Storage adds para soportar migration: `ObservationStore::save_raw_in_tx`
+    (`RawSaveInput`/`RawSaveOutcome`) que bypassa privacy strip +
+    topic upsert + dedup, `LinkStore::create_in_tx` para que links
+    derived commiten atómicos con sus observations.
+  - Tests: 304 verde (+102 vs Sprint-03), 4 ignored. Distribución
+    nueva: 15 seele-project + 14 seele-setup + 10 seele-sync (2
+    unit + 8 E2E) + 22 seele-engram-import (11 unit + 11 E2E) +
+    17 seele-tui (7 state + 9 keymap + 10 snapshot) + 14 CLI
+    subcommands_e2e (binary spawn).
+
 - **Sprint-03 BE Interfaces cerrado** (2026-05-10). Plan táctico movido a
   `genesis/plans/executed/tactica/sprint-03/`. Devlog en
   `docs/aegis/devlogs/2026-05-10-sprint-03-interfaces.md`. Tag git

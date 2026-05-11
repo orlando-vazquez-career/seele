@@ -10,32 +10,38 @@ Reimplementación clean-room inspirada en [ENGRAM](https://github.com/Gentleman-
 
 ## Estado actual
 
-- **v0.1**: en desarrollo bajo AEGIS. Sprint-01 BE Foundation cerrado el 2026-05-10 (devlog `docs/aegis/devlogs/2026-05-10-sprint-01-foundation.md`, tag `sprint-01-foundation`). Sprint-02 BE Embedder + Search cerrado el 2026-05-10 (devlog `docs/aegis/devlogs/2026-05-10-sprint-02-embedder-search.md`, tag `sprint-02-embedder-search`). Sprint-03 BE Interfaces cerrado el 2026-05-10 (devlog `docs/aegis/devlogs/2026-05-10-sprint-03-interfaces.md`, tag `sprint-03-interfaces`).
-- 202 tests verde + 4 ignored (2 ONNX descarga + 2 perf smoke 1K/10K). Clippy + fmt + STELE residual checks pasando.
-- Sprints 04 (TUI + sync + setup + project + CLI), 05 (Polish + CI/CD + Release) pendientes.
+- **v0.1**: en desarrollo bajo AEGIS. Sprint-01 BE Foundation cerrado el 2026-05-10 (devlog `docs/aegis/devlogs/2026-05-10-sprint-01-foundation.md`, tag `sprint-01-foundation`). Sprint-02 BE Embedder + Search cerrado el 2026-05-10 (devlog `docs/aegis/devlogs/2026-05-10-sprint-02-embedder-search.md`, tag `sprint-02-embedder-search`). Sprint-03 BE Interfaces cerrado el 2026-05-10 (devlog `docs/aegis/devlogs/2026-05-10-sprint-03-interfaces.md`, tag `sprint-03-interfaces`). Sprint-04 Ops & UX cerrado el 2026-05-10 (devlog `docs/aegis/devlogs/2026-05-10-sprint-04-ops-ux.md`, tag `sprint-04-ops-ux`).
+- 304 tests verde + 4 ignored (2 ONNX descarga + 2 perf smoke 1K/10K). Clippy + fmt + STELE residual checks pasando.
+- Sprint 05 (Polish + CI/CD + Release) pendiente.
 
 ### Lo que ya corre
 
 - `seele serve [--port 7777] [--bind 127.0.0.1] [--legacy-engram-paths] [--auth-bearer <token>] [--db <path>]` — HTTP REST API con Swagger UI en `/docs`, OpenAPI 3.1 en `/openapi.json`.
 - `seele mcp [--tool-prefix <p>] [--db <path>]` — MCP stdio JSON-RPC 2.0 con 19 tools. Conectable desde Claude Code, Cursor, OpenCode. Per ADR-13, `--tool-prefix mnema` expone `mnema_save`, `mnema_recall`, etc para drop-in compat con consumers ENGRAM.
+- `seele [save|search|show|list|delete|restore|link|stats|doctor|projects]` — clap CLI completa contra el service local (no HTTP). Flags globales `--db`/`--json`/`--fake-embedder` (este último hidden hasta que ONNX ship en Sprint-05).
+- `seele sync [export|import]` — git-friendly chunks JSON gzip. Re-imports idempotent por SHA-256.
+- `seele import from-engram <path> [--dry-run] [--re-embed]` — migración one-shot de ENGRAM SQLite (ADR-13). Preserva ULIDs, mapea `linked_to[]` a tabla `links`. Idempotente.
+- `seele setup [--agent <name>|--all|--list] [--dry-run] [--no-backup]` — wizard MCP install. 3 agentes implementados (claude-code/cursor/windsurf), 5 skeleton (opencode/aider/cody/continue/zed).
+- `seele tui` — ratatui interactivo, 5 vistas (Home/Browse/Search/Detail/Stats), keymap vi-style.
 
 ## Stack
 
 - **Rust** 1.85+ (`rust-toolchain.toml`).
 - **Edición** 2021.
 - **MSRV bump 1.83 → 1.85** decidido para usar `clap_lex` con `edition2024`. Ver `CHANGELOG.md`.
-- **Workspace** con 11 crates en `crates/`:
+- **Workspace** con 12 crates en `crates/`:
   - `seele-core` — tipos canónicos, errores, IDs (ULID via `SeeleId`).
-  - `seele-storage` — SQLite + FTS5 + vec0 + CRUD + migrations refinery.
+  - `seele-storage` — SQLite + FTS5 + vec0 + CRUD + migrations refinery. `save_raw_in_tx` para migration paths.
   - `seele-embedder` — ONNX runtime via `ort` + `tokenizers` + `hf-hub` + auto-download.
   - `seele-search` — FTS + vec híbrido con RRF combiner.
   - `seele-mcp` — MCP server stdio (sprint-03).
   - `seele-http` — REST API axum (sprint-03).
-  - `seele-tui` — TUI ratatui (sprint-04).
-  - `seele-sync` — git-friendly chunks (sprint-04).
-  - `seele-setup` — wizard 8 agentes (sprint-04).
+  - `seele-tui` — TUI ratatui 5 vistas (sprint-04).
+  - `seele-sync` — git-friendly chunks gzip JSON (sprint-04).
+  - `seele-setup` — wizard 3 implementados + 5 skeleton (sprint-04).
   - `seele-project` — 5-case project detection (sprint-04).
-  - `seele-cli` — binary `seele` (sprint-04).
+  - `seele-engram-import` — migration ENGRAM → SEELE ADR-13 (sprint-04).
+  - `seele-cli` — binary `seele` clap derive, 17 subcomandos (sprint-04).
 - **DB**: SQLite con `rusqlite` (feature `bundled` + `load_extension`) + `sqlite-vec` v0.1.9 vendorizado para 5 targets.
 - **Async**: tokio 1.42 multi-thread.
 - **Errores**: `thiserror` para errores tipados; `anyhow` solo en CLI.
@@ -135,6 +141,7 @@ Aplicamos AEGIS v2.0.0 (sin agentes en background, todo en consola). Resumen:
 
 - (2026-05-10) NIT — asegurar que ningún archivo Rust generado contenga residuos del nombre legacy "STELE". Cerrado vía `scripts/check-no-stele-residual.{sh,ps1}` + CI jobs.
 - (2026-05-10) Cloven follow-up — licencia debe ser MIT pura (no Apache-2.0/MIT mixta), tests en order, dependabot configurado para `ort` pin. Cerrado en commits `47d87ac` y `9478201`.
+- (2026-05-10) Sprint-04 mid-review — 4 findings: CRITICO 1 `seele-sync::import` sin transacción (cerrado), CRITICO 2 `seele-setup::write_atomic` con `std::fs::write` no atómico (cerrado), ALTO `setup --all` itera skeletons + `--fake-embedder` dead UI (cerrado, hidden + filter), MEDIO `seele-project` git subprocess sin timeout (cerrado, 1500ms thread+mpsc cap). Todos en commit `d152842`.
 
 ## No hacer
 
