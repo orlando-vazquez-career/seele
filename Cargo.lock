@@ -2598,11 +2598,15 @@ dependencies = [
 name = "seele-sync"
 version = "0.1.0"
 dependencies = [
+ "chrono",
+ "flate2",
+ "hex",
  "seele-core",
  "seele-storage",
  "serde",
  "serde_json",
  "sha2",
+ "tempfile",
  "thiserror 2.0.18",
  "tracing",
 ]

@@ -81,6 +81,7 @@ regex = "1"
 sha2 = "0.10"
 dirs = "5"
 hex = "0.4"
+flate2 = "1"
 
 # Test deps
 assert_cmd = "2"
