@@ -36,6 +36,39 @@ pub struct SaveInput {
     pub metadata: Metadata,
 }
 
+/// Pre-built row for migration paths (`seele import --from-engram`,
+/// future bulk loaders). Caller owns the `id` and timestamps; the
+/// store inserts the row verbatim, skipping privacy strip + topic
+/// upsert + dedup. The intended pre-condition is that the source data
+/// has already been audited / trusted.
+///
+/// Idempotency comes from `INSERT OR IGNORE` on `(id)` — re-running an
+/// import never duplicates a row that was already inserted under the
+/// same `SeeleId`.
+#[derive(Debug, Clone)]
+pub struct RawSaveInput {
+    pub id: SeeleId,
+    pub session_id: Option<SeeleId>,
+    pub kind: ObservationType,
+    pub title: String,
+    pub content: String,
+    pub tool_name: Option<String>,
+    pub project: Option<String>,
+    pub scope: Scope,
+    pub topic_key: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub metadata: Metadata,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RawSaveOutcome {
+    /// New row inserted.
+    Inserted,
+    /// A row with this `id` already existed; nothing changed.
+    AlreadyExisted,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SaveOutcome {
     Created(SeeleId),
@@ -104,6 +137,17 @@ impl ObservationStore {
     /// connection it can drive across multiple stores in one tx.
     pub fn pool(&self) -> &Pool {
         &self.pool
+    }
+
+    /// Tx-wrapped raw insert for migration paths. Bypasses privacy
+    /// strip, topic upsert, and the dedup window. `INSERT OR IGNORE`
+    /// makes re-runs idempotent under the same `(id)`. Caller owns
+    /// `commit` / `rollback`.
+    pub fn save_raw_in_tx(
+        tx: &rusqlite::Transaction<'_>,
+        input: RawSaveInput,
+    ) -> Result<RawSaveOutcome> {
+        save_raw_in_tx(tx, input)
     }
 
     pub fn get(&self, id: SeeleId) -> Result<Option<Observation>> {
@@ -533,6 +577,45 @@ fn save_in_tx(tx: &Transaction<'_>, input: SaveInput) -> Result<SaveOutcome> {
     Err(StorageError::Conflict(format!(
         "exhausted {ID_COLLISION_RETRIES} retries on int_id collision"
     )))
+}
+
+fn save_raw_in_tx(tx: &Transaction<'_>, input: RawSaveInput) -> Result<RawSaveOutcome> {
+    let hash = normalized_hash(&input.content);
+    let metadata_json = serde_json::to_string(&input.metadata)
+        .map_err(|e| StorageError::InvalidInput(format!("metadata not serializable: {e}")))?;
+    let created_ms = input.created_at.timestamp_millis();
+    let updated_ms = input.updated_at.timestamp_millis();
+    let int_id = input.id.as_i64();
+
+    let inserted = tx.execute(
+        "INSERT OR IGNORE INTO observations(id, int_id, session_id, type, title, content, \
+                                            tool_name, project, scope, topic_key, \
+                                            normalized_hash, revision_count, duplicate_count, \
+                                            last_seen_at, created_at, updated_at, metadata) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 0, 0, ?12, ?13, ?14, ?15)",
+        params![
+            input.id.to_string(),
+            int_id,
+            input.session_id.map(|s| s.to_string()),
+            input.kind.as_str(),
+            input.title,
+            input.content,
+            input.tool_name,
+            input.project,
+            input.scope.as_str(),
+            input.topic_key,
+            hash,
+            updated_ms,
+            created_ms,
+            updated_ms,
+            metadata_json,
+        ],
+    )?;
+    Ok(if inserted == 1 {
+        RawSaveOutcome::Inserted
+    } else {
+        RawSaveOutcome::AlreadyExisted
+    })
 }
 
 const SQL_SELECT_PREFIX: &str = "SELECT id, int_id, session_id, type, title, content, \

@@ -64,6 +64,35 @@ impl LinkStore {
         })
     }
 
+    /// Tx-wrapped variant used by migration paths so observations and
+    /// their derived links commit atomically together with the import.
+    pub fn create_in_tx(tx: &rusqlite::Transaction<'_>, input: LinkInput) -> Result<Link> {
+        let id = SeeleId::new();
+        let now = Utc::now();
+        let metadata_json = serde_json::to_string(&input.metadata)
+            .map_err(|e| StorageError::InvalidInput(format!("metadata: {e}")))?;
+        tx.execute(
+            "INSERT INTO links(id, from_id, to_id, link_type, metadata, created_at) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![
+                id.to_string(),
+                input.from_id.to_string(),
+                input.to_id.to_string(),
+                input.link_type,
+                metadata_json,
+                now.timestamp_millis(),
+            ],
+        )?;
+        Ok(Link {
+            id,
+            from_id: input.from_id,
+            to_id: input.to_id,
+            link_type: input.link_type,
+            metadata: input.metadata,
+            created_at: now,
+        })
+    }
+
     pub fn list(&self, q: LinkQuery) -> Result<Vec<Link>> {
         let mut sql = String::from(
             "SELECT id, from_id, to_id, link_type, metadata, created_at \

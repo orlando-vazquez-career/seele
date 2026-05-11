@@ -22,6 +22,7 @@ seele-tui = { path = "../seele-tui" }
 seele-sync = { path = "../seele-sync" }
 seele-setup = { path = "../seele-setup" }
 seele-project = { path = "../seele-project" }
+seele-engram-import = { path = "../seele-engram-import" }
 clap.workspace = true
 tokio.workspace = true
 tracing.workspace = true
@@ -35,3 +36,5 @@ serde_json.workspace = true
 tempfile.workspace = true
 reqwest.workspace = true
 serde_json.workspace = true
+rusqlite.workspace = true
+ulid = { version = "1.1", features = ["serde"] }

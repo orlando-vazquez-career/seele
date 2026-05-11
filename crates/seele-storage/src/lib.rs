@@ -17,7 +17,8 @@ pub mod vec0_loader;
 pub use chunks::{ChunkStore, SyncChunk};
 pub use links::{LinkInput, LinkQuery, LinkStore};
 pub use observations::{
-    ObservationPatch, ObservationQuery, ObservationStore, SaveInput, SaveOutcome,
+    ObservationPatch, ObservationQuery, ObservationStore, RawSaveInput, RawSaveOutcome, SaveInput,
+    SaveOutcome,
 };
 pub use prompts::{PromptInput, PromptQuery, PromptStore, UserPrompt};
 pub use relations::{JudgmentInput, RelationInput, RelationQuery, RelationStore};

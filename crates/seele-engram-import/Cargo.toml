@@ -1,0 +1,23 @@
+[package]
+name = "seele-engram-import"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "ENGRAM-to-SEELE migration tool (ADR-13)."
+
+[dependencies]
+seele-core = { path = "../seele-core" }
+seele-storage = { path = "../seele-storage" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+chrono.workspace = true
+rusqlite.workspace = true
+r2d2.workspace = true
+ulid = { version = "1.1", features = ["serde"] }
+
+[dev-dependencies]
+tempfile.workspace = true

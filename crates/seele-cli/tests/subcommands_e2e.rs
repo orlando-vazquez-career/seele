@@ -274,17 +274,68 @@ fn setup_list_includes_implemented_and_skeleton_agents() {
     assert!(names.contains(&"opencode"));
 }
 
-// -------- import (skeleton until D.3) --------
+// -------- import --------
 
 #[test]
-fn import_from_engram_is_skeleton_until_d3() {
+fn import_from_engram_against_synthetic_source_inserts_rows() {
+    use rusqlite::{params, Connection};
     let td = TempDir::new().unwrap();
     let db = td.path().join("s.db");
-    let db = db.to_str().unwrap();
-    let (_, stderr, status) = run(&["--db", db, "import", "from-engram", "/dev/null"]);
+    let db_str = db.to_str().unwrap();
+
+    let src = td.path().join("engram.db");
+    let conn = Connection::open(&src).unwrap();
+    conn.execute_batch(
+        "CREATE TABLE memories (
+             id TEXT PRIMARY KEY,
+             body TEXT NOT NULL,
+             metadata TEXT,
+             created_at INTEGER NOT NULL
+         );",
+    )
+    .unwrap();
+    let row_id = ulid::Ulid::new().to_string();
+    conn.execute(
+        "INSERT INTO memories(id, body, metadata, created_at) VALUES (?1, ?2, ?3, ?4)",
+        params![
+            row_id,
+            "hello from engram",
+            r#"{"project":"p"}"#,
+            1_700_000_000_000_i64
+        ],
+    )
+    .unwrap();
+    let src_str = src.to_str().unwrap();
+
+    let (stdout, _stderr, status) =
+        run(&["--db", db_str, "--json", "import", "from-engram", src_str]);
+    assert!(status.success(), "import failed: {stdout}");
+    let v: Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(v["rows_seen"], 1);
+    assert_eq!(v["rows_inserted"], 1);
+    assert_eq!(v["rows_skipped_existing"], 0);
+
+    // Re-import is idempotent.
+    let (stdout, _, status) = run(&["--db", db_str, "--json", "import", "from-engram", src_str]);
+    assert!(status.success());
+    let v: Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(v["rows_inserted"], 0);
+    assert_eq!(v["rows_skipped_existing"], 1);
+}
+
+#[test]
+fn import_from_engram_rejects_db_without_memories_table() {
+    let td = TempDir::new().unwrap();
+    let db = td.path().join("s.db");
+    let db_str = db.to_str().unwrap();
+    let empty = td.path().join("empty.db");
+    let _ = rusqlite::Connection::open(&empty).unwrap();
+    let empty_str = empty.to_str().unwrap();
+
+    let (_, stderr, status) = run(&["--db", db_str, "import", "from-engram", empty_str]);
     assert!(!status.success());
     assert!(
-        stderr.contains("bloque D.3") || stderr.contains("import"),
-        "expected skeleton error, got stderr: {stderr}"
+        stderr.contains("memories"),
+        "expected memories-table error in stderr, got: {stderr}"
     );
 }

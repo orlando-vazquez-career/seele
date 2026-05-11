@@ -10,6 +10,7 @@ members = [
     "crates/seele-sync",
     "crates/seele-setup",
     "crates/seele-project",
+    "crates/seele-engram-import",
     "crates/seele-cli",
 ]
 resolver = "2"

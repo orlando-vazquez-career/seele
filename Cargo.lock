@@ -2435,8 +2435,10 @@ dependencies = [
  "clap",
  "dirs",
  "reqwest",
+ "rusqlite",
  "seele-core",
  "seele-embedder",
+ "seele-engram-import",
  "seele-http",
  "seele-mcp",
  "seele-project",
@@ -2451,6 +2453,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "ulid",
 ]
 
 [[package]]
@@ -2483,6 +2486,23 @@ dependencies = [
  "thiserror 2.0.18",
  "tokenizers",
  "tracing",
+]
+
+[[package]]
+name = "seele-engram-import"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "r2d2",
+ "rusqlite",
+ "seele-core",
+ "seele-storage",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tracing",
+ "ulid",
 ]
 
 [[package]]
