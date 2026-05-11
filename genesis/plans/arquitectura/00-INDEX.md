@@ -16,6 +16,9 @@
 - `08-repo-layout.md` — workspace Cargo, 8 crates, tests structure, CI matriz.
 - `09-distribution-license.md` — releases binarios via GitHub Actions, crates.io publish, MIT + crédito ENGRAM operacional.
 - `10-mapping-mnema-seele.md` — contrato de mapping entre vocabulario MNEMA (Counsel, advisors, verdict, skill, axiomatica) y schema SEELE (sessions, observations, memory_relations, links).
+- `11-sqlite-vec-vendored.md` — sqlite-vec vendorizado en 5 targets, procedimiento de bump.
+- `12-embedder-hardening-followups.md` — TRUSTED_HASHES population + strict_quantized opt-in.
+- `13-engram-compatibility.md` — `seele import --from-engram` + `--tool-prefix mnema` + `--legacy-engram-paths` para drop-in compatibility (post Cloven sight 2026-05-10).
 
 ## Output esperado
 
