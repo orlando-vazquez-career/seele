@@ -223,6 +223,46 @@ fn import_counts_dangling_links_when_target_missing() {
 }
 
 #[test]
+fn re_running_import_does_not_duplicate_links() {
+    // Cloven 2026-05-11 [MEDIO 2]: the `links` table has no UNIQUE on
+    // (from_id, to_id, link_type), so a naive re-run would stack
+    // duplicate rows. Importer now probes for the tuple first and
+    // counts the skip in `links_already_present`.
+    let src_td = TempDir::new().unwrap();
+    let src_path = src_td.path().join("e.db");
+    let conn = make_engram_db(&src_path);
+    let id_a = ulid::Ulid::new().to_string();
+    let id_b = ulid::Ulid::new().to_string();
+    insert_engram_row(
+        &conn,
+        &id_a,
+        "alpha",
+        &format!(r#"{{"linked_to": ["{id_b}"]}}"#),
+        1,
+    );
+    insert_engram_row(&conn, &id_b, "beta", "{}", 2);
+    drop(conn);
+
+    let dst_td = TempDir::new().unwrap();
+    let (obs, links) = destination_stores(&dst_td);
+    let importer = EngramImporter::new(&obs, &links);
+
+    let first = importer.import_from(&src_path, false).unwrap();
+    assert_eq!(first.links_created, 1);
+    assert_eq!(first.links_already_present, 0);
+
+    let second = importer.import_from(&src_path, false).unwrap();
+    assert_eq!(second.links_created, 0);
+    assert_eq!(second.links_already_present, 1);
+
+    assert_eq!(
+        links.list(LinkQuery::default()).unwrap().len(),
+        1,
+        "re-import must not stack duplicate link rows"
+    );
+}
+
+#[test]
 fn re_running_import_is_idempotent_for_preserved_ulids() {
     let src_td = TempDir::new().unwrap();
     let src_path = src_td.path().join("e.db");

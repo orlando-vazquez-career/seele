@@ -71,6 +71,10 @@ pub struct ImportReport {
     pub rows_invalid: usize,
     /// `linked_to` references successfully resolved + inserted as links.
     pub links_created: usize,
+    /// `linked_to` references whose `(from_id, to_id, link_type)`
+    /// tuple was already in the destination — skipped to keep
+    /// re-runs idempotent (Cloven 2026-05-11 [MEDIO 2]).
+    pub links_already_present: usize,
     /// `linked_to` references whose target row was not present in the
     /// import — left dangling, counted here, not fatal.
     pub links_dangling: usize,
@@ -114,6 +118,7 @@ impl<'a> EngramImporter<'a> {
                 rows_skipped_existing: 0,
                 rows_invalid: mapped.iter().filter(|r| r.mapped.is_none()).count(),
                 links_created: 0,
+                links_already_present: 0,
                 links_dangling: mapped.iter().map(|r| r.linked_to.len()).sum(),
                 dry_run: true,
                 errors: mapped.iter().filter_map(|r| r.map_error.clone()).collect(),
@@ -173,7 +178,13 @@ impl<'a> EngramImporter<'a> {
         //      cuid-style id that points at a row whose new ULID
         //      lives behind `metadata.engram_id` would require a
         //      JSON scan; deferred to v0.2 if real migrations need it.
+        //
+        // Link idempotency: the `links` table has no UNIQUE on
+        // `(from_id, to_id, link_type)`, so a naive insert would
+        // duplicate rows on re-run. We probe for the existing tuple
+        // before inserting. Closes Cloven 2026-05-11 [MEDIO 2].
         let mut links_created = 0usize;
+        let mut links_already_present = 0usize;
         let mut links_dangling = 0usize;
         for r in &mapped {
             let from_dest = match id_map.get(&r.source_id) {
@@ -189,16 +200,20 @@ impl<'a> EngramImporter<'a> {
                 });
                 match to_dest {
                     Some(to_dest) => {
-                        LinkStore::create_in_tx(
-                            &tx,
-                            LinkInput {
-                                from_id: from_dest,
-                                to_id: to_dest,
-                                link_type: "related_to".to_string(),
-                                metadata: Metadata::new(),
-                            },
-                        )?;
-                        links_created += 1;
+                        if link_exists_in_tx(&tx, &from_dest, &to_dest, "related_to") {
+                            links_already_present += 1;
+                        } else {
+                            LinkStore::create_in_tx(
+                                &tx,
+                                LinkInput {
+                                    from_id: from_dest,
+                                    to_id: to_dest,
+                                    link_type: "related_to".to_string(),
+                                    metadata: Metadata::new(),
+                                },
+                            )?;
+                            links_created += 1;
+                        }
                     }
                     None => {
                         links_dangling += 1;
@@ -216,6 +231,7 @@ impl<'a> EngramImporter<'a> {
             rows_skipped_existing,
             rows_invalid,
             links_created,
+            links_already_present,
             links_dangling,
             dry_run: false,
             errors,
@@ -229,6 +245,22 @@ fn observation_exists_in_tx(tx: &rusqlite::Transaction<'_>, id: &SeeleId) -> boo
     tx.query_row(
         "SELECT 1 FROM observations WHERE id = ?1 LIMIT 1",
         [id.to_string()],
+        |_| Ok(()),
+    )
+    .is_ok()
+}
+
+fn link_exists_in_tx(
+    tx: &rusqlite::Transaction<'_>,
+    from: &SeeleId,
+    to: &SeeleId,
+    link_type: &str,
+) -> bool {
+    tx.query_row(
+        "SELECT 1 FROM links \
+         WHERE from_id = ?1 AND to_id = ?2 AND link_type = ?3 \
+         LIMIT 1",
+        rusqlite::params![from.to_string(), to.to_string(), link_type],
         |_| Ok(()),
     )
     .is_ok()

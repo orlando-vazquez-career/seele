@@ -99,14 +99,17 @@ pub struct ImportReport {
     /// observation count on a clean target; lower when some rows
     /// already exist under their preserved ULIDs.
     pub observation_count_saved: usize,
-    /// Rows whose `id` was already present in the destination (raw
-    /// `INSERT OR IGNORE` collided). Distinct from
-    /// `observation_count_skipped` which counts the
-    /// `AlreadyImported` chunk-level skip.
+    /// Per-row counter: how many rows of the chunk collided with an
+    /// `id` already present in the destination (raw `INSERT OR IGNORE`
+    /// silently skipped them).
     pub observation_count_already_present: usize,
-    /// Set when the whole chunk was skipped because the
-    /// `(target_key, chunk_id)` pair was already in the ledger.
-    pub observation_count_skipped: usize,
+    /// Chunk-level counter: number of observations the chunk carried
+    /// when the whole chunk was skipped because the
+    /// `(target_key, chunk_id)` pair was already in the ledger. Zero
+    /// whenever `outcome = Imported`. Cloven 2026-05-11 [NIT]: the
+    /// per-row vs chunk-level distinction is documented here because
+    /// the two counters live at different layers of abstraction.
+    pub observation_count_skipped_chunk_level: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -264,6 +267,17 @@ pub fn read_chunk_file(path: &Path) -> Result<(String, ChunkPayload)> {
 ///   would silently UPDATE, causing data loss).
 ///
 /// Closes the Cloven 2026-05-11 [CRITICO] sync save-path finding.
+///
+/// **`session_id` is dropped on import.** Sessions don't travel
+/// alongside chunks in v0.1 — the `observations.session_id` foreign
+/// key (`REFERENCES sessions(id)`) would otherwise fire and abort
+/// the transaction whenever a chunk carried an observation whose
+/// session is unknown to the destination. Stripping is safe because
+/// the breadcrumb of which session an observation came from is also
+/// stamped into `metadata` by upstream consumers (MNEMA does this);
+/// Sprint-05 will revisit and bump `format_version` to 2 if the
+/// thread-level history needs to follow chunks across machines.
+/// Closes the Cloven 2026-05-11 [MEDIO 1] FK-violation finding.
 pub fn import_from_file(
     observations: &ObservationStore,
     chunks: &ChunkStore,
@@ -281,7 +295,7 @@ pub fn import_from_file(
             outcome: ImportOutcome::AlreadyImported,
             observation_count_saved: 0,
             observation_count_already_present: 0,
-            observation_count_skipped: payload.observations.len(),
+            observation_count_skipped_chunk_level: payload.observations.len(),
         });
     }
 
@@ -296,7 +310,11 @@ pub fn import_from_file(
     for obs in &payload.observations {
         let input = RawSaveInput {
             id: obs.id,
-            session_id: obs.session_id,
+            // Strip session_id: see crate doc — sessions are not part
+            // of the v0.1 chunk payload, and keeping a foreign id
+            // here would trip the `observations.session_id` FK and
+            // abort the whole import.
+            session_id: None,
             kind: obs.kind.clone(),
             title: obs.title.clone(),
             content: obs.content.clone(),
@@ -322,7 +340,7 @@ pub fn import_from_file(
         outcome: ImportOutcome::Imported,
         observation_count_saved: saved,
         observation_count_already_present: already_present,
-        observation_count_skipped: 0,
+        observation_count_skipped_chunk_level: 0,
     })
 }
 

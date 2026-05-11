@@ -242,6 +242,72 @@ fn export_filter_by_project_excludes_others() {
 }
 
 #[test]
+fn import_strips_unknown_session_id_so_fk_constraint_does_not_fire() {
+    // Cloven 2026-05-11 [MEDIO 1]: with `PRAGMA foreign_keys = ON`,
+    // an observation whose `session_id` references a row missing
+    // from the destination `sessions` table would abort the entire
+    // import. v0.1 drops `session_id` on import — the test asserts
+    // (a) the import succeeds and (b) the destination row has
+    // `session_id = NULL`.
+    use seele_storage::{SessionInput, SessionStore};
+
+    let src_td = TempDir::new().unwrap();
+    let src_pool = init_db(src_td.path().join("src.db")).unwrap();
+    let src_store = ObservationStore::new(src_pool.clone());
+    let src_sessions = SessionStore::new(src_pool);
+    // Real session on the source so the FK is satisfied locally.
+    let session = src_sessions
+        .start(SessionInput {
+            project: "p".to_string(),
+            directory: None,
+        })
+        .unwrap();
+    src_store
+        .save(SaveInput {
+            session_id: Some(session.id),
+            kind: ObservationType::Memory,
+            title: "linked-to-session".to_string(),
+            content: "body".to_string(),
+            tool_name: None,
+            project: Some("p".to_string()),
+            scope: Scope::Project,
+            topic_key: None,
+            metadata: Metadata::new(),
+        })
+        .unwrap();
+
+    let chunks_dir = TempDir::new().unwrap();
+    let exp = export_to_dir(
+        &src_store,
+        chunks_dir.path(),
+        ExportFilter {
+            project: Some("p".to_string()),
+        },
+    )
+    .unwrap();
+
+    // Destination has no sessions table row matching `session.id`.
+    let dst_td = TempDir::new().unwrap();
+    let dst_pool = init_db(dst_td.path().join("dst.db")).unwrap();
+    let dst_store = ObservationStore::new(dst_pool.clone());
+    let dst_chunks = ChunkStore::new(dst_pool);
+
+    let report = import_from_file(&dst_store, &dst_chunks, "node-A", &exp.path).unwrap();
+    assert_eq!(report.outcome, ImportOutcome::Imported);
+    assert_eq!(report.observation_count_saved, 1);
+
+    let dst_rows = dst_store
+        .list(seele_storage::ObservationQuery::default())
+        .unwrap();
+    assert_eq!(dst_rows.len(), 1);
+    assert!(
+        dst_rows[0].session_id.is_none(),
+        "session_id must be stripped on import; got {:?}",
+        dst_rows[0].session_id
+    );
+}
+
+#[test]
 fn read_chunk_file_rejects_unknown_future_format_version() {
     use seele_sync::ChunkPayload;
     let payload = ChunkPayload {

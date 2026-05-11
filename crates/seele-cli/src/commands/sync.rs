@@ -69,10 +69,11 @@ pub async fn run(
                 &report,
                 || {
                     format!(
-                        "import {:?}: saved={} skipped={} chunk_id={}",
+                        "import {:?}: saved={} already_present={} chunk_skipped_rows={} chunk_id={}",
                         report.outcome,
                         report.observation_count_saved,
-                        report.observation_count_skipped,
+                        report.observation_count_already_present,
+                        report.observation_count_skipped_chunk_level,
                         report.chunk_id
                     )
                 },
