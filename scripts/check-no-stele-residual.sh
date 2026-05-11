@@ -14,6 +14,14 @@
 # Sprint-04 post-cierre (2026-05-11) cuando el job CI pwsh detectó
 # residuos legítimos que el bash silenciaba por accidente.
 #
+# Portabilidad de `\b`: el regex usa `\b` (word boundary) bajo `grep -E`,
+# que GNU grep y BSD grep modernos (ubuntu-latest + macos-latest CI)
+# soportan sin problema. NO es portable a busybox grep (alpine docker
+# minimal): allá `\b` se interpreta como literal-backslash-b y el match
+# falla silencioso. Si Sprint-05+ agrega un runner alpine al CI matrix,
+# reemplazar el patron por algo que use `[[:alnum:]]` lookaheads o
+# escalar a `grep -P` (no portable a BSD). Cloven 2026-05-11 [NIT].
+#
 # Uso:
 #   bash scripts/check-no-stele-residual.sh
 #

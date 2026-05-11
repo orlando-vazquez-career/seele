@@ -38,7 +38,11 @@ $allowlistDirs = @(
 
 $includeExt = @('*.md', '*.rs', '*.toml', '*.yaml', '*.yml', '*.json', '*.sh', '*.ps1')
 
-$matches = Get-ChildItem -Path . -Recurse -Include $includeExt -File `
+# Note on naming: avoid `$matches` here — PowerShell auto-populates
+# `$Matches` after every `-match` regex evaluation, so using the same
+# identifier as a user variable is legal but confusing for the next
+# reader (Cloven 2026-05-11 [NIT]).
+$violations = Get-ChildItem -Path . -Recurse -Include $includeExt -File `
     | Where-Object { $_.FullName -notmatch '\\(target|\.git|node_modules)\\' } `
     | ForEach-Object {
         $relPath = (Resolve-Path -Relative $_.FullName) -replace '\\', '/'
@@ -56,9 +60,9 @@ $matches = Get-ChildItem -Path . -Recurse -Include $includeExt -File `
         }
     }
 
-if ($matches) {
+if ($violations) {
     Write-Host 'ERROR: Found STELE/stele residuals outside allowlist:' -ForegroundColor Red
-    $matches | ForEach-Object { Write-Host $_ }
+    $violations | ForEach-Object { Write-Host $_ }
     Write-Host ''
     Write-Host 'If a new file legitimately needs "stele" (e.g., new historical doc),'
     Write-Host 'add it to $allowlistFiles (exact path) or $allowlistDirs (prefix) and re-run.'
