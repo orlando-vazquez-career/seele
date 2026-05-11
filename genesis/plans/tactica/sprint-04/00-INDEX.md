@@ -17,7 +17,7 @@ Al cerrar este sprint, SEELE tiene todo lo que un usuario espera de un memory en
 
 ## Bloques
 
-**A — `seele-project` (project detection)**: 5-case detection (monorepo / multi-package / lang-mixto / single / embedded) + child scan + skip noise dirs (`node_modules`, `target`, `.git`, etc.). API: `Project::detect(path) -> ProjectInfo`. ~250-350 LOC + ~10 tests.
+**A — `seele-project` (project detection)**: algoritmo 5-case heredado de ENGRAM para asignar `project name` a las observations: (1) `.seele/config.json` override, (2) git remote url → basename, (3) git root → basename, (4) git child scan depth 1 max 20 dirs timeout 200ms skip noise, (5) dir basename fallback. API: `Project::detect(cwd) -> ProjectName`. Skip dirs: `node_modules`, `target`, `.git`, `vendor`, `.venv`, `venv`, `__pycache__`, `dist`, `build`, `.next`, `.nuxt`. ~250-350 LOC + ~10 tests.
 
 **B — `seele-setup` (wizard 8 agentes)**: instala configs para Claude Code, Cursor, Windsurf, OpenCode, Aider, Cody, Continue, Zed. Cada agente tiene su path canonico de config + formato propio. Flags: `--all`, `--agent <name>`, `--dry-run`, `--backup`. Idempotente: re-correr no duplica entries. API: `Setup::install(agents, opts) -> InstallReport`. ~400-500 LOC + ~15 tests.
 
