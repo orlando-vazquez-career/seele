@@ -17,3 +17,4 @@ pub mod setup;
 pub mod show;
 pub mod stats;
 pub mod sync;
+pub mod tui;

@@ -11,11 +11,18 @@ description = "Terminal UI for SEELE (ratatui + crossterm)."
 seele-core = { path = "../seele-core" }
 seele-storage = { path = "../seele-storage" }
 seele-search = { path = "../seele-search" }
+seele-http = { path = "../seele-http" }
+seele-embedder = { path = "../seele-embedder" }
 ratatui.workspace = true
-crossterm.workspace = true
+crossterm = { version = "0.28", features = ["event-stream"] }
 tokio.workspace = true
 tempfile.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
+futures.workspace = true
+chrono.workspace = true
+
+[dev-dependencies]
+insta.workspace = true

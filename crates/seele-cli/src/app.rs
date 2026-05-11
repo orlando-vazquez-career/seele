@@ -72,6 +72,8 @@ pub enum Command {
     Mcp(commands::mcp::Args),
     /// HTTP REST API server.
     Serve(commands::serve::Args),
+    /// Interactive terminal UI (ratatui).
+    Tui(commands::tui::Args),
 }
 
 #[derive(Args, Debug, Clone)]
@@ -103,6 +105,7 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
         Command::Setup(args) => commands::setup::run(args, &out).await,
         Command::Mcp(args) => commands::mcp::run(args, &cli.db, cli.fake_embedder).await,
         Command::Serve(args) => commands::serve::run(args, &cli.db, cli.fake_embedder).await,
+        Command::Tui(args) => commands::tui::run(args, &cli.db, cli.fake_embedder).await,
     }
 }
 
