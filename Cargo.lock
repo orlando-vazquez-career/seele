@@ -2433,6 +2433,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "dirs",
  "seele-core",
  "seele-embedder",
  "seele-http",
@@ -2508,12 +2509,15 @@ dependencies = [
 name = "seele-mcp"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "seele-core",
  "seele-embedder",
+ "seele-http",
  "seele-search",
  "seele-storage",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror 2.0.18",
  "tokio",
  "tracing",

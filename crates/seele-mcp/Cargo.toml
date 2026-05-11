@@ -12,8 +12,13 @@ seele-core = { path = "../seele-core" }
 seele-storage = { path = "../seele-storage" }
 seele-search = { path = "../seele-search" }
 seele-embedder = { path = "../seele-embedder" }
+seele-http = { path = "../seele-http" }
 tokio.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
+anyhow.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

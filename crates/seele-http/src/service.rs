@@ -13,8 +13,9 @@ use seele_core::memory::Observation;
 use seele_embedder::Embedder;
 use seele_search::{SearchEngine, SearchQuery};
 use seele_storage::{
-    ChunkStore, LinkInput, LinkQuery, LinkStore, ObservationQuery, ObservationStore, Pool,
-    PromptStore, RelationStore, SaveInput, SaveOutcome, SessionFilter, SessionInput, SessionStore,
+    ChunkStore, LinkInput, LinkQuery, LinkStore, ObservationPatch, ObservationQuery,
+    ObservationStore, Pool, PromptStore, RelationStore, SaveInput, SaveOutcome, SessionFilter,
+    SessionInput, SessionStore,
 };
 
 use crate::dto::{
@@ -191,6 +192,56 @@ impl SeeleService {
     pub fn restore_observation(&self, id: SeeleId) -> Result<()> {
         self.observations.restore(id)?;
         Ok(())
+    }
+
+    /// Merge `patch_metadata` into the observation's existing metadata.
+    /// New keys overwrite existing; nested objects are NOT recursively
+    /// merged (caller passes a flat patch).
+    pub fn merge_observation_metadata(
+        &self,
+        id: SeeleId,
+        patch_metadata: serde_json::Value,
+    ) -> Result<()> {
+        let current = self
+            .observations
+            .get(id)?
+            .ok_or_else(|| ApiError::NotFound(format!("observation {id}")))?;
+        let mut merged = current.metadata.0.clone();
+        if let Some(obj) = patch_metadata.as_object() {
+            let target = merged
+                .as_object_mut()
+                .ok_or_else(|| ApiError::Internal("metadata is not an object".into()))?;
+            for (k, v) in obj {
+                target.insert(k.clone(), v.clone());
+            }
+        }
+        self.observations.update(
+            id,
+            ObservationPatch {
+                metadata: Some(seele_core::metadata::Metadata::from_value(merged)),
+                ..Default::default()
+            },
+        )?;
+        Ok(())
+    }
+
+    /// Distinct project names across active observations.
+    pub fn list_projects(&self) -> Result<Vec<String>> {
+        let conn = self.pool.get().map_err(seele_storage::StorageError::from)?;
+        let mut stmt = conn
+            .prepare(
+                "SELECT DISTINCT project FROM observations \
+                 WHERE deleted_at IS NULL AND project IS NOT NULL \
+                 ORDER BY project ASC",
+            )
+            .map_err(seele_storage::StorageError::from)?;
+        let mut rows = stmt.query([]).map_err(seele_storage::StorageError::from)?;
+        let mut out = Vec::new();
+        while let Some(row) = rows.next().map_err(seele_storage::StorageError::from)? {
+            let p: String = row.get(0).map_err(seele_storage::StorageError::from)?;
+            out.push(p);
+        }
+        Ok(out)
     }
 
     // -------- Sessions --------
