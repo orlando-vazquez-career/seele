@@ -18,10 +18,23 @@
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::mpsc;
+use std::thread;
 use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+
+/// Hard upper bound for each `git` subprocess invocation (cases 2 and 3).
+/// Sized for "git is unresponsive" rather than "git is slow today":
+/// a healthy local git on Windows still pays ~50-300ms in process
+/// startup alone. We pick 1500ms so a normal repo never trips the
+/// timeout, while a stuck git (credential prompt, NFS hang) still
+/// cannot block `detect` past ~3 seconds total across the two cases.
+/// The runaway subprocess is abandoned — it has no externally visible
+/// side effects on this read path — and the spawning thread cleans
+/// itself up when git eventually exits.
+const GIT_SUBPROCESS_TIMEOUT: Duration = Duration::from_millis(1500);
 
 /// Project name inferido + el caso que lo produjo. El caso es util para
 /// debugging (`seele doctor` lo expone) y para tests.
@@ -131,17 +144,48 @@ fn read_config_override(cwd: &Path) -> Result<Option<String>> {
 // -------- Case 2 --------
 
 fn git_remote_name(cwd: &Path) -> Option<String> {
-    let out = Command::new("git")
-        .arg("-C")
-        .arg(cwd)
-        .args(["remote", "get-url", "origin"])
-        .output()
-        .ok()?;
-    if !out.status.success() {
-        return None;
-    }
-    let url = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    let url = run_git(
+        cwd,
+        &["remote", "get-url", "origin"],
+        GIT_SUBPROCESS_TIMEOUT,
+    )?;
     parse_remote_basename(&url)
+}
+
+/// Spawn `git -C <cwd> <args>` on a worker thread, wait up to `timeout`
+/// for the result. Returns `Some(stdout.trim())` on success, `None` if
+/// the process failed, timed out, or could not be spawned. Timed-out
+/// subprocesses are not killed — abandoning them is safe because they
+/// have no externally-visible side effects (this is a read path).
+fn run_git(cwd: &Path, args: &[&str], timeout: Duration) -> Option<String> {
+    let (tx, rx) = mpsc::channel();
+    let cwd = cwd.to_path_buf();
+    let owned_args: Vec<String> = args.iter().map(|s| s.to_string()).collect();
+    let worker_args = owned_args.clone();
+    thread::spawn(move || {
+        let res = Command::new("git")
+            .arg("-C")
+            .arg(&cwd)
+            .args(&worker_args)
+            .output();
+        let _ = tx.send(res);
+    });
+    match rx.recv_timeout(timeout) {
+        Ok(Ok(output)) if output.status.success() => {
+            let s = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if s.is_empty() {
+                None
+            } else {
+                Some(s)
+            }
+        }
+        Ok(_) => None,
+        Err(mpsc::RecvTimeoutError::Timeout) => {
+            tracing::debug!(args = ?owned_args, "project: git subprocess hit timeout");
+            None
+        }
+        Err(mpsc::RecvTimeoutError::Disconnected) => None,
+    }
 }
 
 /// Strip the trailing `.git`, then take the last path/`:` segment.
@@ -181,16 +225,11 @@ pub fn parse_remote_basename(url: &str) -> Option<String> {
 // -------- Case 3 --------
 
 fn git_root_basename(cwd: &Path) -> Option<String> {
-    let out = Command::new("git")
-        .arg("-C")
-        .arg(cwd)
-        .args(["rev-parse", "--show-toplevel"])
-        .output()
-        .ok()?;
-    if !out.status.success() {
-        return None;
-    }
-    let root = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    let root = run_git(
+        cwd,
+        &["rev-parse", "--show-toplevel"],
+        GIT_SUBPROCESS_TIMEOUT,
+    )?;
     PathBuf::from(root)
         .file_name()
         .and_then(|s| s.to_str())

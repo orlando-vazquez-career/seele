@@ -18,6 +18,8 @@ sha2.workspace = true
 hex.workspace = true
 chrono.workspace = true
 flate2.workspace = true
+rusqlite.workspace = true
+r2d2.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

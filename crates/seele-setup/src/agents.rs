@@ -62,6 +62,13 @@ impl AgentKind {
             Self::Zed,
         ]
     }
+
+    /// `true` when this agent has a full installer in v0.1. `false` for
+    /// skeletons declared so `--agent <name>` gives a useful error
+    /// instead of "unknown agent". Drives `setup --all` filtering.
+    pub fn is_implemented(&self) -> bool {
+        matches!(self, Self::ClaudeCode | Self::Cursor | Self::Windsurf)
+    }
 }
 
 pub fn install_agent(kind: AgentKind, opts: &InstallOptions) -> Result<InstallReport> {

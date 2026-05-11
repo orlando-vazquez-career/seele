@@ -23,9 +23,11 @@ pub struct Cli {
     pub db: Option<PathBuf>,
 
     /// Use the deterministic FakeEmbedder instead of ONNX. Testing only.
-    /// (Sprint-04 ships FakeEmbedder unconditionally; Sprint-05 swaps in
-    /// the real OnnxEmbedder by default and this flag stays for tests.)
-    #[arg(long, global = true)]
+    /// Hidden in v0.1 because FakeEmbedder is the only backend — the
+    /// flag is wired through the dispatch tree but has no effect. It
+    /// activates and surfaces in `--help` once Sprint-05 lands the
+    /// OnnxEmbedder branch.
+    #[arg(long, global = true, hide = true)]
     pub fake_embedder: bool,
 
     /// Output as JSON (default: human-friendly text).

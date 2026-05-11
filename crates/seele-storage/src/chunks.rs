@@ -38,6 +38,23 @@ impl ChunkStore {
         Ok(inserted == 1)
     }
 
+    /// `mark_imported` variant that runs inside a caller-owned tx so
+    /// the ledger write commits or rolls back alongside the observation
+    /// saves of the same import operation.
+    pub fn mark_imported_in_tx(
+        tx: &rusqlite::Transaction<'_>,
+        target_key: &str,
+        chunk_id: &str,
+    ) -> Result<bool> {
+        let now = Utc::now().timestamp_millis();
+        let inserted = tx.execute(
+            "INSERT OR IGNORE INTO sync_chunks(target_key, chunk_id, imported_at) \
+             VALUES (?1, ?2, ?3)",
+            params![target_key, chunk_id, now],
+        )?;
+        Ok(inserted == 1)
+    }
+
     pub fn was_imported(&self, target_key: &str, chunk_id: &str) -> Result<bool> {
         let conn = self.pool.get()?;
         let count: i64 = conn.query_row(

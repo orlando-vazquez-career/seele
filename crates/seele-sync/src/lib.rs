@@ -41,6 +41,18 @@ pub enum SyncError {
     InvalidChunk(String),
 }
 
+impl From<rusqlite::Error> for SyncError {
+    fn from(e: rusqlite::Error) -> Self {
+        SyncError::Storage(seele_storage::StorageError::from(e))
+    }
+}
+
+impl From<r2d2::Error> for SyncError {
+    fn from(e: r2d2::Error) -> Self {
+        SyncError::Storage(seele_storage::StorageError::from(e))
+    }
+}
+
 pub type Result<T> = std::result::Result<T, SyncError>;
 
 /// On-disk payload format. Versioned so future format changes can be
@@ -216,6 +228,14 @@ pub fn read_chunk_file(path: &Path) -> Result<(String, ChunkPayload)> {
 /// Import a chunk into `observations`. `target_key` identifies this
 /// local node (e.g., hostname or stable UUID); the same chunk
 /// re-imported under the same target_key is a no-op.
+///
+/// **Atomic per chunk**: every observation save + the `sync_chunks`
+/// ledger write run inside a single SQLite transaction. A crash
+/// mid-loop rolls the entire chunk back — the destination DB is left
+/// in the pre-import state and the ledger has no mark, so a re-run
+/// reprocesses cleanly. This closes the Cloven-flagged duplication
+/// hazard (2026-05-10) where partial imports without a tx caused
+/// silent row dupes on retry.
 pub fn import_from_file(
     observations: &ObservationStore,
     chunks: &ChunkStore,
@@ -223,6 +243,9 @@ pub fn import_from_file(
     path: &Path,
 ) -> Result<ImportReport> {
     let (chunk_id, payload) = read_chunk_file(path)?;
+
+    // Cheap pre-check: avoid opening a tx if the chunk is already in
+    // the ledger.
     if chunks.was_imported(target_key, &chunk_id)? {
         return Ok(ImportReport {
             chunk_id,
@@ -232,6 +255,15 @@ pub fn import_from_file(
             observation_count_skipped: payload.observations.len(),
         });
     }
+
+    // Drive one connection across the whole import so the saves and the
+    // ledger write are atomic together. Reuse the observations store's
+    // pool (chunks shares the same pool by construction in SeeleService
+    // — and even when constructed independently, both stores point to
+    // the same on-disk DB).
+    let _ = chunks; // ChunkStore reference no longer needed; in-tx helper is associated.
+    let mut conn = observations.pool().get()?;
+    let tx = conn.transaction()?;
 
     let mut saved = 0usize;
     for obs in &payload.observations {
@@ -246,10 +278,12 @@ pub fn import_from_file(
             topic_key: obs.topic_key.clone(),
             metadata: obs.metadata.clone(),
         };
-        observations.save(input)?;
+        ObservationStore::save_in_tx(&tx, input)?;
         saved += 1;
     }
-    chunks.mark_imported(target_key, &chunk_id)?;
+    ChunkStore::mark_imported_in_tx(&tx, target_key, &chunk_id)?;
+    tx.commit()?;
+
     Ok(ImportReport {
         chunk_id,
         path: path.to_path_buf(),

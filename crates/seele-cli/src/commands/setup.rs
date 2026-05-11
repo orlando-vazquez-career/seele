@@ -33,12 +33,19 @@ pub struct Args {
 pub async fn run(args: Args, out: &OutputOpts) -> anyhow::Result<()> {
     if args.list {
         let names = seele_setup::all_agent_names();
+        let implemented: std::collections::HashSet<&str> =
+            seele_setup::implemented_agent_names().into_iter().collect();
         output::emit_split(
             &names,
             || {
                 let mut lines = vec![format!("{} known agent(s):", names.len())];
                 for n in &names {
-                    lines.push(format!("  {n}"));
+                    let tag = if implemented.contains(n) {
+                        "implemented"
+                    } else {
+                        "skeleton (v0.2)"
+                    };
+                    lines.push(format!("  {n}  [{tag}]"));
                 }
                 lines.join("\n")
             },
@@ -57,7 +64,9 @@ pub async fn run(args: Args, out: &OutputOpts) -> anyhow::Result<()> {
     if args.all {
         let mut reports = Vec::new();
         let mut errors = Vec::new();
-        for name in seele_setup::all_agent_names() {
+        // Iterate only implemented agents — skeletons would each report
+        // a NotImplemented error and pollute the output.
+        for name in seele_setup::implemented_agent_names() {
             match install(name, &opts) {
                 Ok(r) => reports.push(r),
                 Err(e) => errors.push(format!("{name}: {e}")),

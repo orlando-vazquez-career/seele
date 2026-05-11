@@ -135,13 +135,59 @@ pub fn all_agent_names() -> Vec<&'static str> {
     AgentKind::all().iter().map(|k| k.as_str()).collect()
 }
 
-/// Atomic-ish write: create parent dirs if needed, then write.
+/// Agent names whose installer is wired in v0.1. Drives `seele setup --all`
+/// so the iteration does not report skeletons as errors.
+pub fn implemented_agent_names() -> Vec<&'static str> {
+    AgentKind::all()
+        .iter()
+        .filter(|k| k.is_implemented())
+        .map(|k| k.as_str())
+        .collect()
+}
+
+/// Atomic write: create parent dirs if needed, write to a sibling
+/// `.tmp` file, then rename over the destination. This guarantees a
+/// reader observing the destination path sees either the old content
+/// or the new content — never a half-written file.
+///
+/// On POSIX, `std::fs::rename` is atomic for same-volume renames. On
+/// Windows, `std::fs::rename` issues `MoveFileExW` with
+/// `MOVEFILE_REPLACE_EXISTING`, which is atomic for files on the same
+/// volume.
+///
+/// **Residual race for Claude Code**: when `path` points at
+/// `~/.claude.json` and Claude Code is running, Claude Code may write
+/// to that file between our load-into-memory and our rename, in which
+/// case our rename clobbers Claude Code's change. The atomic rename
+/// rules out *partial-write* corruption (the real bug a reader of
+/// `.claude.json` mid-write would otherwise hit), but cannot rule out
+/// last-write-wins. Mitigated by `backup_file` running before the
+/// write, and by the fact that `seele setup` is a one-shot operation
+/// the user can re-run. v0.2 will delegate to `claude mcp add` when
+/// the `claude` CLI is present, closing this gap.
 pub(crate) fn write_atomic(path: &Path, content: &str) -> Result<()> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    std::fs::write(path, content)?;
+    let tmp_path = sidecar_tmp_path(path);
+    // Best-effort cleanup of any stale tmp from a prior crash, so the
+    // subsequent `File::create` always starts fresh.
+    let _ = std::fs::remove_file(&tmp_path);
+    std::fs::write(&tmp_path, content)?;
+    if let Err(e) = std::fs::rename(&tmp_path, path) {
+        let _ = std::fs::remove_file(&tmp_path);
+        return Err(e.into());
+    }
     Ok(())
+}
+
+fn sidecar_tmp_path(path: &Path) -> PathBuf {
+    let ts = chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0);
+    let pid = std::process::id();
+    let suffix = format!(".seele-tmp-{pid}-{ts}");
+    let mut tmp = path.as_os_str().to_owned();
+    tmp.push(suffix);
+    PathBuf::from(tmp)
 }
 
 /// Copy `path` to `<path>.bak.<unix_ms>` if it exists. Returns the

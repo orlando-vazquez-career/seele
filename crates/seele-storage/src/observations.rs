@@ -91,6 +91,21 @@ impl ObservationStore {
         Ok(outcome)
     }
 
+    /// Save into a caller-owned transaction. The caller is responsible
+    /// for the `commit()` / `rollback()`. Used by `seele-sync::import`
+    /// to wrap many saves + a `sync_chunks` ledger write in a single
+    /// atomic boundary, so a crash mid-import leaves the destination
+    /// DB unchanged instead of partially populated.
+    pub fn save_in_tx(tx: &rusqlite::Transaction<'_>, input: SaveInput) -> Result<SaveOutcome> {
+        save_in_tx(tx, input)
+    }
+
+    /// Borrow the underlying pool. `seele-sync` needs this to open a
+    /// connection it can drive across multiple stores in one tx.
+    pub fn pool(&self) -> &Pool {
+        &self.pool
+    }
+
     pub fn get(&self, id: SeeleId) -> Result<Option<Observation>> {
         let conn = self.pool.get()?;
         match conn.query_row(SQL_SELECT_BY_ID, [id.to_string()], |row| {
