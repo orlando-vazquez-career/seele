@@ -1,3 +1,163 @@
-//! SEELE setup — agent integration installer for 8 supported agents.
+//! Setup wizard para integraciones con agentes AI.
 //!
-//! Implementation lands in sprint-04.
+//! Cada agente espera SEELE expuesto de forma distinta. Algunos leen un
+//! `mcp.json` con definicion del comando, otros tienen su archivo de
+//! rules markdown, otros configuran una entry en `settings.json`. Este
+//! crate centraliza:
+//!
+//! - **Donde** vive el archivo de config (path canonico por OS).
+//! - **Que** entry agregar (formato propio del agente).
+//! - **Idempotencia**: re-correr no duplica entries.
+//! - **Backup**: copia del archivo a `.bak.<timestamp>` antes de tocarlo.
+//! - **Dry-run**: muestra el diff sin escribir.
+//!
+//! ## Agentes en v0.1
+//!
+//! Implementados (full install + dry-run + idempotente):
+//! - `claude-code` — `~/.claude.json` `mcpServers` entry.
+//! - `cursor` — `~/.cursor/mcp.json` `mcpServers` entry.
+//! - `windsurf` — `~/.codeium/windsurf/mcp_config.json` entry.
+//!
+//! Skeleton (declarados, no implementados — `install("opencode", ...)` →
+//! `SetupError::NotImplemented`. v0.2 los completa):
+//! - `opencode`, `aider`, `cody`, `continue`, `zed`.
+
+use std::path::{Path, PathBuf};
+
+use serde::Serialize;
+use thiserror::Error;
+
+mod agents;
+
+pub use agents::{install_agent, AgentKind};
+
+#[derive(Debug, Error)]
+pub enum SetupError {
+    #[error("unknown agent: {0}")]
+    UnknownAgent(String),
+    #[error("agent {0} not implemented in v0.1 (planned for v0.2)")]
+    NotImplemented(String),
+    #[error("could not resolve home directory")]
+    NoHome,
+    #[error("io error: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("invalid existing config at {path:?}: {detail}")]
+    InvalidExistingConfig { path: PathBuf, detail: String },
+    #[error("json error: {0}")]
+    Json(#[from] serde_json::Error),
+}
+
+pub type Result<T> = std::result::Result<T, SetupError>;
+
+/// Result of installing into one agent's config.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct InstallReport {
+    pub agent: String,
+    pub config_path: PathBuf,
+    pub outcome: Outcome,
+    /// When `dry_run = true`, no file was modified; this string is the
+    /// JSON that would have been written.
+    pub preview: Option<String>,
+    /// Path of the backup file, if a backup was made.
+    pub backup_path: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Outcome {
+    /// Config file did not exist; SEELE was added as the sole entry.
+    Created,
+    /// Config file existed without a SEELE entry; SEELE was added.
+    Added,
+    /// Config file already had a SEELE entry; left unchanged (idempotent).
+    Unchanged,
+    /// Config file had a SEELE entry that differed from what we'd write;
+    /// it was updated in place.
+    Updated,
+    /// `dry_run = true` — nothing written.
+    DryRun,
+}
+
+/// Options that apply to every agent installer.
+#[derive(Debug, Clone)]
+pub struct InstallOptions {
+    /// Don't touch files; just compute what would change.
+    pub dry_run: bool,
+    /// Copy the existing config to `<path>.bak.<unix_ms>` before writing.
+    pub backup: bool,
+    /// Override the home directory (used by tests). When `None`, uses
+    /// `dirs::home_dir()`.
+    pub home_override: Option<PathBuf>,
+    /// Override the `seele` binary path that lands in agent configs.
+    /// `None` uses the literal string `"seele"` (assumes it's on PATH).
+    pub seele_binary: Option<PathBuf>,
+}
+
+impl Default for InstallOptions {
+    fn default() -> Self {
+        Self {
+            dry_run: false,
+            backup: true,
+            home_override: None,
+            seele_binary: None,
+        }
+    }
+}
+
+impl InstallOptions {
+    pub fn home(&self) -> Result<PathBuf> {
+        match &self.home_override {
+            Some(p) => Ok(p.clone()),
+            None => dirs::home_dir().ok_or(SetupError::NoHome),
+        }
+    }
+
+    pub fn seele_binary_str(&self) -> String {
+        self.seele_binary
+            .as_ref()
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "seele".to_string())
+    }
+}
+
+/// Top-level entry point. Resolves `agent_name` to a known agent, runs
+/// its installer. Unknown names → `UnknownAgent`. Declared-but-skeleton
+/// agents → `NotImplemented`.
+pub fn install(agent_name: &str, opts: &InstallOptions) -> Result<InstallReport> {
+    let kind = AgentKind::from_name(agent_name)
+        .ok_or_else(|| SetupError::UnknownAgent(agent_name.to_string()))?;
+    install_agent(kind, opts)
+}
+
+/// All agent names — implemented or skeleton — that `install` recognizes.
+/// Useful for `seele setup --list` UX.
+pub fn all_agent_names() -> Vec<&'static str> {
+    AgentKind::all().iter().map(|k| k.as_str()).collect()
+}
+
+/// Atomic-ish write: create parent dirs if needed, then write.
+pub(crate) fn write_atomic(path: &Path, content: &str) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::write(path, content)?;
+    Ok(())
+}
+
+/// Copy `path` to `<path>.bak.<unix_ms>` if it exists. Returns the
+/// backup path written, or `None` if the file didn't exist.
+pub(crate) fn backup_file(path: &Path) -> Result<Option<PathBuf>> {
+    if !path.exists() {
+        return Ok(None);
+    }
+    let ts = chrono::Utc::now().timestamp_millis();
+    let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("");
+    let new_ext = if ext.is_empty() {
+        format!("bak.{ts}")
+    } else {
+        format!("{ext}.bak.{ts}")
+    };
+    let backup = path.with_extension(new_ext);
+    std::fs::copy(path, &backup)?;
+    Ok(Some(backup))
+}
