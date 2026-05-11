@@ -1,5 +1,11 @@
 # SEELE
 
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+[![Release](https://img.shields.io/github/v/release/orlando-vazquez-career/seele?include_prereleases&label=release)](https://github.com/orlando-vazquez-career/seele/releases)
+[![CI](https://github.com/orlando-vazquez-career/seele/actions/workflows/ci.yml/badge.svg)](https://github.com/orlando-vazquez-career/seele/actions/workflows/ci.yml)
+[![Rust](https://img.shields.io/badge/rust-1.85%2B-orange?logo=rust)](./rust-toolchain.toml)
+[![GitHub Sponsors](https://img.shields.io/github/sponsors/orlando-vazquez-career?label=sponsors)](https://github.com/sponsors/orlando-vazquez-career)
+
 > *Super stellatum firmamentum iudicat Deus, sicut nos iudicamus.*
 > Sobre el firmamento estrellado juzga Dios, como nosotros juzgamos.
 
@@ -11,6 +17,8 @@ Fusion. One binary, three transports: CLI, MCP stdio, HTTP REST.
 sprints. See [`CHANGELOG.md`](./CHANGELOG.md) for what's in this
 version and [`docs/aegis/devlogs/`](./docs/aegis/devlogs/) for the
 sprint-by-sprint trail.
+
+---
 
 ## Quick start
 
@@ -35,16 +43,16 @@ seele mcp
 ## What you get
 
 - **`seele save / search / show / list / delete / restore / link /
-  stats / projects / doctor`** — a 17-subcommand CLI against a local
+  stats / projects / doctor`** — 17-subcommand CLI against a local
   SQLite database. Privacy stripping (`<private>...</private>`),
   topic-key upserts, 24h normalized-hash dedup, soft delete + restore.
   See [`crates/seele-cli/`](./crates/seele-cli/).
 - **MCP stdio server** — 19 tools under the `seele_*` namespace (or
   `mnema_*` for ENGRAM/MNEMA compat). One `seele mcp` invocation per
   agent. See [`docs/AGENT-SETUP.md`](./docs/AGENT-SETUP.md).
-- **HTTP REST API** — ~25 endpoints + OpenAPI 3.1 + Swagger UI at
-  `/docs`. Bearer auth, optional legacy ENGRAM route aliases. See
-  [`crates/seele-http/`](./crates/seele-http/).
+- **HTTP REST API** — 18 paths / 22 operations + OpenAPI 3.1 + Swagger
+  UI at `/docs`. Bearer auth, optional legacy ENGRAM route aliases.
+  See [`crates/seele-http/`](./crates/seele-http/).
 - **TUI** — `seele tui` opens a ratatui interface with 5 panes
   (Home/Browse/Search/Detail/Stats), vi-style keymap.
 - **Multi-machine sync** — `seele sync export → import` ships
@@ -110,6 +118,58 @@ full attribution.
   working in this repo.
 - [`genesis/plans/`](./genesis/plans/) — strategy, 13 ADRs, 5 sprint
   plans. Closed plans live in [`executed/`](./genesis/plans/executed/).
+
+## Support / Apoyar
+
+SEELE is built as a labor of love by one freelance developer
+([Orlando Nahuel Vazquez Gonzalez](https://github.com/orlando-vazquez-career))
+in his spare hours. If it saves you time or you want to see it grow,
+here are the ways to help:
+
+### Star + share
+
+The cheapest and most useful: star the repo, share it where AI-agent
+folks hang out, open issues with feedback. Visibility brings
+contributors and contributors make the tool better for everyone.
+
+### GitHub Sponsors
+
+The "♥ Sponsor" button at the top of the repo accepts one-time or
+monthly contributions via card (Stripe-backed). No fees taken by
+GitHub during the matching-fund period — your $1 lands as $1
+(plus whatever GitHub matches at the time).
+
+→ [github.com/sponsors/orlando-vazquez-career](https://github.com/sponsors/orlando-vazquez-career)
+
+### Crypto
+
+Wallet-to-wallet, zero intermediary fees. Any network below works:
+
+<!--
+TODO Orlando: replace the `<…>` placeholders with your real wallet
+addresses before going public. Lines without a real address SHOULD
+be removed entirely — an empty placeholder confuses donors.
+-->
+
+| Network | Address |
+|---|---|
+| Bitcoin (BTC, on-chain) | `<BTC_ADDRESS>` |
+| Bitcoin Lightning | `<LIGHTNING_ADDRESS_or_BOLT12>` |
+| Ethereum (ETH + ERC-20 stables like USDC, USDT) | `<ETH_ADDRESS>` |
+| Solana (SOL + SPL stables like USDC) | `<SOL_ADDRESS>` |
+
+Verify addresses against the latest commit before sending — never
+trust a copy that came from somewhere other than this README on
+`main`.
+
+### Hire / consult
+
+If your team uses SEELE in production and needs help wiring it in,
+extending it, or running a private fork: hiring me is the most
+direct way to ensure the feature you need ships sooner.
+
+→ Open a [Discussion](https://github.com/orlando-vazquez-career/seele/discussions)
+or email through the GitHub profile.
 
 ## License
 

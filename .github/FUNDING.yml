@@ -1,0 +1,13 @@
+# See https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
+#
+# `github:` activates the native "Sponsor" button on the repo page.
+# Requires the user to have completed the GitHub Sponsors profile setup
+# (https://github.com/sponsors/dashboard). Until then the button shows
+# but lands on a "this user hasn't enabled sponsorship yet" page.
+github: [orlando-vazquez-career]
+
+# `custom:` accepts up to 4 arbitrary URLs that appear in the same
+# Sponsor menu. We point to the README#support section so visitors
+# can see the crypto wallets + alternative platforms in one place.
+custom:
+  - "https://github.com/orlando-vazquez-career/seele#support--apoyar"
