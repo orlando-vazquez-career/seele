@@ -307,6 +307,166 @@ impl From<seele_core::link::Link> for LinkDto {
     }
 }
 
+// ---------- Relations ----------
+
+#[derive(Debug, Deserialize)]
+pub struct RelationCreateRequest {
+    pub sync_id: String,
+    pub source_id: String,
+    pub target_id: String,
+    /// `"supersedes"` | `"conflicts_with"` | `"scoped"` | `"related"` |
+    /// `"compatible"` | `"not_conflict"`.
+    pub relation: String,
+    #[serde(default)]
+    pub reason: Option<String>,
+    #[serde(default)]
+    pub evidence: Option<String>,
+    #[serde(default)]
+    pub confidence: Option<f64>,
+    #[serde(default)]
+    pub marked_by_actor: Option<String>,
+    #[serde(default)]
+    pub marked_by_kind: Option<String>,
+    #[serde(default)]
+    pub marked_by_model: Option<String>,
+    #[serde(default)]
+    pub session_id: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+pub struct RelationListQuery {
+    #[serde(default)]
+    pub source_id: Option<String>,
+    #[serde(default)]
+    pub target_id: Option<String>,
+    #[serde(default)]
+    pub relation: Option<String>,
+    /// `"pending"` | `"judged"` | `"orphaned"` | `"ignored"`.
+    #[serde(default)]
+    pub status: Option<String>,
+    #[serde(default)]
+    pub limit: Option<u32>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct JudgeRequest {
+    /// `"pending"` | `"judged"` | `"orphaned"` | `"ignored"`.
+    pub status: String,
+    #[serde(default)]
+    pub reason: Option<String>,
+    #[serde(default)]
+    pub evidence: Option<String>,
+    #[serde(default)]
+    pub confidence: Option<f64>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RelationDto {
+    pub id: String,
+    pub sync_id: String,
+    pub source_id: String,
+    pub target_id: String,
+    pub relation: &'static str,
+    pub judgment_status: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub evidence: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub confidence: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub marked_by_actor: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub marked_by_kind: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub marked_by_model: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<String>,
+    pub created_at: i64,
+}
+
+impl From<seele_core::relation::MemoryRelation> for RelationDto {
+    fn from(r: seele_core::relation::MemoryRelation) -> Self {
+        Self {
+            id: r.id.to_string(),
+            sync_id: r.sync_id,
+            source_id: r.source_id.to_string(),
+            target_id: r.target_id.to_string(),
+            relation: r.relation.as_str(),
+            judgment_status: r.judgment_status.as_str(),
+            reason: r.reason,
+            evidence: r.evidence,
+            confidence: r.confidence,
+            marked_by_actor: r.marked_by_actor,
+            marked_by_kind: r.marked_by_kind,
+            marked_by_model: r.marked_by_model,
+            session_id: r.session_id.map(|s| s.to_string()),
+            created_at: r.created_at.timestamp_millis(),
+        }
+    }
+}
+
+pub fn parse_relation_kind(s: &str) -> Result<seele_core::relation::RelationKind, crate::ApiError> {
+    seele_core::relation::RelationKind::from_str_strict(s).ok_or_else(|| {
+        crate::ApiError::BadRequest(format!(
+            "invalid relation '{s}' (expected supersedes | conflicts_with | scoped | related | compatible | not_conflict)"
+        ))
+    })
+}
+
+pub fn parse_judgment_status(
+    s: &str,
+) -> Result<seele_core::relation::JudgmentStatus, crate::ApiError> {
+    seele_core::relation::JudgmentStatus::from_str_strict(s).ok_or_else(|| {
+        crate::ApiError::BadRequest(format!(
+            "invalid judgment status '{s}' (expected pending | judged | orphaned | ignored)"
+        ))
+    })
+}
+
+// ---------- Stats + embedder ----------
+
+#[derive(Debug, Serialize)]
+pub struct StatsResponse {
+    pub observations: ObservationStats,
+    pub sessions: SessionStats,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ObservationStats {
+    pub active: u64,
+    pub deleted: u64,
+    pub projects: u64,
+    pub by_type: Vec<CountBucket>,
+    pub by_scope: Vec<CountBucket>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SessionStats {
+    pub total: u64,
+    pub by_status: Vec<CountBucket>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CountBucket {
+    pub key: String,
+    pub count: u64,
+}
+
+impl From<(String, u64)> for CountBucket {
+    fn from((key, count): (String, u64)) -> Self {
+        Self { key, count }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct EmbedderInfo {
+    pub model_id: String,
+    pub dim: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expected_sha256: Option<String>,
+}
+
 // ---------- Helpers ----------
 
 /// Helper to parse a `String` id from a DTO into a `SeeleId` with a

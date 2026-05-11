@@ -85,6 +85,14 @@ impl Server {
             .route("/sessions/{id}/abort", put(handlers::abort_session))
             .route("/links", post(handlers::create_link))
             .route("/links/{id}", delete(handlers::delete_link))
+            .route(
+                "/relations",
+                post(handlers::create_relation).get(handlers::list_relations),
+            )
+            .route("/relations/{id}/judge", put(handlers::judge_relation))
+            .route("/conflicts", get(handlers::list_pending_conflicts))
+            .route("/stats", get(handlers::get_stats))
+            .route("/embedder", get(handlers::get_embedder_info))
             .with_state(state)
             .layer(TraceLayer::new_for_http())
             .layer(cors)

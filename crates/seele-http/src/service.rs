@@ -18,11 +18,16 @@ use seele_storage::{
 };
 
 use crate::dto::{
-    parse_id, parse_metadata, parse_scope, parse_session_status, parse_type, LinkCreateRequest,
-    LinkDto, ListRequest, ObservationDto, SaveRequest, SaveResponse, SearchHitDto, SearchRequest,
-    SearchResponse, SessionDto, SessionEndRequest, SessionListQuery, SessionStartRequest,
+    parse_id, parse_judgment_status, parse_metadata, parse_relation_kind, parse_scope,
+    parse_session_status, parse_type, CountBucket, EmbedderInfo, JudgeRequest, LinkCreateRequest,
+    LinkDto, ListRequest, ObservationDto, ObservationStats, RelationCreateRequest, RelationDto,
+    RelationListQuery, SaveRequest, SaveResponse, SearchHitDto, SearchRequest, SearchResponse,
+    SessionDto, SessionEndRequest, SessionListQuery, SessionStartRequest, SessionStats,
+    StatsResponse,
 };
 use crate::error::{ApiError, Result};
+use seele_core::relation::{JudgmentStatus, RelationKind};
+use seele_storage::{JudgmentInput, RelationInput, RelationQuery};
 
 #[derive(Clone)]
 pub struct SeeleService {
@@ -262,6 +267,134 @@ impl SeeleService {
     pub fn delete_link(&self, id: SeeleId) -> Result<()> {
         self.links.delete(id)?;
         Ok(())
+    }
+
+    // -------- Relations --------
+
+    pub fn create_relation(&self, req: RelationCreateRequest) -> Result<RelationDto> {
+        if req.sync_id.trim().is_empty() {
+            return Err(ApiError::BadRequest("sync_id must not be empty".into()));
+        }
+        let source_id = parse_id(&req.source_id, "source_id")?;
+        let target_id = parse_id(&req.target_id, "target_id")?;
+        if source_id == target_id {
+            return Err(ApiError::BadRequest(
+                "source_id and target_id must differ".into(),
+            ));
+        }
+        let relation: RelationKind = parse_relation_kind(&req.relation)?;
+        let session_id = req
+            .session_id
+            .as_deref()
+            .map(|s| parse_id(s, "session_id"))
+            .transpose()?;
+        let rel = self.relations.create(RelationInput {
+            sync_id: req.sync_id,
+            source_id,
+            target_id,
+            relation,
+            reason: req.reason,
+            evidence: req.evidence,
+            confidence: req.confidence,
+            marked_by_actor: req.marked_by_actor,
+            marked_by_kind: req.marked_by_kind,
+            marked_by_model: req.marked_by_model,
+            session_id,
+        })?;
+        Ok(RelationDto::from(rel))
+    }
+
+    pub fn list_relations(&self, q: RelationListQuery) -> Result<Vec<RelationDto>> {
+        let source_id = q
+            .source_id
+            .as_deref()
+            .map(|s| parse_id(s, "source_id"))
+            .transpose()?;
+        let target_id = q
+            .target_id
+            .as_deref()
+            .map(|s| parse_id(s, "target_id"))
+            .transpose()?;
+        let relation = q.relation.as_deref().map(parse_relation_kind).transpose()?;
+        let status = q.status.as_deref().map(parse_judgment_status).transpose()?;
+        let query = RelationQuery {
+            source_id,
+            target_id,
+            relation,
+            status,
+            limit: q.limit,
+        };
+        let rels = self.relations.list(query)?;
+        Ok(rels.into_iter().map(RelationDto::from).collect())
+    }
+
+    pub fn judge_relation(&self, id: SeeleId, req: JudgeRequest) -> Result<()> {
+        let status: JudgmentStatus = parse_judgment_status(&req.status)?;
+        self.relations.judge(
+            id,
+            JudgmentInput {
+                status,
+                reason: req.reason,
+                evidence: req.evidence,
+                confidence: req.confidence,
+            },
+        )?;
+        Ok(())
+    }
+
+    /// List conflicts still awaiting judgment. Convenience over
+    /// `list_relations` with `relation=conflicts_with&status=pending`.
+    pub fn list_pending_conflicts(&self, limit: Option<u32>) -> Result<Vec<RelationDto>> {
+        let rels = self.relations.list(RelationQuery {
+            relation: Some(RelationKind::ConflictsWith),
+            status: Some(JudgmentStatus::Pending),
+            limit,
+            ..Default::default()
+        })?;
+        Ok(rels.into_iter().map(RelationDto::from).collect())
+    }
+
+    // -------- Stats + embedder --------
+
+    pub fn stats(&self) -> Result<StatsResponse> {
+        let obs = ObservationStats {
+            active: self.observations.count_active()?,
+            deleted: self.observations.count_deleted()?,
+            projects: self.observations.count_projects()?,
+            by_type: self
+                .observations
+                .count_by_type()?
+                .into_iter()
+                .map(CountBucket::from)
+                .collect(),
+            by_scope: self
+                .observations
+                .count_by_scope()?
+                .into_iter()
+                .map(CountBucket::from)
+                .collect(),
+        };
+        let ses = SessionStats {
+            total: self.sessions.count_total()?,
+            by_status: self
+                .sessions
+                .count_by_status()?
+                .into_iter()
+                .map(CountBucket::from)
+                .collect(),
+        };
+        Ok(StatsResponse {
+            observations: obs,
+            sessions: ses,
+        })
+    }
+
+    pub fn embedder_info(&self) -> EmbedderInfo {
+        EmbedderInfo {
+            model_id: self.embedder.model_id().to_string(),
+            dim: self.embedder.dim(),
+            expected_sha256: self.embedder.expected_sha256().map(str::to_string),
+        }
     }
 }
 

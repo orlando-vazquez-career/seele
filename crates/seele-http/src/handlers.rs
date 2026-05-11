@@ -10,12 +10,15 @@ use axum::http::StatusCode;
 use axum::Json;
 
 use crate::dto::{
-    parse_id, LinkCreateRequest, LinkDto, ListRequest, ObservationDto, SaveRequest, SaveResponse,
+    parse_id, EmbedderInfo, JudgeRequest, LinkCreateRequest, LinkDto, ListRequest, ObservationDto,
+    RelationCreateRequest, RelationDto, RelationListQuery, SaveRequest, SaveResponse,
     SearchRequest, SearchResponse, SessionDto, SessionEndRequest, SessionListQuery,
-    SessionStartRequest,
+    SessionStartRequest, StatsResponse,
 };
 use crate::error::Result;
 use crate::service::{enforce_search_query_or_filter, SeeleService};
+
+use serde::Deserialize;
 
 pub async fn save_memory(
     State(svc): State<Arc<SeeleService>>,
@@ -141,4 +144,53 @@ pub async fn delete_link(
     let parsed = parse_id(&id, "id")?;
     svc.delete_link(parsed)?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+// -------- Relations --------
+
+pub async fn create_relation(
+    State(svc): State<Arc<SeeleService>>,
+    Json(req): Json<RelationCreateRequest>,
+) -> Result<Json<RelationDto>> {
+    Ok(Json(svc.create_relation(req)?))
+}
+
+pub async fn list_relations(
+    State(svc): State<Arc<SeeleService>>,
+    Query(q): Query<RelationListQuery>,
+) -> Result<Json<Vec<RelationDto>>> {
+    Ok(Json(svc.list_relations(q)?))
+}
+
+pub async fn judge_relation(
+    State(svc): State<Arc<SeeleService>>,
+    Path(id): Path<String>,
+    Json(req): Json<JudgeRequest>,
+) -> Result<StatusCode> {
+    let parsed = parse_id(&id, "id")?;
+    svc.judge_relation(parsed, req)?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+#[derive(Debug, Deserialize, Default)]
+pub struct ConflictsQuery {
+    #[serde(default)]
+    pub limit: Option<u32>,
+}
+
+pub async fn list_pending_conflicts(
+    State(svc): State<Arc<SeeleService>>,
+    Query(q): Query<ConflictsQuery>,
+) -> Result<Json<Vec<RelationDto>>> {
+    Ok(Json(svc.list_pending_conflicts(q.limit)?))
+}
+
+// -------- Stats + embedder --------
+
+pub async fn get_stats(State(svc): State<Arc<SeeleService>>) -> Result<Json<StatsResponse>> {
+    Ok(Json(svc.stats()?))
+}
+
+pub async fn get_embedder_info(State(svc): State<Arc<SeeleService>>) -> Json<EmbedderInfo> {
+    Json(svc.embedder_info())
 }

@@ -288,6 +288,75 @@ impl ObservationStore {
         )?;
         Ok(())
     }
+
+    /// Number of active (non-soft-deleted) observations.
+    pub fn count_active(&self) -> Result<u64> {
+        let conn = self.pool.get()?;
+        let n: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM observations WHERE deleted_at IS NULL",
+            [],
+            |r| r.get(0),
+        )?;
+        Ok(n.max(0) as u64)
+    }
+
+    /// Number of soft-deleted observations (deleted_at IS NOT NULL).
+    pub fn count_deleted(&self) -> Result<u64> {
+        let conn = self.pool.get()?;
+        let n: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM observations WHERE deleted_at IS NOT NULL",
+            [],
+            |r| r.get(0),
+        )?;
+        Ok(n.max(0) as u64)
+    }
+
+    /// Breakdown of active observations by `kind` (`type` column).
+    /// Returns rows as `(kind, count)` pairs sorted by count DESC.
+    pub fn count_by_type(&self) -> Result<Vec<(String, u64)>> {
+        let conn = self.pool.get()?;
+        let mut stmt = conn.prepare(
+            "SELECT type, COUNT(*) AS n FROM observations \
+             WHERE deleted_at IS NULL GROUP BY type ORDER BY n DESC, type ASC",
+        )?;
+        let mut rows = stmt.query([])?;
+        let mut out = Vec::new();
+        while let Some(row) = rows.next()? {
+            let t: String = row.get(0)?;
+            let n: i64 = row.get(1)?;
+            out.push((t, n.max(0) as u64));
+        }
+        Ok(out)
+    }
+
+    /// Breakdown of active observations by `scope`.
+    pub fn count_by_scope(&self) -> Result<Vec<(String, u64)>> {
+        let conn = self.pool.get()?;
+        let mut stmt = conn.prepare(
+            "SELECT scope, COUNT(*) AS n FROM observations \
+             WHERE deleted_at IS NULL GROUP BY scope ORDER BY n DESC, scope ASC",
+        )?;
+        let mut rows = stmt.query([])?;
+        let mut out = Vec::new();
+        while let Some(row) = rows.next()? {
+            let s: String = row.get(0)?;
+            let n: i64 = row.get(1)?;
+            out.push((s, n.max(0) as u64));
+        }
+        Ok(out)
+    }
+
+    /// Count of distinct non-null projects across active observations.
+    pub fn count_projects(&self) -> Result<u64> {
+        let conn = self.pool.get()?;
+        let n: i64 = conn.query_row(
+            "SELECT COUNT(DISTINCT project) FROM observations \
+             WHERE deleted_at IS NULL AND project IS NOT NULL",
+            [],
+            |r| r.get(0),
+        )?;
+        Ok(n.max(0) as u64)
+    }
 }
 
 fn save_in_tx(tx: &Transaction<'_>, input: SaveInput) -> Result<SaveOutcome> {

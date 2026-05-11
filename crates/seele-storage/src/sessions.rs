@@ -138,6 +138,30 @@ impl SessionStore {
         }
         Ok(out)
     }
+
+    /// Total number of sessions across all statuses.
+    pub fn count_total(&self) -> Result<u64> {
+        let conn = self.pool.get()?;
+        let n: i64 = conn.query_row("SELECT COUNT(*) FROM sessions", [], |r| r.get(0))?;
+        Ok(n.max(0) as u64)
+    }
+
+    /// Breakdown by `status` (active, ended, aborted). Sorted by count DESC.
+    pub fn count_by_status(&self) -> Result<Vec<(String, u64)>> {
+        let conn = self.pool.get()?;
+        let mut stmt = conn.prepare(
+            "SELECT status, COUNT(*) AS n FROM sessions \
+             GROUP BY status ORDER BY n DESC, status ASC",
+        )?;
+        let mut rows = stmt.query([])?;
+        let mut out = Vec::new();
+        while let Some(row) = rows.next()? {
+            let s: String = row.get(0)?;
+            let n: i64 = row.get(1)?;
+            out.push((s, n.max(0) as u64));
+        }
+        Ok(out)
+    }
 }
 
 fn row_to_session(row: &Row<'_>) -> rusqlite::Result<rusqlite::Result<Session>> {
