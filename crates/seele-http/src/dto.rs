@@ -6,13 +6,14 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use utoipa::ToSchema;
 
 use seele_core::id::SeeleId;
 use seele_core::memory::{Observation, ObservationType, Scope};
 use seele_core::metadata::Metadata;
 use seele_search::{AnnotationKind, SearchHit};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct SaveRequest {
     pub title: String,
     pub content: String,
@@ -40,7 +41,7 @@ fn default_type() -> String {
     "memory".to_string()
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct SaveResponse {
     pub id: String,
     /// `"created"` | `"upserted_topic"` | `"duplicate_merged"`.
@@ -51,7 +52,7 @@ pub struct SaveResponse {
     pub duplicate_count: Option<u32>,
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize, Default, ToSchema)]
 pub struct SearchRequest {
     #[serde(default)]
     pub query: String,
@@ -73,13 +74,13 @@ pub struct SearchRequest {
     pub max_vec_distance: Option<f64>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct SearchResponse {
     pub hits: Vec<SearchHitDto>,
     pub count: usize,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct SearchHitDto {
     pub id: String,
     pub title: String,
@@ -97,7 +98,7 @@ pub struct SearchHitDto {
     pub annotations: Vec<AnnotationDto>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct AnnotationDto {
     pub kind: &'static str,
     pub other_id: String,
@@ -142,7 +143,7 @@ impl From<&SearchHit> for SearchHitDto {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ObservationDto {
     pub id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -190,7 +191,7 @@ impl From<Observation> for ObservationDto {
     }
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize, Default, ToSchema)]
 pub struct ListRequest {
     #[serde(default)]
     pub project: Option<String>,
@@ -210,14 +211,14 @@ pub struct ListRequest {
 
 // ---------- Sessions ----------
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct SessionStartRequest {
     pub project: String,
     #[serde(default)]
     pub directory: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize, Default, ToSchema)]
 pub struct SessionListQuery {
     #[serde(default)]
     pub project: Option<String>,
@@ -228,13 +229,13 @@ pub struct SessionListQuery {
     pub limit: Option<u32>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct SessionEndRequest {
     #[serde(default)]
     pub summary: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct SessionDto {
     pub id: String,
     pub project: String,
@@ -275,7 +276,7 @@ pub fn parse_session_status(
 
 // ---------- Links ----------
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct LinkCreateRequest {
     pub from_id: String,
     pub to_id: String,
@@ -284,7 +285,7 @@ pub struct LinkCreateRequest {
     pub metadata: Value,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct LinkDto {
     pub id: String,
     pub from_id: String,
@@ -309,7 +310,7 @@ impl From<seele_core::link::Link> for LinkDto {
 
 // ---------- Relations ----------
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct RelationCreateRequest {
     pub sync_id: String,
     pub source_id: String,
@@ -333,7 +334,7 @@ pub struct RelationCreateRequest {
     pub session_id: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize, Default, ToSchema)]
 pub struct RelationListQuery {
     #[serde(default)]
     pub source_id: Option<String>,
@@ -348,7 +349,7 @@ pub struct RelationListQuery {
     pub limit: Option<u32>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct JudgeRequest {
     /// `"pending"` | `"judged"` | `"orphaned"` | `"ignored"`.
     pub status: String,
@@ -360,7 +361,7 @@ pub struct JudgeRequest {
     pub confidence: Option<f64>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct RelationDto {
     pub id: String,
     pub sync_id: String,
@@ -426,13 +427,13 @@ pub fn parse_judgment_status(
 
 // ---------- Stats + embedder ----------
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct StatsResponse {
     pub observations: ObservationStats,
     pub sessions: SessionStats,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ObservationStats {
     pub active: u64,
     pub deleted: u64,
@@ -441,13 +442,13 @@ pub struct ObservationStats {
     pub by_scope: Vec<CountBucket>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct SessionStats {
     pub total: u64,
     pub by_status: Vec<CountBucket>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct CountBucket {
     pub key: String,
     pub count: u64,
@@ -459,7 +460,7 @@ impl From<(String, u64)> for CountBucket {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct EmbedderInfo {
     pub model_id: String,
     pub dim: usize,

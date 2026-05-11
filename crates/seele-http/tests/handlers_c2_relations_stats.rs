@@ -21,6 +21,7 @@ async fn spawn_test_server() -> (TempDir, String) {
             addr,
             cors_origins: vec![],
             auth_bearer: None,
+            legacy_engram_paths: false,
         },
     )
     .router();

@@ -7,6 +7,7 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+use axum::middleware;
 use axum::routing::{delete, get, post, put};
 use axum::{Json, Router};
 use serde_json::json;
@@ -14,7 +15,9 @@ use tower_http::compression::CompressionLayer;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
+use crate::auth::require_bearer;
 use crate::handlers;
+use crate::openapi;
 use crate::service::SeeleService;
 
 /// Shared state every handler sees via `axum::extract::State<AppState>`.
@@ -24,9 +27,12 @@ pub type AppState = Arc<SeeleService>;
 pub struct ServerConfig {
     pub addr: SocketAddr,
     pub cors_origins: Vec<String>,
-    /// When set, every route except `/health` and `/version` requires a
-    /// `Authorization: Bearer <token>` header. Wired in block D.
+    /// When set, every route except `/health`, `/version`, `/docs/*`,
+    /// `/openapi.json` requires `Authorization: Bearer <token>`.
     pub auth_bearer: Option<String>,
+    /// Expose ENGRAM-compatible aliases (`POST /save`, `GET /show/{id}`)
+    /// alongside the canonical SEELE routes. See ADR-13.
+    pub legacy_engram_paths: bool,
 }
 
 impl ServerConfig {
@@ -35,6 +41,7 @@ impl ServerConfig {
             addr: SocketAddr::from(([127, 0, 0, 1], port)),
             cors_origins: Vec::new(),
             auth_bearer: None,
+            legacy_engram_paths: false,
         }
     }
 }
@@ -62,9 +69,10 @@ impl Server {
             CorsLayer::new().allow_origin(Any)
         };
 
-        Router::new()
-            .route("/health", get(health))
-            .route("/version", get(version))
+        // Routes that require auth (when enabled). Built first so the
+        // auth middleware wraps only these; `/health`, `/version`, docs
+        // stay public.
+        let mut protected = Router::new()
             .route(
                 "/memories",
                 post(handlers::save_memory).get(handlers::list_memories),
@@ -92,8 +100,33 @@ impl Server {
             .route("/relations/{id}/judge", put(handlers::judge_relation))
             .route("/conflicts", get(handlers::list_pending_conflicts))
             .route("/stats", get(handlers::get_stats))
-            .route("/embedder", get(handlers::get_embedder_info))
-            .with_state(state)
+            .route("/embedder", get(handlers::get_embedder_info));
+
+        if self.config.legacy_engram_paths {
+            // ADR-13: ENGRAM-compatible aliases. Same handlers, alternate
+            // paths. New SEELE endpoints (sessions, relations, etc.) are
+            // NOT exposed under legacy paths — they don't exist in ENGRAM.
+            protected = protected
+                .route("/save", post(handlers::save_memory))
+                .route("/show/{id}", get(handlers::get_memory));
+        }
+
+        let protected = protected.with_state(state);
+
+        let protected = if let Some(token) = self.config.auth_bearer.clone() {
+            protected.layer(middleware::from_fn(move |req, next| {
+                let token = token.clone();
+                async move { require_bearer(token, req, next).await }
+            }))
+        } else {
+            protected
+        };
+
+        Router::new()
+            .route("/health", get(health))
+            .route("/version", get(version))
+            .merge(protected)
+            .merge(openapi::routes())
             .layer(TraceLayer::new_for_http())
             .layer(cors)
             .layer(CompressionLayer::new())
