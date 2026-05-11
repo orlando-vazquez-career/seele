@@ -2,14 +2,17 @@
 # scripts/check-no-stele-residual.sh
 #
 # Static check: ningún archivo del repo debe contener referencias a 'stele'
-# (lowercase) o 'STELE' (uppercase) excepto los esperados:
-#   - genesis/plans/estrategia/03-naming-options.md (contexto histórico de naming)
-#   - este script
-#   - changelog si lo agregamos en el futuro
+# (lowercase) o 'STELE' (uppercase) excepto los esperados (allowlist).
 #
 # Cierra observación [NIT] de Cloven 2026-05-10:
 #   "asegurarse que en sprint-01 ni un solo archivo Rust generado tenga
 #    `stele` en algún import o env var".
+#
+# El allowlist es por path relativo (al root del repo), no por basename —
+# se sincroniza con el script PowerShell hermano. El bug previo de
+# filtrar por basename via `--exclude=$(basename ...)` quedó cerrado en
+# Sprint-04 post-cierre (2026-05-11) cuando el job CI pwsh detectó
+# residuos legítimos que el bash silenciaba por accidente.
 #
 # Uso:
 #   bash scripts/check-no-stele-residual.sh
@@ -23,40 +26,60 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-ALLOWLIST=(
+# Exact relative paths. Must mirror $allowlistFiles in the .ps1 sibling.
+ALLOWLIST_FILES=(
   "genesis/plans/estrategia/03-naming-options.md"
   "genesis/plans/tactica/00-INDEX.md"
-  "genesis/plans/executed/tactica/sprint-01/00-INDEX.md"
-  "genesis/plans/executed/tactica/sprint-01/01-bloque-A-workspace-skeleton.md"
-  "genesis/plans/executed/tactica/sprint-01/04-bloque-D-tests-integration.md"
   ".github/workflows/ci.yml"
   "scripts/check-no-stele-residual.sh"
   "scripts/check-no-stele-residual.ps1"
   "CHANGELOG.md"
   "CLAUDE.md"
-  "docs/aegis/devlogs/"
+  "docs/INDEX.md"
 )
 
-# Build grep --exclude args
-EXCLUDES=()
-for path in "${ALLOWLIST[@]}"; do
-  EXCLUDES+=(--exclude="$(basename "$path")")
-done
+# Directory prefixes (any file under these is allowlisted). Must mirror
+# $allowlistDirs in the .ps1 sibling.
+ALLOWLIST_DIRS=(
+  "docs/aegis/devlogs/"
+  "genesis/plans/executed/tactica/"
+)
 
-# Search for STELE / stele excluyendo allowlist files
-MATCHES=$(grep -rn -E '\b(STELE|stele)\b' \
+is_allowlisted() {
+  local rel="$1"
+  for f in "${ALLOWLIST_FILES[@]}"; do
+    if [ "$rel" = "$f" ]; then
+      return 0
+    fi
+  done
+  for d in "${ALLOWLIST_DIRS[@]}"; do
+    case "$rel" in
+      "$d"*) return 0 ;;
+    esac
+  done
+  return 1
+}
+
+violations=""
+while IFS=: read -r path lineno content; do
+  rel="${path#./}"
+  if is_allowlisted "$rel"; then
+    continue
+  fi
+  violations+="${rel}:${lineno}: ${content}"$'\n'
+done < <(grep -rn -E '\b(STELE|stele)\b' \
   --include='*.md' --include='*.rs' --include='*.toml' --include='*.yaml' \
   --include='*.yml' --include='*.json' --include='*.sh' --include='*.ps1' \
   --exclude-dir=target --exclude-dir=.git --exclude-dir=node_modules \
-  "${EXCLUDES[@]}" \
-  . 2>/dev/null | grep -v -F -f <(printf '%s\n' "${ALLOWLIST[@]}") || true)
+  . 2>/dev/null || true)
 
-if [ -n "$MATCHES" ]; then
+if [ -n "$violations" ]; then
   echo "ERROR: Found STELE/stele residuals outside allowlist:"
-  echo "$MATCHES"
+  printf '%s' "$violations"
   echo ""
   echo "If a new file legitimately needs 'stele' (e.g., new historical doc),"
-  echo "add it to the ALLOWLIST array in this script and re-run."
+  echo "add it to ALLOWLIST_FILES (exact path) or ALLOWLIST_DIRS (prefix)"
+  echo "and re-run."
   exit 1
 fi
 
