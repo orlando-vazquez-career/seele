@@ -51,6 +51,10 @@ ALLOWLIST_FILES=(
 ALLOWLIST_DIRS=(
   "docs/aegis/devlogs/"
   "genesis/plans/executed/tactica/"
+  # In-flight sprint plans (sprint-NN/) live here until their cierre
+  # moves them to `executed/`. They legitimately mention the legacy
+  # name when describing CI/static-check coverage.
+  "genesis/plans/tactica/"
 )
 
 is_allowlisted() {

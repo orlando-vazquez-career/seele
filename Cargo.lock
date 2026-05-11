@@ -2695,6 +2695,7 @@ dependencies = [
  "chrono",
  "flate2",
  "hex",
+ "proptest",
  "r2d2",
  "rusqlite",
  "seele-core",

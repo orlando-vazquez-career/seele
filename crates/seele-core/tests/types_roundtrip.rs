@@ -125,6 +125,12 @@ proptest! {
     }
 
     #[test]
+    fn ulid_to_i64_is_deterministic(_seed: u64) {
+        let id = SeeleId::new();
+        prop_assert_eq!(id.as_i64(), id.as_i64());
+    }
+
+    #[test]
     fn observation_type_relaxed_known_strings(s in "(decision|architecture|bugfix|pattern|config|discovery|learning|memory|skill|advisor_output|review|verdict)") {
         let parsed = ObservationType::from_str_relaxed(&s);
         prop_assert_eq!(parsed.as_str(), s);
@@ -143,5 +149,30 @@ proptest! {
             ObservationType::Other(stored) => prop_assert_eq!(stored, s),
             _ => prop_assert!(false, "expected Other variant"),
         }
+    }
+
+    #[test]
+    fn observation_type_relaxed_never_panics(s in "[\\x20-\\x7e]{0,40}") {
+        // Pure no-panic property — the relaxed parser must accept any
+        // ASCII printable input and produce a value, never panic.
+        let _ = ObservationType::from_str_relaxed(&s);
+    }
+
+    #[test]
+    fn metadata_serde_roundtrip(
+        key in "[a-z][a-z0-9_]{1,12}",
+        s_val in "[a-zA-Z0-9 _-]{0,40}",
+        b_val in any::<bool>(),
+        n_val in any::<i32>(),
+    ) {
+        let mut m = Metadata::new();
+        m.set(&key, Value::String(s_val.clone()));
+        m.set("flag", Value::Bool(b_val));
+        m.set("count", serde_json::json!(n_val));
+        let json = serde_json::to_string(&m).unwrap();
+        let back: Metadata = serde_json::from_str(&json).unwrap();
+        prop_assert_eq!(back.get(&key).and_then(|v| v.as_str()), Some(s_val.as_str()));
+        prop_assert_eq!(back.get("flag").and_then(|v| v.as_bool()), Some(b_val));
+        prop_assert_eq!(back.get("count").and_then(|v| v.as_i64()), Some(n_val as i64));
     }
 }

@@ -30,10 +30,12 @@ $allowlistFiles = @(
 
 # Directory prefixes (any file under these is allowlisted). Covers
 # historical docs that legitimately reference the legacy "STELE" name:
-# devlogs, executed sprint plans, etc.
+# devlogs, executed sprint plans, in-flight sprint plans (which move
+# to `executed/` only at cierre).
 $allowlistDirs = @(
     'docs/aegis/devlogs/',
-    'genesis/plans/executed/tactica/'
+    'genesis/plans/executed/tactica/',
+    'genesis/plans/tactica/'
 )
 
 $includeExt = @('*.md', '*.rs', '*.toml', '*.yaml', '*.yml', '*.json', '*.sh', '*.ps1')
