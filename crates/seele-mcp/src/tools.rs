@@ -215,16 +215,23 @@ pub fn build_index(prefix: Option<&str>) -> HashMap<String, Tool> {
     map
 }
 
+/// Per-prefix suffix renames. Keyed by `prefix`, value is a slice of
+/// `(canonical_suffix, alias_suffix)` pairs. ADR-13 introduced `mnema`
+/// with one rename (`search` → `recall`) because ENGRAM used "recall".
+/// Future consumers (Cursor, OpenCode, ...) add a row here, no `if`
+/// chains.
+const RENAMES: &[(&str, &[(&str, &str)])] = &[("mnema", &[("search", "recall")])];
+
 fn translate_name(canonical: &str, prefix: &str) -> String {
     // canonical is always `seele_<suffix>`.
     let suffix = canonical.strip_prefix("seele_").unwrap_or(canonical);
-    // ADR-13: ENGRAM used `recall` for search.
-    let suffix = if prefix == "mnema" && suffix == "search" {
-        "recall"
-    } else {
-        suffix
-    };
-    format!("{prefix}_{suffix}")
+    let renamed = RENAMES
+        .iter()
+        .find(|(p, _)| *p == prefix)
+        .and_then(|(_, pairs)| pairs.iter().find(|(from, _)| *from == suffix))
+        .map(|(_, to)| *to)
+        .unwrap_or(suffix);
+    format!("{prefix}_{renamed}")
 }
 
 // ---------- input_schema helpers ----------

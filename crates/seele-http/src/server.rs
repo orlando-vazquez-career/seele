@@ -133,10 +133,16 @@ impl Server {
     }
 
     /// Bind + serve. Blocks until the server stops.
+    ///
+    /// Writes a single grepeable line to stderr once the listener is up:
+    /// `seele http listening on http://<addr>`. This lets `--port 0`
+    /// callers (tests, scripts) discover the OS-chosen port without
+    /// the listener-then-drop race.
     pub async fn run(self) -> anyhow::Result<()> {
         let app = self.router();
         let listener = tokio::net::TcpListener::bind(&self.config.addr).await?;
         let addr = listener.local_addr()?;
+        eprintln!("seele http listening on http://{addr}");
         tracing::info!(%addr, "seele http listening");
         axum::serve(listener, app).await?;
         Ok(())

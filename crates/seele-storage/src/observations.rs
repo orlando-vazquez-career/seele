@@ -357,6 +357,24 @@ impl ObservationStore {
         )?;
         Ok(n.max(0) as u64)
     }
+
+    /// Distinct non-null project names across active observations,
+    /// alphabetically sorted.
+    pub fn list_projects(&self) -> Result<Vec<String>> {
+        let conn = self.pool.get()?;
+        let mut stmt = conn.prepare(
+            "SELECT DISTINCT project FROM observations \
+             WHERE deleted_at IS NULL AND project IS NOT NULL \
+             ORDER BY project ASC",
+        )?;
+        let mut rows = stmt.query([])?;
+        let mut out = Vec::new();
+        while let Some(row) = rows.next()? {
+            let p: String = row.get(0)?;
+            out.push(p);
+        }
+        Ok(out)
+    }
 }
 
 fn save_in_tx(tx: &Transaction<'_>, input: SaveInput) -> Result<SaveOutcome> {

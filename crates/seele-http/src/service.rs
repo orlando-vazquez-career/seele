@@ -227,21 +227,7 @@ impl SeeleService {
 
     /// Distinct project names across active observations.
     pub fn list_projects(&self) -> Result<Vec<String>> {
-        let conn = self.pool.get().map_err(seele_storage::StorageError::from)?;
-        let mut stmt = conn
-            .prepare(
-                "SELECT DISTINCT project FROM observations \
-                 WHERE deleted_at IS NULL AND project IS NOT NULL \
-                 ORDER BY project ASC",
-            )
-            .map_err(seele_storage::StorageError::from)?;
-        let mut rows = stmt.query([]).map_err(seele_storage::StorageError::from)?;
-        let mut out = Vec::new();
-        while let Some(row) = rows.next().map_err(seele_storage::StorageError::from)? {
-            let p: String = row.get(0).map_err(seele_storage::StorageError::from)?;
-            out.push(p);
-        }
-        Ok(out)
+        Ok(self.observations.list_projects()?)
     }
 
     // -------- Sessions --------

@@ -25,7 +25,10 @@ fn version_prints_seele_and_pkg_version() {
 
 #[test]
 fn help_lists_mcp_and_serve_commands() {
-    let out = Command::new(SEELE_BIN).arg("--help").output().expect("spawn");
+    let out = Command::new(SEELE_BIN)
+        .arg("--help")
+        .output()
+        .expect("spawn");
     assert!(out.status.success());
     let s = String::from_utf8_lossy(&out.stdout);
     assert!(s.contains("mcp"), "stdout: {s}");
@@ -57,12 +60,9 @@ fn mcp_tools_list_returns_19_tools() {
         .spawn()
         .expect("spawn");
     let mut stdin = child.stdin.take().unwrap();
-    writeln!(
-        stdin,
-        "{}",
-        r#"{"jsonrpc":"2.0","id":1,"method":"tools/list"}"#
-    )
-    .unwrap();
+    stdin
+        .write_all(b"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}\n")
+        .unwrap();
     drop(stdin); // signal EOF so server exits after responding
     let stdout = child.stdout.take().unwrap();
     let reader = BufReader::new(stdout);
@@ -93,12 +93,9 @@ fn mcp_tool_prefix_mnema_aliases_recall() {
         .spawn()
         .expect("spawn");
     let mut stdin = child.stdin.take().unwrap();
-    writeln!(
-        stdin,
-        "{}",
-        r#"{"jsonrpc":"2.0","id":2,"method":"tools/list"}"#
-    )
-    .unwrap();
+    stdin
+        .write_all(b"{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}\n")
+        .unwrap();
     drop(stdin);
     let stdout = child.stdout.take().unwrap();
     let line = BufReader::new(stdout)
@@ -125,24 +122,32 @@ fn mcp_tool_prefix_mnema_aliases_recall() {
 fn serve_health_returns_200_over_real_tcp() {
     let td = TempDir::new().unwrap();
     let db_path = td.path().join("seele.db");
-    // Pick a free port via OS, then close it before spawning the server.
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let port = listener.local_addr().unwrap().port();
-    drop(listener);
 
+    // Let the OS pick the port (--port 0) and parse the chosen address
+    // from the server's stderr line. Avoids the bind-then-drop race
+    // where another process could grab the port before the server does.
     let mut child = Command::new(SEELE_BIN)
         .arg("serve")
         .arg("--port")
-        .arg(port.to_string())
+        .arg("0")
         .arg("--db")
         .arg(&db_path)
         .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .stderr(Stdio::piped())
         .spawn()
         .expect("spawn");
 
-    // Wait for the server to come up — poll /health for up to ~5s.
-    let base = format!("http://127.0.0.1:{port}");
+    let stderr = child.stderr.take().unwrap();
+    let mut reader = BufReader::new(stderr);
+    let mut line = String::new();
+    reader.read_line(&mut line).expect("read stderr line");
+    // Expected: "seele http listening on http://127.0.0.1:43217"
+    let base = line
+        .trim()
+        .strip_prefix("seele http listening on ")
+        .map(str::to_string)
+        .unwrap_or_else(|| panic!("unexpected stderr line: {line:?}"));
+
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -160,5 +165,5 @@ fn serve_health_returns_200_over_real_tcp() {
     });
     let _ = child.kill();
     let _ = child.wait();
-    assert!(ok, "server did not become healthy within 5s on port {port}");
+    assert!(ok, "server did not become healthy within 5s at {base}");
 }

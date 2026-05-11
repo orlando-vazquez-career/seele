@@ -28,3 +28,4 @@ anyhow.workspace = true
 [dev-dependencies]
 tempfile.workspace = true
 reqwest.workspace = true
+regex = "1"
