@@ -2445,6 +2445,7 @@ dependencies = [
  "seele-storage",
  "seele-sync",
  "seele-tui",
+ "serde",
  "serde_json",
  "tempfile",
  "tokio",
