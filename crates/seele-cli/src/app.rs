@@ -8,11 +8,16 @@ use std::sync::Arc;
 
 use clap::{Args, Parser, Subcommand};
 
-use seele_embedder::{Embedder, FakeEmbedder};
+use seele_embedder::{Embedder, FakeEmbedder, OnnxEmbedder};
 use seele_http::SeeleService;
 use seele_storage::init_db;
 
 use crate::commands;
+
+/// Env var that forces the FakeEmbedder regardless of CLI flags. Useful
+/// for tests, air-gapped environments, and CI where downloading the ONNX
+/// model on every invocation would be wasteful or impossible.
+const FAKE_EMBEDDER_ENV: &str = "SEELE_FAKE_EMBEDDER";
 
 /// SEELE — local-first memory engine for AI agents.
 #[derive(Parser, Debug)]
@@ -22,12 +27,10 @@ pub struct Cli {
     #[arg(long, global = true)]
     pub db: Option<PathBuf>,
 
-    /// Use the deterministic FakeEmbedder instead of ONNX. Testing only.
-    /// Hidden in v0.1 because FakeEmbedder is the only backend — the
-    /// flag is wired through the dispatch tree but has no effect. It
-    /// activates and surfaces in `--help` once Sprint-05 lands the
-    /// OnnxEmbedder branch.
-    #[arg(long, global = true, hide = true)]
+    /// Force the deterministic FakeEmbedder. Useful for tests, dev
+    /// workflows, and air-gapped environments. Equivalent to setting
+    /// `SEELE_FAKE_EMBEDDER=1` in the environment.
+    #[arg(long, global = true)]
     pub fake_embedder: bool,
 
     /// Output as JSON (default: human-friendly text).
@@ -110,20 +113,66 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
 }
 
 /// Shared service builder. All subcommands that touch the DB go through
-/// this so the FakeEmbedder/OnnxEmbedder switch lives in one place.
+/// this so the embedder choice lives in one place.
 ///
-/// Today only the FakeEmbedder branch ships; the ONNX branch lands in
-/// Sprint-05 (or earlier if needed) and will be the default. The
-/// `--fake-embedder` flag is kept to force-disable ONNX in tests.
+/// Embedder selection priority (first match wins):
+///   1. `--fake-embedder` flag or `SEELE_FAKE_EMBEDDER` env var (non-empty)
+///      → `FakeEmbedder`. Use this for tests, dev, air-gapped envs.
+///   2. `OnnxEmbedder::new()` → ONNX with `all-MiniLM-L6-v2`. Downloads
+///      on first run (~30-90 MB), cached afterwards in
+///      `~/.seele/embedder/` (override with `SEELE_EMBEDDER_DIR`).
+///   3. Fallback to `FakeEmbedder` with a warning on stderr if ONNX init
+///      fails (no network on first run, blocked download, etc). The CLI
+///      keeps working but search quality is degraded — vec0 hits become
+///      hash-deterministic, not semantic.
 pub fn build_service(
     db_override: &Option<PathBuf>,
-    _fake_embedder_flag: bool,
+    fake_embedder_flag: bool,
 ) -> anyhow::Result<SeeleService> {
     let path = db_override.clone().unwrap_or_else(crate::default_db_path);
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }
     let pool = init_db(&path)?;
-    let embedder: Arc<dyn Embedder> = Arc::new(FakeEmbedder);
+    let embedder = pick_embedder(fake_embedder_flag);
     Ok(SeeleService::new(pool, embedder))
+}
+
+/// Resolve the embedder per the selection rules documented on
+/// [`build_service`]. Split out so unit tests can assert flag behavior
+/// without spinning up SQLite.
+fn pick_embedder(fake_flag: bool) -> Arc<dyn Embedder> {
+    if fake_flag || fake_env_set() {
+        return Arc::new(FakeEmbedder);
+    }
+    match OnnxEmbedder::new() {
+        Ok(emb) => Arc::new(emb),
+        Err(e) => {
+            eprintln!(
+                "seele: warning — ONNX embedder unavailable ({e}); falling back \
+                 to FakeEmbedder. Search quality is degraded (hash-based, not \
+                 semantic). Re-run with network access on first call to \
+                 download the model, or set SEELE_FAKE_EMBEDDER=1 to silence \
+                 this message."
+            );
+            Arc::new(FakeEmbedder)
+        }
+    }
+}
+
+fn fake_env_set() -> bool {
+    std::env::var(FAKE_EMBEDDER_ENV)
+        .map(|v| !v.trim().is_empty())
+        .unwrap_or(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pick_embedder_with_flag_returns_fake() {
+        let emb = pick_embedder(true);
+        assert_eq!(emb.model_id(), "seele/fake-embedder");
+    }
 }

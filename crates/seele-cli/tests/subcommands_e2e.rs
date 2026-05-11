@@ -9,7 +9,13 @@ use tempfile::TempDir;
 const SEELE_BIN: &str = env!("CARGO_BIN_EXE_seele");
 
 fn run(args: &[&str]) -> (String, String, std::process::ExitStatus) {
-    let out = Command::new(SEELE_BIN).args(args).output().expect("spawn");
+    // Force FakeEmbedder so tests never try to download the ONNX model
+    // (~90 MB on first run) and stay deterministic in CI.
+    let out = Command::new(SEELE_BIN)
+        .env("SEELE_FAKE_EMBEDDER", "1")
+        .args(args)
+        .output()
+        .expect("spawn");
     (
         String::from_utf8_lossy(&out.stdout).into_owned(),
         String::from_utf8_lossy(&out.stderr).into_owned(),
