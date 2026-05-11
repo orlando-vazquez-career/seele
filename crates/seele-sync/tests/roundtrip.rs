@@ -266,6 +266,176 @@ fn read_chunk_file_rejects_unknown_future_format_version() {
 }
 
 #[test]
+fn import_preserves_source_observation_ids() {
+    // Round-trip: an observation exported on machine A keeps its
+    // original ULID when imported into machine B. Cloven 2026-05-11
+    // [CRITICO]: pre-fix the import path was minting new IDs via the
+    // normal save pipeline, breaking dedup across target_keys.
+    let src_td = TempDir::new().unwrap();
+    let src_pool = init_db(src_td.path().join("src.db")).unwrap();
+    let src_store = ObservationStore::new(src_pool);
+    save_one(&src_store, "preserved", "p");
+    let src_rows = src_store
+        .list(seele_storage::ObservationQuery::default())
+        .unwrap();
+    let src_id = src_rows[0].id;
+
+    let chunks_dir = TempDir::new().unwrap();
+    let exp = export_to_dir(
+        &src_store,
+        chunks_dir.path(),
+        ExportFilter {
+            project: Some("p".to_string()),
+        },
+    )
+    .unwrap();
+
+    let dst_td = TempDir::new().unwrap();
+    let dst_pool = init_db(dst_td.path().join("dst.db")).unwrap();
+    let dst_store = ObservationStore::new(dst_pool.clone());
+    let dst_chunks = ChunkStore::new(dst_pool);
+
+    import_from_file(&dst_store, &dst_chunks, "node-A", &exp.path).unwrap();
+
+    let dst_rows = dst_store
+        .list(seele_storage::ObservationQuery::default())
+        .unwrap();
+    assert_eq!(dst_rows.len(), 1);
+    assert_eq!(
+        dst_rows[0].id, src_id,
+        "source id must ride through the chunk into destination"
+    );
+}
+
+#[test]
+fn re_import_under_different_target_keys_does_not_duplicate() {
+    // Cloven 2026-05-11 [CRITICO]: was minting new IDs each pass, so
+    // a chunk imported under "node-A" then "node-B" landed twice.
+    // With the raw-save path the second import collides on the
+    // preserved ULID and INSERT OR IGNORE keeps the row count at 1.
+    let src_td = TempDir::new().unwrap();
+    let src_pool = init_db(src_td.path().join("src.db")).unwrap();
+    let src_store = ObservationStore::new(src_pool);
+    save_one(&src_store, "one", "p");
+    save_one(&src_store, "two", "p");
+
+    let chunks_dir = TempDir::new().unwrap();
+    let exp = export_to_dir(
+        &src_store,
+        chunks_dir.path(),
+        ExportFilter {
+            project: Some("p".to_string()),
+        },
+    )
+    .unwrap();
+
+    let dst_td = TempDir::new().unwrap();
+    let dst_pool = init_db(dst_td.path().join("dst.db")).unwrap();
+    let dst_store = ObservationStore::new(dst_pool.clone());
+    let dst_chunks = ChunkStore::new(dst_pool);
+
+    let first = import_from_file(&dst_store, &dst_chunks, "node-A", &exp.path).unwrap();
+    assert_eq!(first.observation_count_saved, 2);
+    assert_eq!(first.observation_count_already_present, 0);
+
+    let second = import_from_file(&dst_store, &dst_chunks, "node-B", &exp.path).unwrap();
+    assert_eq!(second.outcome, ImportOutcome::Imported);
+    assert_eq!(second.observation_count_saved, 0);
+    assert_eq!(second.observation_count_already_present, 2);
+
+    let dst_rows = dst_store
+        .list(seele_storage::ObservationQuery::default())
+        .unwrap();
+    assert_eq!(
+        dst_rows.len(),
+        2,
+        "two distinct target_keys importing the same chunk must \
+         leave the destination with exactly one row per source obs"
+    );
+}
+
+#[test]
+fn import_does_not_overwrite_destination_topic_key_collision() {
+    // Cloven 2026-05-11 [CRITICO]: with `save_in_tx` the topic_key
+    // upsert would UPDATE the destination row in place, silently
+    // replacing its title + content + metadata with the chunk's. With
+    // the raw-save path the source row arrives with its own ULID and
+    // — because of `INSERT OR IGNORE` on `id` — the destination row
+    // is left untouched even though both share the same
+    // `(project, scope, topic_key)`.
+    use seele_core::memory::ObservationType;
+    use seele_core::metadata::Metadata;
+    use seele_storage::SaveInput;
+
+    let src_td = TempDir::new().unwrap();
+    let src_pool = init_db(src_td.path().join("src.db")).unwrap();
+    let src_store = ObservationStore::new(src_pool);
+    src_store
+        .save(SaveInput {
+            session_id: None,
+            kind: ObservationType::Decision,
+            title: "FROM_SOURCE".to_string(),
+            content: "source body".to_string(),
+            tool_name: None,
+            project: Some("p".to_string()),
+            scope: seele_core::memory::Scope::Project,
+            topic_key: Some("decision/x".to_string()),
+            metadata: Metadata::new(),
+        })
+        .unwrap();
+
+    let chunks_dir = TempDir::new().unwrap();
+    let exp = export_to_dir(
+        &src_store,
+        chunks_dir.path(),
+        ExportFilter {
+            project: Some("p".to_string()),
+        },
+    )
+    .unwrap();
+
+    // Destination already has a different observation under the same
+    // (project, scope, topic_key).
+    let dst_td = TempDir::new().unwrap();
+    let dst_pool = init_db(dst_td.path().join("dst.db")).unwrap();
+    let dst_store = ObservationStore::new(dst_pool.clone());
+    let dst_chunks = ChunkStore::new(dst_pool);
+    dst_store
+        .save(SaveInput {
+            session_id: None,
+            kind: ObservationType::Decision,
+            title: "ALREADY_IN_DEST".to_string(),
+            content: "dest body".to_string(),
+            tool_name: None,
+            project: Some("p".to_string()),
+            scope: seele_core::memory::Scope::Project,
+            topic_key: Some("decision/x".to_string()),
+            metadata: Metadata::new(),
+        })
+        .unwrap();
+
+    import_from_file(&dst_store, &dst_chunks, "node-A", &exp.path).unwrap();
+
+    let titles: Vec<String> = dst_store
+        .list(seele_storage::ObservationQuery::default())
+        .unwrap()
+        .into_iter()
+        .map(|o| o.title)
+        .collect();
+    assert!(
+        titles.iter().any(|t| t == "ALREADY_IN_DEST"),
+        "destination's own decision/x row must survive the import — \
+         got titles: {titles:?}"
+    );
+    assert!(
+        titles.iter().any(|t| t == "FROM_SOURCE"),
+        "imported row should coexist with the destination's row — \
+         got titles: {titles:?}"
+    );
+    assert_eq!(titles.len(), 2);
+}
+
+#[test]
 fn read_chunk_file_detects_filename_chunk_id_mismatch() {
     let src_td = TempDir::new().unwrap();
     let src_pool = init_db(src_td.path().join("src.db")).unwrap();

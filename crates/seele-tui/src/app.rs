@@ -11,8 +11,6 @@ use seele_http::{
     SeeleService,
 };
 
-use crate::{Result, TuiError};
-
 /// The five top-level panes from ADR-07.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Pane {
@@ -47,6 +45,10 @@ impl Pane {
 
 pub struct AppState {
     pub current: Pane,
+    /// Pane the user was on before opening Detail. `Esc` on Detail
+    /// returns to this pane so a Search → Detail → back trip lands
+    /// back on Search instead of always on Browse.
+    pub prev_pane: Option<Pane>,
     /// Set to `true` on `q` (or `Ctrl-C`) to break the event loop.
     pub should_quit: bool,
     /// Cached stats — refreshed when Home / Stats is opened.
@@ -69,6 +71,7 @@ impl AppState {
     pub fn new() -> Self {
         Self {
             current: Pane::Home,
+            prev_pane: None,
             should_quit: false,
             stats: None,
             browse: Vec::new(),
@@ -119,30 +122,29 @@ impl AppState {
     }
 
     /// Force-refresh everything used by Home (stats, top-of-list
-    /// browse). Cheap enough — both queries are small.
-    pub fn refresh(&mut self, service: &SeeleService) -> Result<()> {
-        self.refresh_stats(service)?;
-        self.refresh_browse(service)?;
-        Ok(())
+    /// browse). Errors are surfaced via `last_error`; nothing the TUI
+    /// loop can recover from is propagated.
+    pub fn refresh(&mut self, service: &SeeleService) {
+        self.refresh_stats(service);
+        self.refresh_browse(service);
     }
 
     /// Refresh only what the active pane displays. Used on pane
     /// switch to keep Home/Stats numbers fresh without re-issuing
     /// the same SQL on every keystroke.
-    pub fn refresh_for_current_pane(&mut self, service: &SeeleService) -> Result<()> {
+    pub fn refresh_for_current_pane(&mut self, service: &SeeleService) {
         match self.current {
             Pane::Home => {
-                self.refresh_stats(service)?;
-                self.refresh_browse(service)?;
+                self.refresh_stats(service);
+                self.refresh_browse(service);
             }
-            Pane::Browse => self.refresh_browse(service)?,
-            Pane::Stats => self.refresh_stats(service)?,
+            Pane::Browse => self.refresh_browse(service),
+            Pane::Stats => self.refresh_stats(service),
             Pane::Search | Pane::Detail => {}
         }
-        Ok(())
     }
 
-    fn refresh_stats(&mut self, service: &SeeleService) -> Result<()> {
+    fn refresh_stats(&mut self, service: &SeeleService) {
         match service.stats() {
             Ok(s) => {
                 self.stats = Some(s);
@@ -152,10 +154,9 @@ impl AppState {
                 self.last_error = Some(format!("stats: {e}"));
             }
         }
-        Ok(())
     }
 
-    fn refresh_browse(&mut self, service: &SeeleService) -> Result<()> {
+    fn refresh_browse(&mut self, service: &SeeleService) {
         let req = ListRequest {
             project: None,
             scope: None,
@@ -175,10 +176,9 @@ impl AppState {
             }
             Err(e) => self.last_error = Some(format!("list: {e}")),
         }
-        Ok(())
     }
 
-    pub fn run_search(&mut self, service: &SeeleService) -> Result<()> {
+    pub fn run_search(&mut self, service: &SeeleService) {
         let req = SearchRequest {
             query: self.search_query.clone(),
             project: None,
@@ -192,7 +192,7 @@ impl AppState {
         };
         if let Err(e) = enforce_search_query_or_filter(&req) {
             self.last_error = Some(format!("search: {e:?}"));
-            return Ok(());
+            return;
         }
         match service.search_observations(req) {
             Ok(resp) => {
@@ -202,35 +202,62 @@ impl AppState {
             }
             Err(e) => self.last_error = Some(format!("search: {e}")),
         }
-        Ok(())
     }
 
-    pub fn open_detail_for_selection(&mut self, service: &SeeleService) -> Result<()> {
-        let id_str = match self.current {
-            Pane::Browse => self.browse.get(self.selected).map(|o| o.id.clone()),
-            Pane::Search => self.search_results.get(self.selected).map(|h| h.id.clone()),
-            _ => None,
+    pub fn open_detail_for_selection(&mut self, service: &SeeleService) {
+        let (origin, id_str) = match self.current {
+            Pane::Browse => (
+                Pane::Browse,
+                self.browse.get(self.selected).map(|o| o.id.clone()),
+            ),
+            Pane::Search => (
+                Pane::Search,
+                self.search_results.get(self.selected).map(|h| h.id.clone()),
+            ),
+            _ => return,
         };
-        let Some(id_str) = id_str else {
-            return Ok(());
+        let Some(id_str) = id_str else { return };
+        // Parse failure is a soft error: a corrupt id in the DB
+        // surfaces in the footer instead of kicking Orlando out of
+        // the TUI. Closes Cloven 2026-05-11 [MEDIO]: was propagated
+        // through apply_action, terminating the event loop.
+        let id: SeeleId = match id_str.parse() {
+            Ok(id) => id,
+            Err(e) => {
+                self.last_error = Some(format!("bad id '{id_str}': {e}"));
+                return;
+            }
         };
-        let id: SeeleId = id_str
-            .parse()
-            .map_err(|e| TuiError::Service(format!("bad id '{id_str}': {e}")))?;
         match service.get_observation(id) {
             Ok(Some(o)) => {
                 self.detail = Some(o);
+                self.prev_pane = Some(origin);
                 self.current = Pane::Detail;
             }
             Ok(None) => self.last_error = Some(format!("observation {id_str} not found")),
             Err(e) => self.last_error = Some(format!("show: {e}")),
         }
-        Ok(())
     }
 
-    pub fn back_to_browse(&mut self) {
+    /// Esc on Detail returns to the pane the user opened it from
+    /// (Browse or Search). Falls back to Browse when no origin was
+    /// recorded.
+    pub fn back(&mut self) {
         if self.current == Pane::Detail {
+            self.current = self.prev_pane.take().unwrap_or(Pane::Browse);
+        }
+    }
+
+    /// Esc on Search: when the query has content, clear it; when the
+    /// query is already empty, exit Search and go to Browse. Gives
+    /// Orlando a deterministic way out of Search without Ctrl-C
+    /// (Cloven 2026-05-11 [MEDIO]).
+    pub fn search_escape(&mut self) {
+        if self.search_query.is_empty() && self.search_results.is_empty() {
             self.current = Pane::Browse;
+        } else {
+            self.search_query.clear();
+            self.search_results.clear();
         }
     }
 }
@@ -314,6 +341,47 @@ mod tests {
         assert_eq!(s.selected, 2);
         s.move_selection(-10);
         assert_eq!(s.selected, 0);
+    }
+
+    #[test]
+    fn search_escape_clears_query_when_non_empty() {
+        // Cloven 2026-05-11 [MEDIO]: first Esc clears, only the
+        // empty-query Esc exits to Browse.
+        let mut s = AppState::new();
+        s.current = Pane::Search;
+        s.search_query = "rate limit".to_string();
+        s.search_escape();
+        assert_eq!(s.current, Pane::Search);
+        assert_eq!(s.search_query, "");
+    }
+
+    #[test]
+    fn search_escape_exits_to_browse_when_empty() {
+        let mut s = AppState::new();
+        s.current = Pane::Search;
+        s.search_escape();
+        assert_eq!(s.current, Pane::Browse);
+    }
+
+    #[test]
+    fn back_from_detail_returns_to_origin_pane() {
+        // Cloven 2026-05-11 [MEDIO]: prev_pane records where Detail
+        // was opened from so a Search → Detail → Esc lands back on
+        // Search, not always on Browse.
+        let mut s = AppState::new();
+        s.prev_pane = Some(Pane::Search);
+        s.current = Pane::Detail;
+        s.back();
+        assert_eq!(s.current, Pane::Search);
+        assert!(s.prev_pane.is_none(), "prev_pane should be consumed");
+    }
+
+    #[test]
+    fn back_falls_back_to_browse_when_no_origin_recorded() {
+        let mut s = AppState::new();
+        s.current = Pane::Detail;
+        s.back();
+        assert_eq!(s.current, Pane::Browse);
     }
 
     #[test]

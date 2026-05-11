@@ -20,7 +20,10 @@ pub enum Action {
     SearchEditAppend(char),
     SearchEditBackspace,
     SearchSubmit,
-    SearchClear,
+    /// Esc in Search: clear query when non-empty, else exit to Browse.
+    /// Smart-back so Orlando is never stuck in Search without
+    /// Ctrl-C (Cloven 2026-05-11 [MEDIO]).
+    SearchEscape,
     OpenDetail,
     Back,
 }
@@ -36,7 +39,8 @@ pub fn handle_key(state: &AppState, key: KeyEvent) -> Option<Action> {
         if let Some(a) = search_key(key) {
             return Some(a);
         }
-        // Fall through for Esc/Enter handled above + other globals.
+        // Search swallows every `Char(_)` already, so falling through
+        // here only matters for unbound non-char keys (e.g. F-keys).
     }
     if let Some(a) = global_key(key) {
         return Some(a);
@@ -45,7 +49,9 @@ pub fn handle_key(state: &AppState, key: KeyEvent) -> Option<Action> {
         Pane::Search => None,
         Pane::Detail => detail_key(key),
         Pane::Browse => list_key(key),
-        Pane::Home | Pane::Stats => simple_key(key),
+        // Home + Stats have no list to navigate; the global digit
+        // hotkeys + `r` refresh + `q` quit cover all useful input.
+        Pane::Home | Pane::Stats => None,
     }
 }
 
@@ -53,12 +59,6 @@ fn global_key(key: KeyEvent) -> Option<Action> {
     match key.code {
         KeyCode::Char('1') => Some(Action::SwitchPane(Pane::Home)),
         KeyCode::Char('2') => Some(Action::SwitchPane(Pane::Browse)),
-        // '3' is reserved for Search pane switch only when not actively
-        // typing inside Search (handled by `search_key` returning None
-        // for chars, then falling through here would loop). Instead,
-        // we route Search input through `search_key` BEFORE this is
-        // reached (see `handle_key`), so '3' here is always a pane
-        // hotkey.
         KeyCode::Char('3') => Some(Action::SwitchPane(Pane::Search)),
         KeyCode::Char('5') => Some(Action::SwitchPane(Pane::Stats)),
         KeyCode::Char('q') => Some(Action::Quit),
@@ -82,15 +82,11 @@ fn list_key(key: KeyEvent) -> Option<Action> {
 fn search_key(key: KeyEvent) -> Option<Action> {
     match key.code {
         KeyCode::Enter => Some(Action::SearchSubmit),
-        KeyCode::Esc => Some(Action::SearchClear),
+        KeyCode::Esc => Some(Action::SearchEscape),
         KeyCode::Backspace => Some(Action::SearchEditBackspace),
         KeyCode::Up => Some(Action::Up),
         KeyCode::Down => Some(Action::Down),
         KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
-            // Typing inside Search must NOT trigger pane hotkeys.
-            // We get here AFTER `global_key` already matched '1'..'5',
-            // which would mis-route digits typed into a query. Block
-            // that here by capturing every printable char first.
             Some(Action::SearchEditAppend(c))
         }
         _ => None,
@@ -100,14 +96,6 @@ fn search_key(key: KeyEvent) -> Option<Action> {
 fn detail_key(key: KeyEvent) -> Option<Action> {
     match key.code {
         KeyCode::Esc | KeyCode::Char('h') | KeyCode::Backspace => Some(Action::Back),
-        _ => None,
-    }
-}
-
-fn simple_key(key: KeyEvent) -> Option<Action> {
-    match key.code {
-        KeyCode::Char('j') | KeyCode::Down => Some(Action::Down),
-        KeyCode::Char('k') | KeyCode::Up => Some(Action::Up),
         _ => None,
     }
 }
@@ -200,21 +188,12 @@ mod tests {
     fn search_pane_consumes_printable_chars() {
         let mut s = AppState::new();
         s.current = Pane::Search;
-        // Letters: appended.
         assert_eq!(handle_key(&s, k('a')), Some(Action::SearchEditAppend('a')));
-        // Digit '2' is a pane hotkey globally BUT in Search it must
-        // go into the query so people can search for "v0.2".
-        // Global handler currently fires first; the test documents
-        // current behavior: digit jumps to pane.
-        //
-        // Adjusted: route Search input first inside handle_key().
-        // See the special-case branch added below in handle_key.
     }
 
     #[test]
     fn search_pane_swallows_digits_too() {
-        // Routing fix: when Search is active, digits must NOT switch
-        // panes — they must go into the query.
+        // Digits typed into a query must NOT switch panes.
         let mut s = AppState::new();
         s.current = Pane::Search;
         assert_eq!(
@@ -232,5 +211,30 @@ mod tests {
             handle_key(&s, special(KeyCode::Enter)),
             Some(Action::SearchSubmit)
         );
+    }
+
+    #[test]
+    fn search_esc_emits_search_escape() {
+        // Cloven 2026-05-11 [MEDIO]: Esc inside Search now routes to
+        // SearchEscape which is smart (empty query → back, else clear).
+        let mut s = AppState::new();
+        s.current = Pane::Search;
+        assert_eq!(
+            handle_key(&s, special(KeyCode::Esc)),
+            Some(Action::SearchEscape)
+        );
+    }
+
+    #[test]
+    fn jk_on_home_or_stats_return_none() {
+        // Cloven 2026-05-11 [NIT]: previously j/k fired a no-op move
+        // because the panes hold no list. The handler now declines.
+        let mut s = AppState::new();
+        s.current = Pane::Home;
+        assert_eq!(handle_key(&s, k('j')), None);
+        assert_eq!(handle_key(&s, k('k')), None);
+        s.current = Pane::Stats;
+        assert_eq!(handle_key(&s, k('j')), None);
+        assert_eq!(handle_key(&s, k('k')), None);
     }
 }

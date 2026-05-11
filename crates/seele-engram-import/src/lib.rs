@@ -160,8 +160,19 @@ impl<'a> EngramImporter<'a> {
             }
         }
 
-        // Pass 2: resolve linked_to references. Use the same transaction
-        // so an error here rolls everything back.
+        // Pass 2: resolve linked_to references. Same transaction so an
+        // error rolls everything back.
+        //
+        // Resolution order for each `to_engram`:
+        //   1. The current import's `id_map` (this chunk's rows).
+        //   2. Treat `to_engram` as a ULID and probe the destination
+        //      `observations` table — covers the case where Orlando
+        //      imports in multiple passes and link targets live in a
+        //      previous pass. Closes Cloven 2026-05-11 [MEDIO].
+        //   3. Anything else → dangling, counted but not fatal. A
+        //      cuid-style id that points at a row whose new ULID
+        //      lives behind `metadata.engram_id` would require a
+        //      JSON scan; deferred to v0.2 if real migrations need it.
         let mut links_created = 0usize;
         let mut links_dangling = 0usize;
         for r in &mapped {
@@ -170,13 +181,19 @@ impl<'a> EngramImporter<'a> {
                 None => continue, // own row failed to map; skip its links
             };
             for to_engram in &r.linked_to {
-                match id_map.get(to_engram) {
+                let to_dest = id_map.get(to_engram).copied().or_else(|| {
+                    to_engram
+                        .parse::<SeeleId>()
+                        .ok()
+                        .filter(|id| observation_exists_in_tx(&tx, id))
+                });
+                match to_dest {
                     Some(to_dest) => {
                         LinkStore::create_in_tx(
                             &tx,
                             LinkInput {
                                 from_id: from_dest,
-                                to_id: *to_dest,
+                                to_id: to_dest,
                                 link_type: "related_to".to_string(),
                                 metadata: Metadata::new(),
                             },
@@ -207,6 +224,15 @@ impl<'a> EngramImporter<'a> {
 }
 
 // -------- internals --------
+
+fn observation_exists_in_tx(tx: &rusqlite::Transaction<'_>, id: &SeeleId) -> bool {
+    tx.query_row(
+        "SELECT 1 FROM observations WHERE id = ?1 LIMIT 1",
+        [id.to_string()],
+        |_| Ok(()),
+    )
+    .is_ok()
+}
 
 fn open_source(path: &Path) -> Result<Connection> {
     Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY).map_err(|e| {

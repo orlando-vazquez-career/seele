@@ -31,4 +31,4 @@ SEELE v0.1.0  [1] Home [2] Browse [3] Search [4] Detail [5] Stats
 │                                                                                                                      │
 │                                                                                                                      │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-[type] query  [enter] run  [esc] clear  [j/k] move  [q] quit
+[type] query  [enter] run  [esc] clear/back  [↑↓] move  [q] quit

@@ -69,7 +69,7 @@ fn render_footer(f: &mut Frame, area: Rect, state: &AppState) {
     let hint = match state.current {
         Pane::Home => "[1-5] panes  [r] refresh  [q] quit",
         Pane::Browse => "[j/k] move  [enter] open  [/] search  [r] refresh  [q] quit",
-        Pane::Search => "[type] query  [enter] run  [esc] clear  [j/k] move  [q] quit",
+        Pane::Search => "[type] query  [enter] run  [esc] clear/back  [↑↓] move  [q] quit",
         Pane::Detail => "[esc/h/⌫] back  [q] quit",
         Pane::Stats => "[r] refresh  [q] quit",
     };

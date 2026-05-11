@@ -157,6 +157,46 @@ fn import_resolves_linked_to_into_links_table() {
 }
 
 #[test]
+fn import_resolves_linked_to_against_rows_from_a_previous_pass() {
+    // Cloven 2026-05-11 [MEDIO]: linked_to targets that already live
+    // in the destination (from a prior import) should resolve, not
+    // count as dangling.
+    let dst_td = TempDir::new().unwrap();
+    let (obs, links) = destination_stores(&dst_td);
+    let importer = EngramImporter::new(&obs, &links);
+
+    // Pass 1: import a single row with a ULID id.
+    let src1 = dst_td.path().join("e1.db");
+    let conn1 = make_engram_db(&src1);
+    let id_target = ulid::Ulid::new().to_string();
+    insert_engram_row(&conn1, &id_target, "target", "{}", 1);
+    drop(conn1);
+    importer.import_from(&src1, false).unwrap();
+
+    // Pass 2: a new row pointing at the target imported above.
+    let src2 = dst_td.path().join("e2.db");
+    let conn2 = make_engram_db(&src2);
+    let id_referrer = ulid::Ulid::new().to_string();
+    insert_engram_row(
+        &conn2,
+        &id_referrer,
+        "referrer",
+        &format!(r#"{{"linked_to": ["{id_target}"]}}"#),
+        2,
+    );
+    drop(conn2);
+
+    let report = importer.import_from(&src2, false).unwrap();
+    assert_eq!(report.rows_inserted, 1);
+    assert_eq!(
+        report.links_created, 1,
+        "link should resolve against destination"
+    );
+    assert_eq!(report.links_dangling, 0);
+    assert_eq!(links.list(LinkQuery::default()).unwrap().len(), 1);
+}
+
+#[test]
 fn import_counts_dangling_links_when_target_missing() {
     let src_td = TempDir::new().unwrap();
     let src_path = src_td.path().join("e.db");

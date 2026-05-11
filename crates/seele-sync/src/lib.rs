@@ -9,7 +9,12 @@
 //!
 //! Import reads the chunk, checks `ChunkStore::was_imported(target_key,
 //! chunk_id)`, skips it if already imported (idempotent per target),
-//! otherwise calls `ObservationStore::save` for each observation.
+//! otherwise calls `ObservationStore::save_raw_in_tx` for each
+//! observation. Using the raw-save path preserves source ULIDs, makes
+//! re-imports across target_keys idempotent via `INSERT OR IGNORE`,
+//! and prevents the legacy `save_in_tx` topic-key upsert from
+//! overwriting destination rows that collide on
+//! `(project, scope, topic_key)`.
 //!
 //! v0.1 ships a single chunk per export. Sprint-05 may add a size-bound
 //! splitter (~1 MB per chunk) if exports grow large enough to matter.
@@ -27,7 +32,7 @@ use sha2::{Digest, Sha256};
 use thiserror::Error;
 
 use seele_core::memory::Observation;
-use seele_storage::{ChunkStore, ObservationQuery, ObservationStore, SaveInput};
+use seele_storage::{ChunkStore, ObservationQuery, ObservationStore, RawSaveInput, RawSaveOutcome};
 
 #[derive(Debug, Error)]
 pub enum SyncError {
@@ -90,7 +95,17 @@ pub struct ImportReport {
     /// If the chunk was already imported under this target, this is
     /// `ImportOutcome::AlreadyImported` and no observations were saved.
     pub outcome: ImportOutcome,
+    /// Rows freshly inserted into the destination. Equals the chunk
+    /// observation count on a clean target; lower when some rows
+    /// already exist under their preserved ULIDs.
     pub observation_count_saved: usize,
+    /// Rows whose `id` was already present in the destination (raw
+    /// `INSERT OR IGNORE` collided). Distinct from
+    /// `observation_count_skipped` which counts the
+    /// `AlreadyImported` chunk-level skip.
+    pub observation_count_already_present: usize,
+    /// Set when the whole chunk was skipped because the
+    /// `(target_key, chunk_id)` pair was already in the ledger.
     pub observation_count_skipped: usize,
 }
 
@@ -233,9 +248,22 @@ pub fn read_chunk_file(path: &Path) -> Result<(String, ChunkPayload)> {
 /// ledger write run inside a single SQLite transaction. A crash
 /// mid-loop rolls the entire chunk back — the destination DB is left
 /// in the pre-import state and the ledger has no mark, so a re-run
-/// reprocesses cleanly. This closes the Cloven-flagged duplication
-/// hazard (2026-05-10) where partial imports without a tx caused
-/// silent row dupes on retry.
+/// reprocesses cleanly.
+///
+/// **Preserves source IDs.** Each observation lands via
+/// `ObservationStore::save_raw_in_tx` which bypasses the privacy
+/// strip + topic-key upsert + dedup window path of the normal write
+/// API. Source ULIDs ride through unchanged, so:
+///
+/// - Two independent machines that hold the same observation produce
+///   chunks that, when imported into a common destination, collapse
+///   on `INSERT OR IGNORE` against the shared id — no duplicates.
+/// - A chunk re-imported under a fresh `target_key` does not
+///   re-mint new ULIDs and does not overwrite a destination
+///   `topic_key` collision (which the legacy `save_in_tx` path
+///   would silently UPDATE, causing data loss).
+///
+/// Closes the Cloven 2026-05-11 [CRITICO] sync save-path finding.
 pub fn import_from_file(
     observations: &ObservationStore,
     chunks: &ChunkStore,
@@ -245,29 +273,29 @@ pub fn import_from_file(
     let (chunk_id, payload) = read_chunk_file(path)?;
 
     // Cheap pre-check: avoid opening a tx if the chunk is already in
-    // the ledger.
+    // the ledger for this target.
     if chunks.was_imported(target_key, &chunk_id)? {
         return Ok(ImportReport {
             chunk_id,
             path: path.to_path_buf(),
             outcome: ImportOutcome::AlreadyImported,
             observation_count_saved: 0,
+            observation_count_already_present: 0,
             observation_count_skipped: payload.observations.len(),
         });
     }
 
-    // Drive one connection across the whole import so the saves and the
-    // ledger write are atomic together. Reuse the observations store's
-    // pool (chunks shares the same pool by construction in SeeleService
-    // — and even when constructed independently, both stores point to
-    // the same on-disk DB).
-    let _ = chunks; // ChunkStore reference no longer needed; in-tx helper is associated.
+    // Drive one connection across the whole import so the saves and
+    // the ledger write are atomic together.
+    let _ = chunks; // associated `mark_imported_in_tx` lives on the type.
     let mut conn = observations.pool().get()?;
     let tx = conn.transaction()?;
 
     let mut saved = 0usize;
+    let mut already_present = 0usize;
     for obs in &payload.observations {
-        let input = SaveInput {
+        let input = RawSaveInput {
+            id: obs.id,
             session_id: obs.session_id,
             kind: obs.kind.clone(),
             title: obs.title.clone(),
@@ -276,10 +304,14 @@ pub fn import_from_file(
             project: obs.project.clone(),
             scope: obs.scope,
             topic_key: obs.topic_key.clone(),
+            created_at: obs.created_at,
+            updated_at: obs.updated_at,
             metadata: obs.metadata.clone(),
         };
-        ObservationStore::save_in_tx(&tx, input)?;
-        saved += 1;
+        match ObservationStore::save_raw_in_tx(&tx, input)? {
+            RawSaveOutcome::Inserted => saved += 1,
+            RawSaveOutcome::AlreadyExisted => already_present += 1,
+        }
     }
     ChunkStore::mark_imported_in_tx(&tx, target_key, &chunk_id)?;
     tx.commit()?;
@@ -289,6 +321,7 @@ pub fn import_from_file(
         path: path.to_path_buf(),
         outcome: ImportOutcome::Imported,
         observation_count_saved: saved,
+        observation_count_already_present: already_present,
         observation_count_skipped: 0,
     })
 }

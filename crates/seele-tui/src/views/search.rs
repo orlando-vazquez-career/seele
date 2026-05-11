@@ -1,4 +1,7 @@
-//! Search pane — query prompt + result list.
+//! Search pane — query prompt + result list. Press Enter to run.
+//! ADR-07 originally specified live-debounced search; that ships
+//! alongside the real ONNX embedder in Sprint-05 (Cloven 2026-05-11
+//! [MEDIO]: spec/code mismatch resolved by deferring debounce).
 
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::Style;

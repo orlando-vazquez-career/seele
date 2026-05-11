@@ -145,12 +145,18 @@ enter       open detail
 ### Search
 
 ```
-typing      live search (debounced 200ms)
-↑ ↓         move selection
-enter       open detail
-clear       reset filters
-esc         back to home
+typing      append to query (no live debounce in v0.1; see note below)
+enter       run search
+↑ ↓         move selection in result list
+esc         clear query when non-empty, else back to Browse
 ```
+
+**v0.1 note (2026-05-11):** the originally specified live-debounced
+search was deferred to Sprint-05, when the real ONNX embedder becomes
+the default backend. With `FakeEmbedder` the cost of running a query
+per keystroke is negligible but the result is non-meaningful, so the
+explicit Enter trip is the better UX for now. Cloven flagged the
+spec/code drift on 2026-05-11.
 
 ### Detail
 
