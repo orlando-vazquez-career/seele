@@ -1,13 +1,9 @@
 ---
 import SeeleStatus from './SeeleStatus.astro';
-import Triangle from './Triangle.astro';
 ---
 
 <section class="hero">
   <div class="hero-canvas">
-    <div class="triangle-bg" aria-hidden="true">
-      <Triangle variant="outline" size={520} opacity={0.07} />
-    </div>
     <div class="page-container hero-inner">
       <p class="hero-eyebrow">
         <span class="silver-text">a</span>
@@ -81,17 +77,6 @@ import Triangle from './Triangle.astro';
     mix-blend-mode: overlay;
     opacity: 0.08;
     z-index: 0;
-  }
-
-  .triangle-bg {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -42%);
-    z-index: 0;
-    pointer-events: none;
-    width: min(520px, 75vw);
-    aspect-ratio: 1;
   }
 
   .hero-inner {
