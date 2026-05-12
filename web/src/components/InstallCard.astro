@@ -1,0 +1,139 @@
+---
+interface Props {
+  title: string;
+  description: string;
+  command: string;
+  recommended?: boolean;
+  notes?: string;
+}
+const { title, description, command, recommended = false, notes } = Astro.props;
+---
+
+<article class={`install-card${recommended ? ' is-recommended' : ''}`}>
+  {recommended && <span class="badge">recomendado</span>}
+  <h3 class="title">{title}</h3>
+  <p class="description">{description}</p>
+  <div class="cmd-wrap">
+    <pre class="cmd"><code>{command}</code></pre>
+    <button
+      class="copy-btn"
+      type="button"
+      data-copy={command}
+      aria-label={`Copy ${title} command`}
+    >
+      copy
+    </button>
+  </div>
+  {notes && <p class="notes">{notes}</p>}
+</article>
+
+<script>
+  // Tiny copy-to-clipboard, hydrated globally for all install cards on the page.
+  // Inline because it's <30 LOC and avoids creating a second client island.
+  document.querySelectorAll<HTMLButtonElement>('.copy-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const cmd = btn.dataset.copy;
+      if (!cmd) return;
+      try {
+        await navigator.clipboard.writeText(cmd);
+        const original = btn.textContent;
+        btn.textContent = 'copied';
+        btn.classList.add('is-copied');
+        window.setTimeout(() => {
+          btn.textContent = original;
+          btn.classList.remove('is-copied');
+        }, 1500);
+      } catch {
+        /* silent fail — clipboard API may be restricted */
+      }
+    });
+  });
+</script>
+
+<style>
+  .install-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-6);
+    background: var(--semantic-surface-elevated);
+    border: 1px solid var(--semantic-border-subtle);
+    border-radius: var(--rounded-md);
+  }
+
+  .install-card.is-recommended {
+    border-color: var(--semantic-action-primary-bg);
+  }
+
+  .badge {
+    position: absolute;
+    top: calc(var(--space-3) * -1);
+    left: var(--space-4);
+    padding: 2px var(--space-2);
+    background: var(--semantic-action-primary-bg);
+    color: var(--semantic-action-primary-text);
+    font-size: var(--text-xs);
+    letter-spacing: 0.06em;
+    border-radius: var(--rounded-sm);
+  }
+
+  .title {
+    font-size: var(--text-base);
+    color: var(--semantic-text-primary);
+  }
+
+  .description {
+    font-size: var(--text-sm);
+    color: var(--semantic-text-secondary);
+    line-height: var(--leading-normal);
+  }
+
+  .cmd-wrap {
+    position: relative;
+    display: flex;
+  }
+
+  .cmd {
+    flex: 1;
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    background: var(--semantic-surface-base);
+    border: 1px solid var(--semantic-border-subtle);
+    border-radius: var(--rounded-sm);
+    overflow-x: auto;
+    font-size: var(--text-xs);
+    color: var(--semantic-text-primary);
+  }
+
+  .copy-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    padding: var(--space-1) var(--space-2);
+    background: var(--semantic-surface-overlay);
+    color: var(--semantic-text-secondary);
+    border: 1px solid var(--semantic-border-strong);
+    border-radius: var(--rounded-sm);
+    font-size: var(--text-xs);
+    cursor: pointer;
+    transition: color var(--duration-fast) var(--easing-standard),
+      background var(--duration-fast) var(--easing-standard);
+  }
+
+  .copy-btn:hover {
+    color: var(--semantic-text-primary);
+    background: var(--semantic-surface-elevated);
+  }
+
+  .copy-btn.is-copied {
+    color: var(--semantic-text-success);
+    border-color: var(--semantic-text-success);
+  }
+
+  .notes {
+    font-size: var(--text-xs);
+    color: var(--semantic-text-tertiary);
+    line-height: var(--leading-normal);
+  }
+</style>

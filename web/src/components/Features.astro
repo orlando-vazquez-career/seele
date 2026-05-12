@@ -1,0 +1,90 @@
+---
+import FeatureCard from './FeatureCard.astro';
+
+const features = [
+  {
+    icon: '⌨',
+    title: 'CLI',
+    blurb: '17 subcommands. Save, search, link, sync, doctor, projects, setup. Local SQLite, zero network.',
+    meta: 'seele save / search / show / list / link / sync …',
+    href: 'https://github.com/orlando-vazquez-career/seele#what-you-get',
+  },
+  {
+    icon: '🜲',
+    title: 'MCP',
+    blurb: '19 tools under the seele_* namespace. Drops into Claude Code, Cursor, Windsurf with one command.',
+    meta: 'seele setup --agent claude-code',
+    href: 'https://github.com/orlando-vazquez-career/seele/blob/main/docs/AGENT-SETUP.md',
+  },
+  {
+    icon: '↗',
+    title: 'HTTP',
+    blurb: '18 paths + OpenAPI 3.1 + Swagger UI at /docs. Bearer auth, optional legacy ENGRAM aliases.',
+    meta: 'seele serve --port 7777',
+    href: 'https://github.com/orlando-vazquez-career/seele#what-you-get',
+  },
+  {
+    icon: '▦',
+    title: 'TUI',
+    blurb: 'Ratatui interface. 5 panes (Home, Browse, Search, Detail, Stats). Vi-style keymap.',
+    meta: 'seele tui',
+    href: 'https://github.com/orlando-vazquez-career/seele#what-you-get',
+  },
+];
+---
+
+<section id="features" class="features">
+  <div class="features-inner">
+    <h2 class="features-heading">Features</h2>
+    <p class="features-lead">
+      One binary, four interfaces. Pick the one your agent prefers — they all speak to the same local SQLite.
+    </p>
+    <div class="features-grid">
+      {features.map((f) => (
+        <FeatureCard {...f} />
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .features {
+    padding: var(--space-12) var(--space-6);
+    border-top: 1px solid var(--semantic-border-subtle);
+  }
+
+  .features-inner {
+    max-width: 1080px;
+    margin: 0 auto;
+  }
+
+  .features-heading {
+    font-size: var(--text-2xl);
+    margin-bottom: var(--space-3);
+  }
+
+  .features-lead {
+    font-size: var(--text-sm);
+    color: var(--semantic-text-secondary);
+    margin-bottom: var(--space-8);
+    max-width: 560px;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-4);
+  }
+
+  @media (max-width: 960px) {
+    .features-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 540px) {
+    .features-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

@@ -1,0 +1,88 @@
+---
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="row">
+      <span class="meta">
+        © {year} DevZen SpA · <a
+          href="https://github.com/orlando-vazquez-career/seele/blob/main/LICENSE"
+          rel="noopener"
+          target="_blank"
+        >MIT</a>
+      </span>
+      <span class="meta">
+        v0.1.0 · <a
+          href="https://github.com/orlando-vazquez-career/seele/blob/main/CHANGELOG.md"
+          rel="noopener"
+          target="_blank"
+        >changelog</a>
+      </span>
+      <span class="meta">
+        Inspired by <a
+          href="https://github.com/Gentleman-Programming/engram"
+          rel="noopener"
+          target="_blank"
+        >ENGRAM</a>
+      </span>
+      <span class="meta">
+        <a
+          href="https://github.com/orlando-vazquez-career/seele"
+          rel="noopener"
+          target="_blank"
+        >GitHub</a>
+      </span>
+    </div>
+    <p class="disclosure">
+      This page weighs around 25 KB on first load. No tracking, no analytics,
+      no cookies. <em>Super stellatum firmamentum iudicat Deus, sicut nos iudicamus.</em>
+    </p>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    padding: var(--space-8) var(--space-6) var(--space-12);
+    border-top: 1px solid var(--semantic-border-subtle);
+    background: var(--semantic-surface-base);
+  }
+
+  .footer-inner {
+    max-width: 1080px;
+    margin: 0 auto;
+  }
+
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-6);
+    align-items: center;
+    margin-bottom: var(--space-4);
+  }
+
+  .meta {
+    font-size: var(--text-xs);
+    color: var(--semantic-text-tertiary);
+  }
+
+  .meta a {
+    color: var(--semantic-text-secondary);
+  }
+
+  .meta a:hover {
+    color: var(--semantic-text-accent);
+  }
+
+  .disclosure {
+    font-size: var(--text-xs);
+    color: var(--semantic-text-tertiary);
+    line-height: var(--leading-relaxed);
+    max-width: 640px;
+  }
+
+  .disclosure em {
+    color: var(--semantic-text-secondary);
+    font-style: normal;
+  }
+</style>

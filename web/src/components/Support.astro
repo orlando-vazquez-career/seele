@@ -1,0 +1,105 @@
+---
+import DonateButtons from './DonateButtons.astro';
+---
+
+<section id="support" class="support">
+  <div class="support-inner">
+    <h2 class="support-heading">Support · Apoyar</h2>
+    <p class="support-lead">
+      SEELE is built as a labor of love by one freelance developer
+      (<a
+        href="https://github.com/orlando-vazquez-career"
+        rel="noopener"
+        target="_blank"
+      >Orlando Nahuel Vazquez Gonzalez</a>)
+      in his spare hours. If it saves you time, here are the ways to help:
+    </p>
+
+    <ul class="support-list">
+      <li>
+        <strong>Star + share</strong> the
+        <a
+          href="https://github.com/orlando-vazquez-career/seele"
+          rel="noopener"
+          target="_blank"
+        >repo</a>. Visibility brings contributors and contributors make the tool better for everyone.
+      </li>
+      <li>
+        <strong>Open issues</strong> with feedback or bug reports.
+      </li>
+      <li>
+        <strong>Hire / consult</strong> via a
+        <a
+          href="https://github.com/orlando-vazquez-career/seele/discussions"
+          rel="noopener"
+          target="_blank"
+        >Discussion</a> if your team uses SEELE in production.
+      </li>
+    </ul>
+
+    <h3 class="donate-heading">Crypto donations — one click</h3>
+    <DonateButtons />
+  </div>
+</section>
+
+<style>
+  .support {
+    padding: var(--space-12) var(--space-6);
+    border-top: 1px solid var(--semantic-border-subtle);
+  }
+
+  .support-inner {
+    max-width: 1080px;
+    margin: 0 auto;
+  }
+
+  .support-heading {
+    font-size: var(--text-2xl);
+    margin-bottom: var(--space-3);
+  }
+
+  .support-lead {
+    font-size: var(--text-sm);
+    color: var(--semantic-text-secondary);
+    line-height: var(--leading-relaxed);
+    margin-bottom: var(--space-6);
+    max-width: 720px;
+  }
+
+  .support-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 var(--space-8);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    max-width: 720px;
+  }
+
+  .support-list li {
+    font-size: var(--text-sm);
+    color: var(--semantic-text-secondary);
+    line-height: var(--leading-relaxed);
+    padding-left: var(--space-4);
+    position: relative;
+  }
+
+  .support-list li::before {
+    content: '·';
+    position: absolute;
+    left: 0;
+    color: var(--semantic-text-accent);
+    font-weight: var(--weight-bold);
+  }
+
+  .support-list strong {
+    color: var(--semantic-text-primary);
+    font-weight: var(--weight-medium);
+  }
+
+  .donate-heading {
+    font-size: var(--text-base);
+    margin-bottom: var(--space-4);
+    color: var(--semantic-text-primary);
+  }
+</style>

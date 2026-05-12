@@ -1,0 +1,237 @@
+---
+/**
+ * Donate widget — the only client-hydrated island in the landing.
+ *
+ * Pattern: URI scheme + 600ms clipboard fallback.
+ *
+ *   1. Click  → `window.open(<uri>, '_self')`.
+ *   2. OS handler registered → wallet opens with destination pre-filled.
+ *   3. No handler → page stays visible. After 600ms we copy the address.
+ *
+ * Zero SDK, zero tracking, zero `projectId`. Vanilla JS only.
+ */
+
+const targets = [
+  {
+    id: 'btc',
+    label: 'Bitcoin',
+    glyph: '₿', // ₿
+    color: 'var(--color-network-btc)',
+    address: 'bc1qzznr7lwzeyp738079k34yserkzketyju9k7kte',
+    uri: 'bitcoin:bc1qzznr7lwzeyp738079k34yserkzketyju9k7kte?label=SEELE',
+    note: 'BIP-21',
+  },
+  {
+    id: 'eth',
+    label: 'Ethereum',
+    glyph: 'Ξ', // Ξ
+    color: 'var(--color-network-eth)',
+    address: '0x0f47273B14118EDD15b40A5CfDBFc4A7891F08D8',
+    uri: 'ethereum:0x0f47273B14118EDD15b40A5CfDBFc4A7891F08D8@1',
+    note: 'EIP-681 · chain 1',
+  },
+  {
+    id: 'base',
+    label: 'Base',
+    glyph: '⬢', // ⬢
+    color: 'var(--color-network-base)',
+    address: '0x0f47273B14118EDD15b40A5CfDBFc4A7891F08D8',
+    uri: 'ethereum:0x0f47273B14118EDD15b40A5CfDBFc4A7891F08D8@8453',
+    note: 'EIP-681 · chain 8453',
+  },
+  {
+    id: 'sys',
+    label: 'Syscoin',
+    glyph: '⬡', // ⬡
+    color: 'var(--color-network-sys)',
+    address: '0x0f47273B14118EDD15b40A5CfDBFc4A7891F08D8',
+    uri: 'ethereum:0x0f47273B14118EDD15b40A5CfDBFc4A7891F08D8@57',
+    note: 'EIP-681 · chain 57 (NEVM)',
+  },
+  {
+    id: 'sol',
+    label: 'Solana',
+    glyph: '◎', // ◎
+    color: 'var(--color-network-sol)',
+    address: 'Ecz5kPxCx3oaX64kmos6wzCpswA5LwDqttp2Y1HrQQ7K',
+    uri: 'solana:Ecz5kPxCx3oaX64kmos6wzCpswA5LwDqttp2Y1HrQQ7K?label=SEELE',
+    note: 'Solana Pay',
+  },
+];
+---
+
+<div class="donate-grid" role="group" aria-label="Donate to SEELE">
+  {targets.map((t) => (
+    <button
+      type="button"
+      class="donate-btn"
+      data-uri={t.uri}
+      data-address={t.address}
+      data-label={t.label}
+      style={`--brand: ${t.color};`}
+      aria-label={`Donate ${t.label}: copy address ${t.address} or open wallet`}
+    >
+      <span class="glyph" aria-hidden="true">{t.glyph}</span>
+      <span class="label">
+        <span class="name">{t.label}</span>
+        <span class="proto">{t.note}</span>
+      </span>
+      <span class="status" data-status></span>
+    </button>
+  ))}
+</div>
+
+<p class="donate-note">
+  Click opens your preferred wallet (MetaMask · Pali · Phantom · Sparrow · etc.).
+  If none is detected, the address is copied to your clipboard as fallback.
+  No tracking, no SDK, no WalletConnect.
+</p>
+
+<script>
+  // Hydrate when this island scrolls into view (Astro client:visible).
+  // Pattern: try URI scheme, fallback to clipboard after 600ms if we
+  // never lost focus to the wallet handler.
+  const buttons = document.querySelectorAll<HTMLButtonElement>('.donate-btn');
+
+  buttons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const uri = btn.dataset.uri ?? '';
+      const address = btn.dataset.address ?? '';
+      const statusEl = btn.querySelector<HTMLElement>('[data-status]');
+
+      if (statusEl) {
+        statusEl.textContent = 'opening…';
+        statusEl.dataset.state = 'opening';
+      }
+
+      // 1) Attempt to open the wallet via URI scheme.
+      //    Using window.location to trigger the OS handler. If a registered
+      //    wallet exists, it takes over; otherwise the browser is a no-op.
+      try {
+        window.location.href = uri;
+      } catch {
+        /* navigation may fail in sandboxed iframes — fall through to fallback */
+      }
+
+      // 2) After 600ms, if the page is still visible (wallet didn't take over),
+      //    fall back to clipboard.
+      window.setTimeout(async () => {
+        if (document.hidden) {
+          // wallet (or external app) took the user away — leave the button as is
+          if (statusEl) {
+            statusEl.textContent = '';
+            statusEl.dataset.state = '';
+          }
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(address);
+          if (statusEl) {
+            statusEl.textContent = 'copied';
+            statusEl.dataset.state = 'copied';
+          }
+        } catch {
+          if (statusEl) {
+            statusEl.textContent = address.slice(0, 8) + '…';
+            statusEl.dataset.state = 'fallback';
+          }
+        }
+        window.setTimeout(() => {
+          if (statusEl) {
+            statusEl.textContent = '';
+            statusEl.dataset.state = '';
+          }
+        }, 2000);
+      }, 600);
+    });
+  });
+</script>
+
+<style>
+  .donate-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--space-3);
+  }
+
+  .donate-btn {
+    --brand: var(--semantic-action-primary-bg);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: var(--semantic-surface-elevated);
+    color: var(--semantic-text-primary);
+    border: 1px solid var(--semantic-border-strong);
+    border-radius: var(--rounded-md);
+    cursor: pointer;
+    text-align: left;
+    transition: border-color var(--duration-fast) var(--easing-standard),
+      transform var(--duration-fast) var(--easing-standard);
+  }
+
+  .donate-btn:hover {
+    border-color: var(--brand);
+    transform: translateY(-1px);
+  }
+
+  .glyph {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: var(--brand);
+    color: #ffffff;
+    border-radius: var(--rounded-pill);
+    font-size: var(--text-lg);
+    flex-shrink: 0;
+  }
+
+  .label {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .name {
+    font-size: var(--text-sm);
+    color: var(--semantic-text-primary);
+  }
+
+  .proto {
+    font-size: var(--text-xs);
+    color: var(--semantic-text-tertiary);
+  }
+
+  .status {
+    font-size: var(--text-xs);
+    color: var(--semantic-text-tertiary);
+    margin-left: var(--space-2);
+    transition: color var(--duration-fast) var(--easing-standard);
+    min-width: 56px;
+    text-align: right;
+  }
+
+  .status[data-state='copied'] {
+    color: var(--semantic-text-success);
+  }
+
+  .status[data-state='opening'] {
+    color: var(--semantic-text-accent);
+  }
+
+  .status[data-state='fallback'] {
+    color: var(--semantic-text-secondary);
+    font-family: var(--font-mono);
+  }
+
+  .donate-note {
+    margin-top: var(--space-6);
+    font-size: var(--text-xs);
+    color: var(--semantic-text-tertiary);
+    line-height: var(--leading-relaxed);
+    max-width: 640px;
+  }
+</style>

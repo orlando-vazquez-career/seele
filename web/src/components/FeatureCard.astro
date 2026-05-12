@@ -1,0 +1,79 @@
+---
+interface Props {
+  icon: string;
+  title: string;
+  blurb: string;
+  meta: string;
+  href: string;
+}
+const { icon, title, blurb, meta, href } = Astro.props;
+---
+
+<a class="feature-card" href={href} rel="noopener" target={href.startsWith('http') ? '_blank' : undefined}>
+  <span class="icon" aria-hidden="true">{icon}</span>
+  <h3 class="title">{title}</h3>
+  <p class="blurb">{blurb}</p>
+  <span class="meta">{meta}</span>
+  <span class="arrow" aria-hidden="true">→</span>
+</a>
+
+<style>
+  .feature-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-6);
+    background: var(--semantic-surface-elevated);
+    border: 1px solid var(--semantic-border-subtle);
+    border-radius: var(--rounded-md);
+    text-decoration: none;
+    color: var(--semantic-text-primary);
+    transition: border-color var(--duration-fast) var(--easing-standard),
+      transform var(--duration-fast) var(--easing-standard);
+  }
+
+  .feature-card:hover {
+    border-color: var(--semantic-action-primary-bg);
+    transform: translateY(-2px);
+  }
+
+  .icon {
+    font-size: var(--text-xl);
+    color: var(--semantic-text-accent);
+    margin-bottom: var(--space-2);
+  }
+
+  .title {
+    font-size: var(--text-base);
+    color: var(--semantic-text-primary);
+    margin-bottom: var(--space-1);
+  }
+
+  .blurb {
+    font-size: var(--text-sm);
+    color: var(--semantic-text-secondary);
+    line-height: var(--leading-normal);
+    flex: 1;
+  }
+
+  .meta {
+    margin-top: var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--semantic-text-tertiary);
+  }
+
+  .arrow {
+    position: absolute;
+    top: var(--space-6);
+    right: var(--space-6);
+    color: var(--semantic-text-tertiary);
+    transition: color var(--duration-fast) var(--easing-standard),
+      transform var(--duration-fast) var(--easing-standard);
+  }
+
+  .feature-card:hover .arrow {
+    color: var(--semantic-text-accent);
+    transform: translateX(2px);
+  }
+</style>

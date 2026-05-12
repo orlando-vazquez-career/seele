@@ -1,0 +1,108 @@
+---
+const base = import.meta.env.BASE_URL;
+const navItems = [
+  { href: '#features', label: 'Features' },
+  { href: '#install', label: 'Install' },
+  { href: '#support', label: 'Support' },
+];
+---
+
+<header class="site-header">
+  <a href={base} class="brand" aria-label="SEELE home">
+    <span class="brand-mark">S</span>
+    <span class="brand-text">SEELE</span>
+  </a>
+  <nav aria-label="Primary">
+    <ul class="nav-list">
+      {navItems.map((item) => (
+        <li><a href={item.href}>{item.label}</a></li>
+      ))}
+      <li>
+        <a
+          class="nav-github"
+          href="https://github.com/orlando-vazquez-career/seele"
+          rel="noopener"
+          target="_blank"
+        >
+          GitHub <span aria-hidden="true">↗</span>
+        </a>
+      </li>
+    </ul>
+  </nav>
+</header>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-sticky);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-3) var(--space-6);
+    background: rgba(10, 10, 10, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--semantic-border-subtle);
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--semantic-text-primary);
+    text-decoration: none;
+    font-weight: var(--weight-bold);
+    letter-spacing: 0.04em;
+  }
+
+  .brand-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: var(--semantic-action-primary-bg);
+    color: var(--semantic-action-primary-text);
+    border-radius: var(--rounded-sm);
+    font-weight: var(--weight-bold);
+    font-size: var(--text-base);
+  }
+
+  .nav-list {
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .nav-list a {
+    color: var(--semantic-text-secondary);
+    text-decoration: none;
+    font-size: var(--text-sm);
+    transition: color var(--duration-fast) var(--easing-standard);
+  }
+
+  .nav-list a:hover {
+    color: var(--semantic-text-primary);
+  }
+
+  .nav-github {
+    color: var(--semantic-text-primary) !important;
+  }
+
+  @media (max-width: 640px) {
+    .site-header {
+      padding: var(--space-2) var(--space-4);
+    }
+    .nav-list {
+      gap: var(--space-3);
+    }
+    .nav-list li:not(:last-child) {
+      display: none;
+    }
+  }
+</style>
