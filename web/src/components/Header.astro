@@ -3,18 +3,18 @@ import Triangle from './Triangle.astro';
 
 const base = import.meta.env.BASE_URL;
 const navItems = [
-  { href: '#features', label: 'Features' },
-  { href: '#install', label: 'Install' },
-  { href: '#support', label: 'Support' },
+  { href: '#features', label: 'features' },
+  { href: '#install', label: 'install' },
+  { href: '#support', label: 'support' },
 ];
 ---
 
 <header class="site-header">
   <div class="page-container header-inner">
     <a href={base} class="brand" aria-label="SEELE home — a DevZen tool">
-      <Triangle variant="outline" size={28} opacity={1} />
+      <Triangle size={24} variant="framed" />
       <span class="brand-text">
-        <span class="brand-tag silver-text">DevZen</span>
+        <span class="brand-tag">DevZen</span>
         <span class="brand-name">SEELE</span>
       </span>
     </a>
@@ -29,9 +29,7 @@ const navItems = [
             href="https://github.com/orlando-vazquez-career/seele"
             rel="noopener"
             target="_blank"
-          >
-            GitHub <span aria-hidden="true">↗</span>
-          </a>
+          >github ↗</a>
         </li>
       </ul>
     </nav>
@@ -43,10 +41,8 @@ const navItems = [
     position: sticky;
     top: 0;
     z-index: var(--z-sticky);
-    background: oklch(0.10 0.003 230 / 0.85);
-    backdrop-filter: blur(12px) saturate(120%);
-    -webkit-backdrop-filter: blur(12px) saturate(120%);
-    border-bottom: 1px solid var(--semantic-border-subtle);
+    background: var(--bg);
+    border-bottom: var(--border-base) solid var(--semantic-border-base);
   }
 
   .header-inner {
@@ -60,31 +56,39 @@ const navItems = [
   .brand {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: var(--space-3);
     color: var(--semantic-text-primary);
     text-decoration: none;
     line-height: 1;
   }
 
+  .brand:hover {
+    background: transparent;
+    padding: 0;
+  }
+
+  .brand:hover :global(.triangle) {
+    color: var(--accent);
+  }
+
   .brand-text {
     display: flex;
     flex-direction: column;
-    gap: 1px;
+    gap: 2px;
   }
 
   .brand-tag {
-    font-family: var(--font-display);
     font-size: 9px;
     font-weight: var(--weight-medium);
-    letter-spacing: var(--tracking-mega);
+    letter-spacing: var(--tracking-caps);
     text-transform: uppercase;
+    color: var(--fg-muted);
   }
 
   .brand-name {
-    font-family: var(--font-display);
     font-size: var(--text-lg);
     font-weight: var(--weight-black);
-    letter-spacing: var(--tracking-wide);
+    letter-spacing: 0.04em;
   }
 
   .nav-list {
@@ -100,30 +104,28 @@ const navItems = [
     color: var(--semantic-text-secondary);
     text-decoration: none;
     font-size: var(--text-sm);
-    transition: color var(--duration-fast) var(--easing-standard);
+    letter-spacing: var(--tracking-wide);
   }
 
   .nav-list a:hover {
-    color: var(--semantic-text-primary);
+    color: var(--bg);
+    background: var(--accent);
+    padding: 2px 4px;
   }
 
   .nav-github {
     color: var(--semantic-text-primary) !important;
   }
 
-  @container (max-width: 640px) {
-    .nav-list li:not(:last-child) {
-      display: none;
-    }
-  }
-
-  /* Container query at the page-container level */
   @media (max-width: 640px) {
     .nav-list li:not(:last-child) {
       display: none;
     }
     .nav-list {
       gap: var(--space-3);
+    }
+    .brand-text {
+      display: none;
     }
   }
 </style>

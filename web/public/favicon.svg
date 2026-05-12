@@ -1,4 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="6" fill="#0a0a0a"/>
-  <text x="16" y="22" font-family="ui-monospace, monospace" font-size="18" font-weight="700" fill="#7e3eff" text-anchor="middle">S</text>
+  <rect width="32" height="32" fill="#141414"/>
+  <rect x="2" y="2" width="28" height="28" fill="none" stroke="#f0f0f0" stroke-width="2"/>
+  <polygon points="16,7 26,24 6,24" fill="none" stroke="#f0f0f0" stroke-width="2"/>
 </svg>

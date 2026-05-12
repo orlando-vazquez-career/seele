@@ -1,316 +1,264 @@
 ---
-version: 0.2.0
+version: 0.3.0
 name: SEELE Web Design System
-description: Visual contract for the SEELE landing page in `web/`. Brand-aligned to DevZen — brushed-metal black with gold + silver-cyan accents and a triangle motif inherited from the DevZen logo. Tokens use OKLCH for perceptually-correct gradient interpolation.
+description: Brutalist dev-craft visual contract for the SEELE landing. Single-family monospace typography, 3-color palette, 2px solid borders as hierarchical primitive, motion restraint to zero. Honest infrastructure tool aesthetic — credibility before warmth.
 scope: web/
 created: 2026-05-11
 updated: 2026-05-12
-sprint: LUMEN-01 (bloque-C2)
-
-# v0.2.0 — DevZen brand alignment + EIP-1193 donate flow + SEELE detection.
-# Breaking changes from v0.1.0: primitives recolored; semantic tokens
-# repointed; components must use new metal/gold/cyan utilities for accent
-# moments. MAJOR-equivalent change but pre-1.0 numbered as 0.x bump.
+sprint: LUMEN-02 (bloque Material.2 Convergence + Material.3 Tokens)
+direction_chosen: brutalist-dev-craft
+counsel_reference: vrd_2026-05-12_lumen-v0.10.0
 
 primitives:
   colors:
-    # ───────── Black depth scale (DevZen background) ─────────
-    # Pure-ish black with a 230° hue cool bias to feel premium.
-    black-0: 'oklch(0.06 0 0)'        # deepest void
-    black-1: 'oklch(0.10 0.003 230)'  # brushed-metal canvas
-    black-2: 'oklch(0.14 0.005 230)'  # elevated card surface
-    black-3: 'oklch(0.19 0.007 230)'  # popover / overlay surface
+    # ───────── 3-color extreme palette ─────────
+    # Brutalist dev-craft: prohibido agregar un 4to color.
+    # La restricción es la decisión.
+    bg: 'oklch(0.08 0 0)'              # negro absoluto, sin tinte warm/cool
+    fg: 'oklch(0.94 0 0)'              # off-white crudo, no pure white
+    accent: 'oklch(0.65 0.18 50)'      # naranja eléctrico, único accent saturado
 
-    # ───────── Silver / metal frame scale ─────────
-    # Maps to the gunmetal frame around the DevZen logo.
-    metal-100: 'oklch(0.92 0.018 230)'  # highlight tip
-    metal-200: 'oklch(0.78 0.018 235)'  # primary silver
-    metal-300: 'oklch(0.62 0.020 235)'  # mid-tone
-    metal-400: 'oklch(0.45 0.018 230)'  # frame body
-    metal-500: 'oklch(0.32 0.015 230)'  # shadow
+    # Derivados del fg para hierarchy (NO son colores nuevos, son variaciones de opacity/mix del fg)
+    fg-muted: 'oklch(0.65 0 0)'        # texto secundario, derivado de fg
+    fg-faint: 'oklch(0.42 0 0)'        # meta/captions, derivado de fg
 
-    # ───────── Gold scale ("Dev" letters) ─────────
-    gold-100: 'oklch(0.92 0.10 88)'     # highlight
-    gold-200: 'oklch(0.82 0.13 85)'     # primary gold
-    gold-300: 'oklch(0.72 0.14 82)'     # mid
-    gold-400: 'oklch(0.58 0.12 80)'     # shadow
+    # Feedback colors (solo si absolutamente necesario)
+    danger: 'oklch(0.60 0.20 25)'      # error states únicamente
+    success: 'oklch(0.78 0.16 145)'    # solo para SeeleStatus detected
 
-    # ───────── Cyan-silver scale ("Zen" letters) ─────────
-    cyan-100: 'oklch(0.90 0.04 200)'    # highlight
-    cyan-200: 'oklch(0.78 0.05 195)'    # primary
-    cyan-300: 'oklch(0.65 0.06 195)'    # mid
-    cyan-400: 'oklch(0.50 0.05 195)'    # shadow
-
-    # ───────── Foreground neutrals ─────────
-    fg-100: 'oklch(0.96 0 0)'           # text on dark
-    fg-300: 'oklch(0.76 0.005 230)'     # secondary
-    fg-500: 'oklch(0.55 0.005 230)'     # tertiary / meta
-    fg-700: 'oklch(0.38 0.005 230)'     # faint
-
-    # ───────── Border / divider ─────────
-    border-subtle: 'oklch(0.20 0.005 230)'
-    border-strong: 'oklch(0.30 0.008 230)'
-    border-metal:  'oklch(0.55 0.020 230)'  # for metal-finish frames
-
-    # ───────── Feedback ─────────
-    success: 'oklch(0.78 0.16 145)'
-    warning: 'oklch(0.82 0.16 75)'
-    danger:  'oklch(0.70 0.18 25)'
-
-    # ───────── Network brand (donate widget) ─────────
-    network-btc:  '#f7931a'
-    network-eth:  '#627eea'
+    # Network brand colors (preservados literally para donate widget)
+    network-btc: '#f7931a'
+    network-eth: '#627eea'
     network-base: '#0052ff'
-    network-sys:  '#1f87ff'
-    network-sol:  '#9945ff'
+    network-sys: '#1f87ff'
+    network-sol: '#9945ff'
 
   typography:
-    font-mono: 'ui-monospace, "Cascadia Code", "JetBrains Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
-    font-display: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-    banned: ['Comic Sans MS', 'Papyrus', 'Times New Roman']
+    # Una sola familia. Sin display. Sin sans. Sin serif.
+    font-mono: 'ui-monospace, "JetBrains Mono", "Cascadia Code", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
+    banned:
+      - 'Inter'
+      - 'Roboto'
+      - 'Helvetica'
+      - 'Arial'
+      - 'Times New Roman'
+      - 'Comic Sans MS'
+      - 'Papyrus'
+      - 'Display serif italic of any kind'
+      - 'Any non-monospace family'
+
     sizes:
-      xs: 12px
-      sm: 14px
-      base: 16px
-      lg: 18px
-      xl: 22px
-      2xl: 30px
-      3xl: 44px
-      4xl: 60px
-      5xl: 80px
+      # Salto brusco entre hero y body, sin escalas intermedias decorativas
+      meta: 11px          # ALL CAPS labels, captions, tracking 0.12em
+      xs: 12px            # legal / footer
+      sm: 13px            # body small, meta inline
+      base: 15px          # body principal
+      lg: 18px            # subheadlines (rare)
+      hero: 72px          # H1 hero — único uso de tamaño grande
+
     weights:
+      light: 300
       normal: 400
       medium: 500
-      semibold: 600
       bold: 700
-      black: 900
+      black: 800          # solo para hero
+
     leading:
-      tight: 1.15
-      normal: 1.55
-      relaxed: 1.75
+      tight: 1.1          # hero
+      normal: 1.4         # body
+      relaxed: 1.6        # paragraph reading
+
     letter-spacing:
-      tight: -0.02em
+      tight: -0.02em      # hero
       normal: 0
-      wide: 0.05em
-      mega: 0.15em
+      wide: 0.04em        # mono inline
+      caps: 0.12em        # ALL CAPS labels
 
   spacing:
     base: 4
-    scale: [4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96, 128, 160]
+    scale: [4, 8, 12, 16, 20, 24, 32, 40, 56, 80, 120, 200]
 
   rounded:
-    sm: 6px
-    md: 10px
-    lg: 16px
-    xl: 22px
-    pill: 999px
+    # Brutalist: cero radius en todo. Period.
+    none: 0
+    # Valor permitido excepcionalmente (interpretación honesta):
+    pill: 999px           # solo si una pill semantic es OBLIGATORIA (status indicator)
+    # NO usar sm/md/lg radius en ningún componente
+
+  border-width:
+    # Bordes son la herramienta jerárquica primaria
+    hair: 1px             # separadores sutiles
+    base: 2px             # default — la mayoría de bordes son 2px
+    bold: 3px             # énfasis raro
 
   motion:
+    # transition: none en TODO. Por excepción aceptable solo color/opacity cambio instantáneo.
     duration:
-      micro: 90ms
-      fast: 140ms
-      base: 240ms
-      slow: 480ms
-      epic: 900ms
+      none: 0ms           # default
+      instant: 1ms        # técnico: equivalente a none pero permite GPU acceleration hint
     easing:
-      standard: 'cubic-bezier(0.4, 0, 0.2, 1)'
-      enter: 'cubic-bezier(0, 0, 0.2, 1)'
-      exit: 'cubic-bezier(0.4, 0, 1, 1)'
-      spring: 'cubic-bezier(0.34, 1.56, 0.64, 1)'
-
-  effects:
-    # Brushed-metal layered gradients reused across components.
-    # See tokens.css for the actual gradient definitions; this is the doc.
-    metal-silver: 'linear gradient diagonal 135° between metal-300 → metal-100 → metal-300, with feTurbulence noise overlay 0.85 baseFrequency at 12% opacity'
-    metal-gold:   'linear gradient diagonal 135° between gold-300 → gold-100 → gold-300, with feTurbulence noise overlay 0.85 baseFrequency at 12% opacity'
-    metal-black-canvas: 'radial-gradient ellipse 80% 60% at top from black-2 → black-1 → black-0, with feTurbulence noise overlay 0.65 baseFrequency at 5% opacity (subtle texture)'
+      step: 'step-start'  # cambios binarios sin interpolación
 
 semantics:
   surface:
-    canvas: '{colors.black-1}'         # body bg
-    elevated: '{colors.black-2}'       # cards / panels
-    overlay: '{colors.black-3}'        # popovers / tooltips
-    inverse: '{colors.metal-200}'      # rare: metal-on-dark elements
+    base: '{colors.bg}'                    # único surface — todo es negro absoluto
+    inverse: '{colors.fg}'                 # raros casos de fg como bg (CTA hover)
   text:
-    primary: '{colors.fg-100}'
-    secondary: '{colors.fg-300}'
-    tertiary: '{colors.fg-500}'
-    quaternary: '{colors.fg-700}'
-    gold: '{colors.gold-200}'          # for "Dev" parity
-    silver: '{colors.metal-200}'       # for "Zen" parity
-    cyan: '{colors.cyan-200}'
-    accent: '{colors.gold-200}'        # primary brand accent for prose
-    on-accent: '{colors.black-0}'      # text on gold/metal fills
+    primary: '{colors.fg}'
+    secondary: '{colors.fg-muted}'
+    tertiary: '{colors.fg-faint}'
+    accent: '{colors.accent}'              # naranja eléctrico
+    on-accent: '{colors.bg}'               # negro sobre naranja
     success: '{colors.success}'
     danger: '{colors.danger}'
   border:
-    subtle: '{colors.border-subtle}'
-    strong: '{colors.border-strong}'
-    metal: '{colors.border-metal}'     # for metallic frames
+    base: '{colors.fg}'                    # bordes son fg color (off-white)
+    accent: '{colors.accent}'              # bordes naranja para énfasis
+    muted: '{colors.fg-faint}'             # separadores sutiles
   action:
-    primary-bg-from: '{colors.gold-300}'   # gradient start
-    primary-bg-to: '{colors.gold-100}'     # gradient end
-    primary-text: '{colors.black-0}'
+    primary-bg: '{colors.accent}'
+    primary-text: '{colors.bg}'
+    primary-border: '{colors.accent}'
     secondary-bg: 'transparent'
-    secondary-border: '{colors.border-metal}'
-    secondary-text: '{colors.fg-100}'
-    secondary-bg-hover: '{colors.black-2}'
+    secondary-text: '{colors.fg}'
+    secondary-border: '{colors.fg}'
   focus:
-    ring: '{colors.gold-200}'
+    ring: '{colors.accent}'
     ring-offset: 2px
   status:
     seele-detected: '{colors.success}'
-    wallet-detected: '{colors.cyan-200}'
-    not-detected: '{colors.fg-500}'
+    seele-not-detected: '{colors.fg-faint}'
+    wallet-detected: '{colors.accent}'     # naranja también es "wallet detected" — consolidamos accent
+
+visual-dna:
+  # 5 axiomas del wow del counsel MNEMA, aplicados a Brutalist:
+  coherencia-sistemica: |
+    Una sola familia tipográfica (JetBrains Mono). Una sola escala de bordes (1/2/3px solid).
+    Tres colores únicos. Cero excepciones decorativas. Coherencia EXTREMA es el axioma central.
+  diferenciacion-con-proposito: |
+    Bordes incompletos como sintaxis visual de flow entre elementos. NINGUNA otra landing
+    2026 lo hace. Es la decisión que distingue SEELE de cualquier "modern dark dev tool".
+  densidad-informacional-calibrada: |
+    Hero tiene mucho whitespace deliberado. Bloques de datos (latency, version, status)
+    son densos. Información concreta vs prose marketing.
+  acabado: |
+    Bordes pixel-perfect (sin antialiasing artifacts). Tracking calibrado manualmente por
+    size. Step-start transitions = ningún ease que pueda parecer "casi animado".
+  personalidad-emergente: |
+    "Honest infrastructure tool" — no premium, no SaaS-friendly, no warm editorial.
+    El landing dice "instalá esto si entendés Rust, sino seguí buscando".
 ---
 
-# SEELE Web Design System v0.2.0 — DevZen brand
+# SEELE Web Design System v0.3.0 — Brutalist dev-craft
 
-Visual contract for the SEELE landing page in `web/`. Versioned per semver. v0.2.0 aligns to the DevZen brand: brushed-metal black canvas, gold + silver-cyan accents, triangle motif inherited from the DevZen logo.
+Visual contract for the SEELE landing page, redesigned in Sprint LUMEN-02 under LUMEN v0.10.0 protocol. Direction chosen: **Brutalist dev-craft** (variation 2 of 4 propuestas en Material.1).
 
-## Why this brand
+## Why this direction
 
-SEELE belongs to DevZen — the parent company. The DevZen logo is a stylized iron-cast frame around a triangle, with "Dev" in warm gold and "Zen" in cool silver-cyan. The landing inherits this language so SEELE is recognizably part of DevZen even before reading the name.
+SEELE es memory engine para devs que usan Claude Code, Cursor, Windsurf. Audiencia: platform engineers, infra devs, ML engineers, freelancers técnicos. NO es producto B2B SaaS para C-levels. NO es proyecto de autor con narrativa editorial. Es **infrastructure tool**.
 
-The aesthetic is "premium developer tool" — closer to Linear's dark mode than to a marketing SaaS landing, but with metallic richness instead of pure flat surfaces.
+El director eligió Brutalist sobre 3 alternativas (Brushed-metal editorial / Studio Suizo / Editorial warm) porque la audiencia premia **credibilidad técnica antes que calidez visual**. La estética brutalist comunica "esto es serio antes de ser bonito" — exactamente lo que Marisol persona necesita ver en 30 segundos.
 
-## OKLCH everywhere
+Las otras 3 direcciones quedan persistidas como `advisor_output` en SEELE — disponibles si en LUMEN-03+ la dirección cambia.
 
-All primitives use [OKLCH](https://oklch.com) instead of sRGB hex. Why:
+## Three colors, period
 
-- Perceptually-uniform: a step from `oklch(0.50 ...)` to `oklch(0.55 ...)` is the same lightness change everywhere on the wheel.
-- Gradient interpolation between gold and silver-cyan in OKLCH stays inside the warm-bright corridor (avoids dirty olive transitions that sRGB produces).
-- Wide-gamut display ready (P3 / Rec.2020).
+`oklch(0.08 0 0)` background + `oklch(0.94 0 0)` foreground + `oklch(0.65 0.18 50)` orange accent. **Prohibido agregar un cuarto color.** La restricción ES la decisión.
 
-CSS native since 2024 (all evergreen browsers). No polyfill needed.
+Excepciones permitidas:
+- `danger` solo para error states reales (no usado en v0.3 del landing)
+- `success` solo para SeeleStatus pill "detected"
+- Network brand colors (BTC/ETH/Base/Sys/SOL) solo en donate buttons (literalismo cromático)
 
-## Color philosophy
+## Single typography family
 
-### Black canvas
+JetBrains Mono everywhere. Sin display serif. Sin sans-serif. Sin Inter. Sin Roboto. La hierarchy emerge del **contraste de weight** (800 hero, 400 body) + **salto brusco de size** (72px → 13px sin escalas intermedias) + **color accent** solo en datos.
 
-`oklch(0.06–0.19)` family. Slight cool bias (`230°` hue) keeps it from feeling tar-warm. Three depth levels:
+Por qué: tipografía mono comunica "código" sin metáforas. Eliminar serif/sans elimina el riesgo de "diseño SaaS friendly" — exactamente lo que Brutalist rechaza.
 
-- **black-1** body — the "brushed-metal" canvas behind everything
-- **black-2** elevated — cards, install/feature panels
-- **black-3** overlay — popovers, tooltips, modal dialogs (none in v0.2)
+## Borders as primary hierarchical tool
 
-### Silver / metal
+2px solid `oklch(0.94 0 0)` reemplazan TODA shadow, gradient, blur. La jerarquía se lee por:
+- **Cuántos lados tiene el borde**: bloque principal (4 lados), elemento secundario (2 lados top+left), dato inline (1 lado left como indicador)
+- **Color del borde**: off-white (default) vs naranja (énfasis)
 
-`metal-100` through `metal-500` — gunmetal frame inherited from the logo. Used for:
-- Borders on cards (`border-metal`)
-- The brushed-metal background effect (gradient combining 100 highlight + 200 primary + 300 mid + 500 shadow)
-- Logo brand-mark fill
-- "Zen" letterforms in headlines
+`box-shadow: none` en todo. `border-radius: 0` en todo (excepción: `pill` solo para SeeleStatus indicator). `gradient` prohibido.
 
-### Gold
+## Incomplete borders as visual syntax
 
-`gold-100` through `gold-400` — warm yellow scale matching the "Dev" letters. Used for:
-- Primary action buttons (gradient `gold-300 → gold-100`)
-- "Dev" letterforms in headlines
-- Triangle motif accent
-- Accent prose color
+**El detalle distintivo del Brutalist dev-craft**: bordes incompletos (3 lados en lugar de 4) NO son error. Son **conectores abiertos** hacia el siguiente elemento. Crean flow sin necesidad de flechas/icons/connectors decorativos.
 
-### Cyan-silver
+Pattern de uso:
+- Bloque de datos en hero: `border-top` + `border-right` + `border-bottom`, sin `border-left` (= "connects to left margin")
+- Section dividers: `border-top` solo, ancho full
+- Inline data: `border-left` solo (= "this is data, not prose")
 
-`cyan-100` through `cyan-400` — cool counter-balance to gold. Used for:
-- "Zen" letterforms (paired with `gold-200` for "Dev")
-- Wallet-detected status indicator
-- Subtle cool highlights on metal surfaces
+Esto firma "este sitio fue diseñado con criterio brutalist" para cualquier diseñador que lo lea. No es bug, es feature.
 
-### Network colors
+## Motion: zero
 
-Network brand colors (`network-btc/eth/base/sys/sol`) stay in sRGB hex per official brand guidelines (Bitcoin Foundation, Ethereum Foundation, etc). They're the only sRGB tokens — preserved as-is for pattern matching against wallet UIs.
+`transition: none` en todo. Sin excepción.
 
-## Brushed-metal technique
+Hover state = cambio de color instantáneo. Sin fade. Sin scale. Sin translateY. Sin spring curves. `step-start` easing si TypeScript exige una value.
 
-Brushed metal is a **CSS technique**, not a token. Composed of:
+Por qué: SEELE es infraestructura. Movement suave miente sobre su naturaleza. Una herramienta seria responde binariamente.
 
-1. **Base gradient** — linear/radial gradient between 3-4 stops on the metal scale.
-2. **Noise overlay** — `feTurbulence` SVG filter inlined as `data:image/svg+xml`, blended at low opacity (~12-15%) with `mix-blend-mode: overlay`.
-3. **Highlight band** (optional) — diagonal linear-gradient at high opacity 0% → 20% → 0% to simulate light reflection.
+Excepciones permitidas:
+- SeeleStatus pulse animation (mientras checkea localhost) — única animación del sitio
+- Donate button "opening..." status text change (no animation, solo content update)
 
-Implementation in `tokens.css` as utility classes: `.metal-silver-bg`, `.metal-gold-bg`, `.metal-canvas-bg`.
+## Layout philosophy
 
-## Triangle motif
+**Asimetría brutal**: left-heavy. Margen izquierdo 16-32px. Margen derecho 80px+ deliberadamente desequilibrante. NO centered max-width simétrico.
 
-The DevZen logo features a stylized triangle. We reuse it as a recurring design element:
+Container max-width: `1100px` con `margin-inline-start: clamp(16px, 4vw, 64px)` y `margin-inline-end: clamp(80px, 12vw, 200px)`.
 
-- Hero: large outline triangle behind the title text (~600px, opacity 0.06)
-- Feature cards: small filled triangle as bullet/decoration
-- Footer: triangle next to the DevZen attribution
+Mobile: el desequilibrio se mantiene (margen izquierdo 16px, derecho 32px), no se "fixea" a centered.
 
-Always inline SVG with `currentColor` and a `linearGradient` interior for gold→cyan transitions. Never raster.
+## Banned (extending DESIGN.md banned)
 
-## Typography
-
-Two stacks declared, both system (zero web font downloads):
-
-- **font-mono** — `ui-monospace`. Default for body, code, hero. Signals "dev tool".
-- **font-display** — `ui-sans-serif`. Reserved for: page meta (header brand), button labels where mono feels too narrow. Used sparingly.
-
-The DevZen logo uses a custom geometric typeface; matching exactly requires a webfont download which we forbid. Instead, we apply gradient text fills (gold and silver-cyan) to recreate the brand feel with system fonts.
-
-## Banned
-
-- Webfont downloads (`@font-face`, Google Fonts, Adobe Fonts).
-- Tailwind utility classes (`.text-blue-500`) — bare CSS only.
-- Primitive colors directly in components — go through semantic tokens.
-- Inline color values outside this file + `tokens.css`.
-- `box-shadow` for hierarchy (use metal-finish borders).
-- Hover transforms larger than `translateY(-2px)`.
-- Tracking pixels, analytics, cookies.
-- Carousels.
-
-## Layout rules
-
-- Container queries (`@container`) are the primary responsive primitive.
-- Avoid global media queries except for body type-scale and mobile-only utilities.
-- `min-width: 0` on flex children that contain `<pre>` or long URLs.
-- `<pre><code>` wraps long lines via `white-space: pre-wrap; overflow-wrap: anywhere` — NO horizontal scroll.
-- Max page width: `clamp(320px, 100%, 1200px)` for the body container.
+- Cualquier `font-family` excepto JetBrains Mono / monospace fallback
+- Cualquier `border-radius` excepto 0 o 999px (pill)
+- Cualquier `box-shadow` excepto 0 (none)
+- Cualquier `transition` con duration > 1ms
+- Cualquier `transform` excepto `none` o `translateY(0)` reset
+- Gradients de cualquier tipo (`linear-gradient`, `radial-gradient`, `conic-gradient`)
+- Filters CSS (`blur`, `brightness`, `backdrop-filter`)
+- Webfonts download (system stack solo, JetBrains Mono via ui-monospace fallback chain)
+- Cookie banners, analytics, tracking pixels (heredados)
+- Marketing speak headlines ("revolutionary", "AI-powered", "10x faster")
+- Carousels, parallax, scroll-jacking
+- Icons SVG decorativos (excepción: triangle del logo DevZen en brand mark 24px)
+- Hover transforms `translateY > 0`
+- Animations on initial page load (excepción: SeeleStatus pulse)
 
 ## Coverage (global)
 
-What components can reuse without invention:
-
-- `--semantic-surface-{canvas,elevated,overlay,inverse}` for backgrounds.
-- `--semantic-text-{primary,secondary,tertiary,gold,silver,cyan,accent,on-accent}` for text.
-- `--semantic-border-{subtle,strong,metal}` for borders.
-- `--semantic-action-primary-bg-{from,to}` for gradient buttons.
-- `--semantic-status-{seele-detected,wallet-detected,not-detected}` for status indicators.
-- `--space-{1..40}` for spacing.
-- `--text-{xs..5xl}` for sizes.
-- `--duration-{micro,fast,base,slow,epic}` + `--easing-{standard,enter,exit,spring}` for motion.
-- `.metal-silver-bg`, `.metal-gold-bg`, `.metal-canvas-bg` for brushed-metal surfaces.
-- `.gold-text`, `.silver-text`, `.cyan-text` for gradient-fill text.
-- `<svg class="triangle-decoration">` for triangle motif (inline component).
+What components can reuse:
+- `--semantic-surface-base` / `--semantic-surface-inverse` — surfaces
+- `--semantic-text-{primary,secondary,tertiary,accent,on-accent}` — text
+- `--semantic-border-{base,accent,muted}` — borders
+- `--semantic-action-{primary,secondary}-{bg,text,border}` — buttons
+- `--space-{1..200}` — spacing scale
+- `--text-{meta,xs,sm,base,lg,hero}` — type sizes
+- `--weight-{light,normal,medium,bold,black}` — weights
+- `--tracking-{tight,normal,wide,caps}` — letter-spacing
+- `--border-width-{hair,base,bold}` — border widths
+- `--rounded-{none,pill}` — radii (none por default, pill solo SeeleStatus)
 
 ## Validation (global)
 
-- All components MUST consume semantic tokens.
-- All interactive elements MUST have `:focus-visible` styled via `--semantic-focus-ring`.
-- All text MUST meet WCAG 2.2 AA contrast against its background (verified per token).
-- Responsive: NO viewport must produce horizontal scroll. Container queries enforce.
-- `prefers-reduced-motion: reduce` MUST disable transitions, animations, and the metal-canvas noise animation.
-- The brushed-metal effect MUST be implemented via CSS gradient + inline SVG only (no raster textures, no external requests).
-
-## Component status
-
-| Component | Status |
-|---|---|
-| Layout | v0.2 — adds SEELE detection script in `<head>` |
-| Header | v0.2 — adds wallet/SEELE indicators in nav |
-| Hero | v0.2 — brushed-metal canvas + triangle motif + gold/cyan title |
-| Features + FeatureCard | v0.2 — metal-finish hover borders |
-| Install + InstallCard | v0.2 — gold gradient on recommended badge, `<pre>` wraps |
-| Support | v0.2 — narrative unchanged |
-| DonateButtons | v0.2 — **rewritten**: EIP-6963 discovery + EIP-1193 flow for EVM (MetaMask popup opens), URI scheme preserved for BTC + SOL (Sparrow/Electrum/Phantom desktop handle it). Wallet-detected indicator per button. |
-| SeeleStatus (new) | v0.2 — pings `localhost:7777/favicon.ico` via Image; shows "Detected" / "Install" in hero |
-| Footer | v0.2 — DevZen attribution + triangle motif |
+- All components MUST use mono family. NO excepciones.
+- All borders MUST be solid, 1-3px, in fg/accent/muted color.
+- All hover states MUST be instant (no transition).
+- All sizing MUST come from the scale (no raw `padding: 7px`).
+- `prefers-reduced-motion` MUST be honored — no animation siquiera el SeeleStatus pulse.
+- WCAG 2.2 AA contrast: fg(0.94) on bg(0.08) = 15.6:1 AAA. accent(0.65) on bg(0.08) = 5.8:1 AA. Fácil pass.
 
 ## Version history
 
 | Version | Date | Sprint | Change |
 |---|---|---|---|
-| 0.1.0 | 2026-05-11 | LUMEN-01 bloque-B | Initial primitives + semantics. |
-| 0.2.0 | 2026-05-12 | LUMEN-01 bloque-C2 | DevZen brand: OKLCH color system, brushed-metal canvas + triangle motif, gold + silver-cyan dual accent. EIP-1193 + EIP-6963 for EVM donate flow. SeeleStatus component. Container-query responsive system. |
+| 0.1.0 | 2026-05-11 | LUMEN-01 B | Initial primitives + semantics (genérico minimalist) |
+| 0.2.0 | 2026-05-12 | LUMEN-01 C2 | DevZen brand: OKLCH + brushed metal + gold/cyan dual accent + triangle motif (LUMEN v0.9.1) |
+| **0.3.0** | **2026-05-12** | **LUMEN-02 Material.2+3** | **Brutalist dev-craft pivot. 3-color palette extreme. JetBrains Mono single family. 2px solid borders as hierarchical tool. Incomplete borders as visual syntax. Motion: zero (transition:none). DevZen brand preservado solo en text attribution. LUMEN v0.10.0** |

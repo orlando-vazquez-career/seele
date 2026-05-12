@@ -1,95 +1,59 @@
-/* SEELE Web — design tokens v0.2.0 (DevZen brand)
+/* SEELE Web — design tokens v0.3.0 (Brutalist dev-craft)
  *
- * All colors in OKLCH (CSS native since 2024). Perceptually uniform,
- * wide-gamut ready, correct gradient interpolation between gold/cyan.
+ * Variation 2 picked at Gate 1 of Sprint LUMEN-02 (LUMEN v0.10.0).
+ * 3-color palette. JetBrains Mono single family. 2px solid borders.
+ * Motion: zero. Incomplete borders as visual syntax.
  *
- * Layers:
- *   1. Primitives — absolute values.
- *   2. Semantics  — references to primitives, consumed by components.
- *   3. Effects    — brushed-metal utilities, triangle helpers.
+ * Anti-patterns aggressively enforced: no gradients, no shadows,
+ * no border-radius (except pill for status indicator), no transitions.
  */
 
 :root {
-  /* ───────── Primitives — black depth ───────── */
-  --black-0: oklch(0.06 0 0);
-  --black-1: oklch(0.10 0.003 230);
-  --black-2: oklch(0.14 0.005 230);
-  --black-3: oklch(0.19 0.007 230);
+  /* ───────── 3-color palette (only 3 colors allowed) ───────── */
+  --bg: oklch(0.08 0 0);
+  --fg: oklch(0.94 0 0);
+  --accent: oklch(0.65 0.18 50);
 
-  /* ───────── Primitives — metal scale ───────── */
-  --metal-100: oklch(0.92 0.018 230);
-  --metal-200: oklch(0.78 0.018 235);
-  --metal-300: oklch(0.62 0.020 235);
-  --metal-400: oklch(0.45 0.018 230);
-  --metal-500: oklch(0.32 0.015 230);
+  --fg-muted: oklch(0.65 0 0);
+  --fg-faint: oklch(0.42 0 0);
 
-  /* ───────── Primitives — gold scale ───────── */
-  --gold-100: oklch(0.92 0.10 88);
-  --gold-200: oklch(0.82 0.13 85);
-  --gold-300: oklch(0.72 0.14 82);
-  --gold-400: oklch(0.58 0.12 80);
-
-  /* ───────── Primitives — cyan scale ───────── */
-  --cyan-100: oklch(0.90 0.04 200);
-  --cyan-200: oklch(0.78 0.05 195);
-  --cyan-300: oklch(0.65 0.06 195);
-  --cyan-400: oklch(0.50 0.05 195);
-
-  /* ───────── Primitives — foreground neutrals ───────── */
-  --fg-100: oklch(0.96 0 0);
-  --fg-300: oklch(0.76 0.005 230);
-  --fg-500: oklch(0.55 0.005 230);
-  --fg-700: oklch(0.38 0.005 230);
-
-  /* ───────── Primitives — border ───────── */
-  --border-subtle: oklch(0.20 0.005 230);
-  --border-strong: oklch(0.30 0.008 230);
-  --border-metal: oklch(0.55 0.020 230);
-
-  /* ───────── Primitives — feedback ───────── */
+  --danger: oklch(0.60 0.20 25);
   --success: oklch(0.78 0.16 145);
-  --warning: oklch(0.82 0.16 75);
-  --danger: oklch(0.70 0.18 25);
 
-  /* ───────── Primitives — network brand (sRGB) ───────── */
+  /* Network brand colors (donate widget only) */
   --network-btc: #f7931a;
   --network-eth: #627eea;
   --network-base: #0052ff;
   --network-sys: #1f87ff;
   --network-sol: #9945ff;
 
-  /* ───────── Primitives — typography ───────── */
-  --font-mono: ui-monospace, "Cascadia Code", "JetBrains Mono", Menlo, Monaco,
+  /* ───────── Typography (single family) ───────── */
+  --font-mono: ui-monospace, "JetBrains Mono", "Cascadia Code", Menlo, Monaco,
     Consolas, "Liberation Mono", "Courier New", monospace;
-  --font-display: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
 
+  --text-meta: 11px;
   --text-xs: 12px;
-  --text-sm: 14px;
-  --text-base: 16px;
+  --text-sm: 13px;
+  --text-base: 15px;
   --text-lg: 18px;
-  --text-xl: 22px;
-  --text-2xl: 30px;
-  --text-3xl: 44px;
-  --text-4xl: 60px;
-  --text-5xl: 80px;
+  --text-hero: 72px;
 
-  --leading-tight: 1.15;
-  --leading-normal: 1.55;
-  --leading-relaxed: 1.75;
-
+  --weight-light: 300;
   --weight-normal: 400;
   --weight-medium: 500;
-  --weight-semibold: 600;
   --weight-bold: 700;
-  --weight-black: 900;
+  --weight-black: 800;
+
+  --leading-tight: 1.1;
+  --leading-normal: 1.4;
+  --leading-relaxed: 1.6;
 
   --tracking-tight: -0.02em;
   --tracking-normal: 0;
-  --tracking-wide: 0.05em;
-  --tracking-mega: 0.15em;
+  --tracking-wide: 0.04em;
+  --tracking-caps: 0.12em;
 
-  /* ───────── Primitives — spacing ───────── */
+  /* ───────── Spacing ───────── */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -98,78 +62,53 @@
   --space-6: 24px;
   --space-8: 32px;
   --space-10: 40px;
-  --space-12: 48px;
-  --space-16: 64px;
+  --space-14: 56px;
   --space-20: 80px;
-  --space-24: 96px;
-  --space-32: 128px;
-  --space-40: 160px;
+  --space-30: 120px;
+  --space-50: 200px;
 
-  /* ───────── Primitives — rounded ───────── */
-  --rounded-sm: 6px;
-  --rounded-md: 10px;
-  --rounded-lg: 16px;
-  --rounded-xl: 22px;
+  /* ───────── Borders (the primary hierarchical tool) ───────── */
+  --border-hair: 1px;
+  --border-base: 2px;
+  --border-bold: 3px;
+
+  /* ───────── Rounded (cero, salvo excepción pill) ───────── */
+  --rounded-none: 0;
   --rounded-pill: 999px;
 
-  /* ───────── Primitives — motion ───────── */
-  --duration-micro: 90ms;
-  --duration-fast: 140ms;
-  --duration-base: 240ms;
-  --duration-slow: 480ms;
-  --duration-epic: 900ms;
-  --easing-standard: cubic-bezier(0.4, 0, 0.2, 1);
-  --easing-enter: cubic-bezier(0, 0, 0.2, 1);
-  --easing-exit: cubic-bezier(0.4, 0, 1, 1);
-  --easing-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* ───────── Semantics ───────── */
+  --semantic-surface-base: var(--bg);
+  --semantic-surface-inverse: var(--fg);
 
-  /* ───────── Primitives — z-index ───────── */
-  --z-base: 0;
-  --z-decoration: 1;
-  --z-sticky: 10;
-  --z-overlay: 20;
-  --z-modal: 30;
-
-  /* ───────── Semantics — surface ───────── */
-  --semantic-surface-canvas: var(--black-1);
-  --semantic-surface-elevated: var(--black-2);
-  --semantic-surface-overlay: var(--black-3);
-  --semantic-surface-inverse: var(--metal-200);
-
-  /* ───────── Semantics — text ───────── */
-  --semantic-text-primary: var(--fg-100);
-  --semantic-text-secondary: var(--fg-300);
-  --semantic-text-tertiary: var(--fg-500);
-  --semantic-text-quaternary: var(--fg-700);
-  --semantic-text-gold: var(--gold-200);
-  --semantic-text-silver: var(--metal-200);
-  --semantic-text-cyan: var(--cyan-200);
-  --semantic-text-accent: var(--gold-200);
-  --semantic-text-on-accent: var(--black-0);
+  --semantic-text-primary: var(--fg);
+  --semantic-text-secondary: var(--fg-muted);
+  --semantic-text-tertiary: var(--fg-faint);
+  --semantic-text-accent: var(--accent);
+  --semantic-text-on-accent: var(--bg);
   --semantic-text-success: var(--success);
   --semantic-text-danger: var(--danger);
 
-  /* ───────── Semantics — border ───────── */
-  --semantic-border-subtle: var(--border-subtle);
-  --semantic-border-strong: var(--border-strong);
-  --semantic-border-metal: var(--border-metal);
+  --semantic-border-base: var(--fg);
+  --semantic-border-accent: var(--accent);
+  --semantic-border-muted: var(--fg-faint);
 
-  /* ───────── Semantics — action ───────── */
-  --semantic-action-primary-bg-from: var(--gold-300);
-  --semantic-action-primary-bg-to: var(--gold-100);
-  --semantic-action-primary-text: var(--black-0);
+  --semantic-action-primary-bg: var(--accent);
+  --semantic-action-primary-text: var(--bg);
+  --semantic-action-primary-border: var(--accent);
   --semantic-action-secondary-bg: transparent;
-  --semantic-action-secondary-border: var(--border-metal);
-  --semantic-action-secondary-text: var(--fg-100);
-  --semantic-action-secondary-bg-hover: var(--black-2);
+  --semantic-action-secondary-text: var(--fg);
+  --semantic-action-secondary-border: var(--fg);
 
-  /* ───────── Semantics — focus ───────── */
-  --semantic-focus-ring: var(--gold-200);
+  --semantic-focus-ring: var(--accent);
 
-  /* ───────── Semantics — status ───────── */
   --semantic-status-seele-detected: var(--success);
-  --semantic-status-wallet-detected: var(--cyan-200);
-  --semantic-status-not-detected: var(--fg-500);
+  --semantic-status-seele-not-detected: var(--fg-faint);
+  --semantic-status-wallet-detected: var(--accent);
+
+  /* ───────── Z-index ───────── */
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-modal: 30;
 }
 
 /* ───────── Reset + base ───────── */
@@ -178,38 +117,33 @@
 *::before,
 *::after {
   box-sizing: border-box;
+  /* Brutalist: no rounded corners anywhere by default */
+  border-radius: 0;
+  /* Brutalist: motion zero (wow-05). Pulse animation uses `animation:`, not transition. */
+  transition: none;
 }
 
 html {
-  scroll-behavior: smooth;
+  /* Brutalist: no smooth scroll, browser native is correct */
+  scroll-behavior: auto;
 }
 
-/* Sticky-header-aware anchor scroll for section IDs */
 section[id] {
-  scroll-margin-top: 80px;
+  scroll-margin-top: 64px;
 }
 
 html,
 body {
   margin: 0;
   padding: 0;
-  background: var(--semantic-surface-canvas);
+  background: var(--semantic-surface-base);
   color: var(--semantic-text-primary);
   font-family: var(--font-mono);
   font-size: var(--text-base);
+  font-weight: var(--weight-normal);
   line-height: var(--leading-normal);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  /* Subtle brushed canvas behind everything */
-  background-image:
-    radial-gradient(
-      ellipse 80% 60% at 50% -10%,
-      var(--black-2) 0%,
-      var(--black-1) 60%,
-      var(--black-0) 100%
-    );
-  background-attachment: fixed;
-  /* Prevent any element from exceeding viewport width on mobile */
   overflow-x: hidden;
 }
 
@@ -220,8 +154,9 @@ body {
 
 h1, h2, h3, h4, h5, h6 {
   margin: 0;
-  font-weight: var(--weight-bold);
+  font-weight: var(--weight-black);
   line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
 }
 
 p {
@@ -229,29 +164,35 @@ p {
 }
 
 a {
-  color: var(--semantic-text-gold);
+  color: var(--semantic-text-accent);
   text-decoration: underline;
-  text-decoration-thickness: 1px;
+  text-decoration-thickness: 2px;
   text-underline-offset: 3px;
-  transition: color var(--duration-fast) var(--easing-standard);
+  /* Brutalist: hover state changes instantly, no transition */
 }
 
 a:hover {
-  color: var(--gold-100);
-  text-decoration-thickness: 2px;
+  color: var(--fg);
+  background: var(--accent);
+  text-decoration: none;
+  padding: 0 2px;
 }
 
 a:focus-visible,
 button:focus-visible {
-  outline: 2px solid var(--semantic-focus-ring);
+  outline: var(--border-base) solid var(--semantic-focus-ring);
   outline-offset: 2px;
-  border-radius: var(--rounded-sm);
 }
 
 button {
   font-family: inherit;
   font-size: inherit;
   cursor: pointer;
+  background: none;
+  color: inherit;
+  border: none;
+  padding: 0;
+  /* No transitions */
 }
 
 code, pre {
@@ -263,11 +204,12 @@ pre {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: normal;
+  margin: 0;
 }
 
 ::selection {
-  background: var(--gold-200);
-  color: var(--black-0);
+  background: var(--accent);
+  color: var(--bg);
 }
 
 img, svg {
@@ -275,147 +217,66 @@ img, svg {
   max-width: 100%;
 }
 
+/* prefers-reduced-motion: honor — disable even the SeeleStatus pulse */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
   }
 }
 
-/* ───────── Effects — brushed-metal utilities ───────── */
+/* ───────── Layout container ───────── */
 
-/* Brushed silver — gradient + noise overlay.
- * The noise SVG is inlined to avoid an extra request.
- * Three layers: base diagonal gradient + turbulence noise + diagonal highlight. */
-.metal-silver-bg {
-  position: relative;
-  background:
-    linear-gradient(
-      135deg,
-      var(--metal-300) 0%,
-      var(--metal-100) 35%,
-      var(--metal-200) 55%,
-      var(--metal-400) 100%
-    );
-  isolation: isolate;
-}
-.metal-silver-bg::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='3'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.5 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
-  mix-blend-mode: overlay;
-  opacity: 0.18;
-  border-radius: inherit;
-  z-index: 0;
-}
-
-.metal-gold-bg {
-  position: relative;
-  background:
-    linear-gradient(
-      135deg,
-      var(--gold-300) 0%,
-      var(--gold-100) 35%,
-      var(--gold-200) 55%,
-      var(--gold-400) 100%
-    );
-  isolation: isolate;
-}
-.metal-gold-bg::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='5'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.4 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
-  mix-blend-mode: overlay;
-  opacity: 0.15;
-  border-radius: inherit;
-}
-
-/* Metal-finish border — gradient outline simulating a CNC frame */
-.metal-frame {
-  position: relative;
-  background: var(--semantic-surface-elevated);
-}
-.metal-frame::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(
-    135deg,
-    var(--metal-400) 0%,
-    var(--metal-200) 35%,
-    var(--metal-100) 50%,
-    var(--metal-300) 70%,
-    var(--metal-500) 100%
-  );
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-  z-index: 1;
-}
-
-/* Gold + cyan text — gradient text fill (Dev / Zen letterforms) */
-.gold-text {
-  background: linear-gradient(
-    135deg,
-    var(--gold-300) 0%,
-    var(--gold-100) 45%,
-    var(--gold-200) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  /* Prevent the gradient from being clipped when text wraps */
-  display: inline-block;
-}
-
-.cyan-text {
-  background: linear-gradient(
-    135deg,
-    var(--cyan-300) 0%,
-    var(--cyan-100) 45%,
-    var(--cyan-200) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  display: inline-block;
-}
-
-.silver-text {
-  background: linear-gradient(
-    135deg,
-    var(--metal-300) 0%,
-    var(--metal-100) 45%,
-    var(--metal-200) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  display: inline-block;
-}
-
-/* Container query base — components opt-in via @container */
-
-.container {
-  container-type: inline-size;
-}
-
-/* Responsive container width clamp */
 .page-container {
   width: 100%;
-  max-width: 1200px;
+  max-width: 1100px;
+  margin-inline-start: clamp(var(--space-4), 4vw, var(--space-14));
+  margin-inline-end: clamp(var(--space-8), 12vw, var(--space-50));
+  padding-inline: 0;
+}
+
+/* Inverse for sections that need centered constraint (rare — only footer copy) */
+.page-container-centered {
+  width: 100%;
+  max-width: 1100px;
   margin-inline: auto;
-  padding-inline: clamp(var(--space-4), 5vw, var(--space-8));
+  padding-inline: clamp(var(--space-4), 4vw, var(--space-8));
+}
+
+/* ───────── Incomplete border utilities ───────── */
+
+/* Bordes incompletos — Variation 2 signature visual syntax */
+.border-3-sides {
+  /* top + right + bottom, NO left (connects to left margin) */
+  border-top: var(--border-base) solid var(--semantic-border-base);
+  border-right: var(--border-base) solid var(--semantic-border-base);
+  border-bottom: var(--border-base) solid var(--semantic-border-base);
+  border-left: 0;
+}
+
+.border-2-sides-tl {
+  /* top + left only — secondary element marker */
+  border-top: var(--border-base) solid var(--semantic-border-base);
+  border-left: var(--border-base) solid var(--semantic-border-base);
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.border-left-only {
+  /* left only — inline data indicator */
+  border-left: var(--border-base) solid var(--semantic-border-base);
+  border-top: 0;
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.border-top-only {
+  /* horizontal separator */
+  border-top: var(--border-hair) solid var(--semantic-border-muted);
+  border-right: 0;
+  border-bottom: 0;
+  border-left: 0;
 }

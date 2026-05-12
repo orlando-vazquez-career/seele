@@ -3,7 +3,8 @@ import InstallCard from './InstallCard.astro';
 
 const installPaths = [
   {
-    title: 'Install script',
+    num: '// 01',
+    title: 'install script',
     description: 'SHA256-verified pre-built binary. Linux, macOS, Windows.',
     command:
       'curl -fsSL https://raw.githubusercontent.com/orlando-vazquez-career/seele/main/scripts/install.sh | bash',
@@ -11,134 +12,143 @@ const installPaths = [
     notes: 'Windows: irm https://raw.githubusercontent.com/orlando-vazquez-career/seele/main/scripts/install.ps1 | iex',
   },
   {
+    num: '// 02',
     title: 'cargo install',
     description: 'Compile from source via crates.io toolchain.',
     command:
       'cargo install --git https://github.com/orlando-vazquez-career/seele.git --locked seele-cli',
-    notes: 'Requires Rust 1.85+ (MSRV). ~5-10 min on first build.',
+    notes: 'Requires Rust 1.85+ (MSRV). 5-10 min first build.',
   },
   {
-    title: 'Build from source',
+    num: '// 03',
+    title: 'build from source',
     description: 'Clone and build the workspace.',
     command:
-      'git clone https://github.com/orlando-vazquez-career/seele.git\ncd seele\ncargo build --release -p seele-cli',
-    notes: 'Output binary at target/release/seele.',
+      'git clone https://github.com/orlando-vazquez-career/seele.git\ncd seele && cargo build --release -p seele-cli',
+    notes: 'Output: target/release/seele',
   },
 ];
 ---
 
 <section id="install" class="install">
   <div class="page-container install-inner">
-    <p class="install-eyebrow silver-text">/ Install</p>
-    <h2 class="install-heading">
-      Three paths, <span class="gold-text">one binary</span>
-    </h2>
-    <p class="install-lead">
-      Pick whichever fits. Full matrix + cache locations + ONNX fallback notes in
-      <a
-        href="https://github.com/orlando-vazquez-career/seele/blob/main/docs/INSTALLATION.md"
-        rel="noopener"
-        target="_blank"
-      >docs/INSTALLATION.md</a>.
-    </p>
+    <header class="install-header">
+      <span class="install-eyebrow">// INSTALL</span>
+      <h2 class="install-heading">
+        Three paths.<br />
+        One binary.
+      </h2>
+      <p class="install-lead">
+        Pick whichever fits. Full matrix in
+        <a
+          href="https://github.com/orlando-vazquez-career/seele/blob/main/docs/INSTALLATION.md"
+          rel="noopener"
+          target="_blank"
+        >docs/INSTALLATION.md</a>.
+      </p>
+    </header>
+
     <div class="install-grid">
       {installPaths.map((p) => (
         <InstallCard {...p} />
       ))}
     </div>
+
     <details class="post-install">
-      <summary>After install — first save + search</summary>
-      <pre><code>seele save "WAL is faster than DELETE for crash recovery" \
-  "Postgres uses WAL by default since 9.1." --project notes
+      <summary>// after install — first save + search</summary>
+      <pre><code>$ seele save "WAL is faster than DELETE" \
+    "Postgres uses WAL by default since 9.1." \
+    --project notes
 
-seele search "crash recovery" --project notes
+$ seele search "crash recovery" --project notes
 
-seele setup --agent claude-code   # wire MCP into Claude Code</code></pre>
+$ seele setup --agent claude-code   # wire MCP</code></pre>
     </details>
   </div>
 </section>
 
 <style>
   .install {
-    padding-block: clamp(var(--space-16), 8vw, var(--space-20));
-    border-top: 1px solid var(--semantic-border-subtle);
-    background:
-      radial-gradient(
-        ellipse 80% 60% at 50% 100%,
-        oklch(0.13 0.005 230) 0%,
-        oklch(0.10 0.003 230) 70%,
-        oklch(0.10 0.003 230) 100%
-      );
+    padding-block: var(--space-20);
+    border-bottom: var(--border-base) solid var(--semantic-border-base);
   }
 
-  .install-inner {
-    container-type: inline-size;
+  .install-header {
+    margin-bottom: var(--space-10);
+    max-width: 60ch;
   }
 
   .install-eyebrow {
-    font-family: var(--font-display);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-semibold);
-    letter-spacing: var(--tracking-mega);
+    display: block;
+    font-size: var(--text-meta);
+    letter-spacing: var(--tracking-caps);
     text-transform: uppercase;
-    margin-bottom: var(--space-3);
+    color: var(--accent);
+    margin-bottom: var(--space-4);
   }
 
   .install-heading {
-    font-family: var(--font-display);
-    font-size: clamp(var(--text-2xl), 5vw, var(--text-3xl));
+    font-size: clamp(32px, 5vw, 56px);
     font-weight: var(--weight-black);
     letter-spacing: var(--tracking-tight);
-    margin-bottom: var(--space-4);
+    line-height: 1.05;
+    margin-bottom: var(--space-5);
   }
 
   .install-lead {
     font-size: var(--text-base);
-    color: var(--semantic-text-secondary);
-    margin-bottom: var(--space-10);
-    max-width: 640px;
+    color: var(--fg-muted);
+    line-height: var(--leading-relaxed);
   }
 
   .install-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
-    gap: var(--space-4);
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-3);
     margin-bottom: var(--space-8);
   }
 
-  @container (min-width: 900px) {
+  @media (max-width: 900px) {
     .install-grid {
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: 1fr;
     }
   }
 
   .post-install {
-    border: 1px solid var(--semantic-border-subtle);
-    border-radius: var(--rounded-md);
-    padding: var(--space-3) var(--space-4);
-    background: var(--semantic-surface-elevated);
+    border-top: var(--border-base) solid var(--semantic-border-base);
+    border-right: var(--border-base) solid var(--semantic-border-base);
+    border-bottom: var(--border-base) solid var(--semantic-border-base);
+    border-left: 0;
+    padding: var(--space-3) var(--space-5);
+    margin-left: var(--space-14);
+    max-width: 720px;
   }
 
   .post-install summary {
     cursor: pointer;
-    color: var(--semantic-text-primary);
+    color: var(--fg);
     font-size: var(--text-sm);
-  }
-
-  .post-install summary::marker {
-    color: var(--semantic-text-gold);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    padding-block: var(--space-2);
   }
 
   .post-install pre {
-    margin: var(--space-3) 0 var(--space-1);
+    margin: var(--space-3) 0 0;
     padding: var(--space-3) var(--space-4);
-    background: var(--semantic-surface-canvas);
-    border: 1px solid var(--semantic-border-subtle);
-    border-radius: var(--rounded-sm);
+    background: transparent;
+    border: var(--border-hair) solid var(--semantic-border-muted);
     font-size: var(--text-xs);
-    color: var(--semantic-text-primary);
+    color: var(--fg);
     line-height: var(--leading-relaxed);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+  }
+
+  @media (max-width: 640px) {
+    .post-install {
+      margin-left: 0;
+    }
   }
 </style>

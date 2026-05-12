@@ -1,22 +1,6 @@
 ---
-/**
- * SeeleStatus — pings the local SEELE HTTP server and shows detection state.
- *
- * Detection is best-effort:
- *   - On localhost / http dev:  fetch('http://localhost:7777/health', {mode:'no-cors'})
- *   - On https production: mixed-content blocks the request → graceful fallback to
- *     "Install SEELE" CTA without auto-detection. (Future v0.2: `seele serve`
- *     bundles the landing itself, so auto-detection works on the binary too.)
- *
- * States:
- *   - "checking"     — initial, neutral spinner-ish
- *   - "detected"     — green dot, "Running on your machine"
- *   - "not-detected" — gray dot, "Install SEELE" CTA inline
- *   - "blocked"      — mixed-content blocked, neutral CTA "Install SEELE"
- */
-
 interface Props {
-  endpoint?: string; // override for tests
+  endpoint?: string;
 }
 
 const { endpoint = 'http://localhost:7777/health' } = Astro.props;
@@ -30,7 +14,7 @@ const { endpoint = 'http://localhost:7777/health' } = Astro.props;
   role="status"
 >
   <span class="dot" aria-hidden="true"></span>
-  <span class="label" data-label>checking your machine…</span>
+  <span class="label" data-label>checking machine…</span>
   <a
     class="cta"
     data-cta
@@ -38,7 +22,7 @@ const { endpoint = 'http://localhost:7777/health' } = Astro.props;
     rel="noopener"
     target="_blank"
     hidden
-  >install SEELE →</a>
+  >install →</a>
 </div>
 
 <script>
@@ -71,13 +55,10 @@ const { endpoint = 'http://localhost:7777/health' } = Astro.props;
   function setCached(status: Status) {
     try {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ status, ts: Date.now() }));
-    } catch {
-      /* private mode etc — ignore */
-    }
+    } catch { /* private mode etc */ }
   }
 
   async function detect(endpoint: string): Promise<Status> {
-    // Mixed-content rule: https pages cannot fetch http endpoints. Detect early.
     if (location.protocol === 'https:' && endpoint.startsWith('http:')) {
       return 'blocked';
     }
@@ -107,10 +88,10 @@ const { endpoint = 'http://localhost:7777/health' } = Astro.props;
 
   function applyMessage(el: HTMLElement, status: Status) {
     const messages: Record<Status, string> = {
-      checking: 'checking your machine…',
-      detected: 'SEELE running on your machine',
+      checking: 'checking machine…',
+      detected: 'SEELE running on this machine',
       'not-detected': 'SEELE not detected',
-      blocked: 'SEELE detection requires local hosting',
+      blocked: 'auto-detect needs local hosting',
     };
     setStatus(el, status, messages[status]);
   }
@@ -122,27 +103,24 @@ const { endpoint = 'http://localhost:7777/health' } = Astro.props;
     align-items: center;
     gap: var(--space-2);
     padding: var(--space-1) var(--space-3);
-    background: var(--semantic-surface-elevated);
-    border: 1px solid var(--semantic-border-subtle);
+    border: var(--border-base) solid var(--semantic-border-muted);
     border-radius: var(--rounded-pill);
-    font-size: var(--text-xs);
-    color: var(--semantic-text-secondary);
-    transition: border-color var(--duration-fast) var(--easing-standard);
+    font-size: var(--text-meta);
+    letter-spacing: var(--tracking-wide);
+    color: var(--fg-muted);
+    text-transform: uppercase;
   }
 
   .dot {
-    display: inline-block;
     width: 8px;
     height: 8px;
     border-radius: var(--rounded-pill);
-    background: var(--semantic-status-not-detected);
-    transition: background var(--duration-fast) var(--easing-standard),
-      box-shadow var(--duration-base) var(--easing-standard);
+    background: var(--semantic-status-seele-not-detected);
   }
 
   .seele-status[data-status='checking'] .dot {
-    background: var(--semantic-text-tertiary);
-    animation: pulse var(--duration-epic) ease-in-out infinite;
+    background: var(--fg-muted);
+    animation: pulse 1.4s ease-in-out infinite;
   }
 
   .seele-status[data-status='detected'] {
@@ -150,37 +128,27 @@ const { endpoint = 'http://localhost:7777/health' } = Astro.props;
   }
   .seele-status[data-status='detected'] .dot {
     background: var(--semantic-status-seele-detected);
-    box-shadow: 0 0 12px oklch(0.78 0.16 145 / 0.6);
   }
   .seele-status[data-status='detected'] .label {
-    color: var(--semantic-text-primary);
-  }
-
-  .seele-status[data-status='not-detected'] .dot,
-  .seele-status[data-status='blocked'] .dot {
-    background: var(--semantic-status-not-detected);
+    color: var(--fg);
   }
 
   .cta {
-    color: var(--semantic-text-gold);
+    color: var(--accent);
     text-decoration: none;
-    font-weight: var(--weight-medium);
+    font-weight: var(--weight-bold);
     margin-left: var(--space-1);
+    text-transform: uppercase;
   }
 
   .cta:hover {
-    color: var(--gold-100);
-    text-decoration: underline;
+    background: var(--accent);
+    color: var(--bg);
+    padding: 0 4px;
   }
 
   @keyframes pulse {
     0%, 100% { opacity: 0.5; }
     50% { opacity: 1; }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .seele-status[data-status='checking'] .dot {
-      animation: none;
-    }
   }
 </style>

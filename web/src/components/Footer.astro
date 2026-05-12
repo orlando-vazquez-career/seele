@@ -1,164 +1,191 @@
 ---
-import Triangle from './Triangle.astro';
-
 const year = new Date().getFullYear();
 ---
 
 <footer class="site-footer">
   <div class="page-container footer-inner">
-    <div class="footer-top">
-      <a
-        href="https://github.com/orlando-vazquez-career/seele"
-        rel="noopener"
-        target="_blank"
-        class="devzen-mark"
-        aria-label="DevZen SpA — SEELE project"
-      >
-        <Triangle variant="outline" size={36} opacity={0.9} />
-        <span class="devzen-text">
-          <span class="devzen-tag silver-text">a</span>
-          <span class="devzen-name gold-text">DevZen</span>
-          <span class="devzen-tag silver-text">tool</span>
-        </span>
-      </a>
-      <p class="legal">
-        © {year} DevZen SpA · <a
-          href="https://github.com/orlando-vazquez-career/seele/blob/main/LICENSE"
+    <div class="footer-grid">
+      <div class="col col-brand">
+        <span class="meta">// DEVZEN SpA</span>
+        <a
+          href="https://github.com/orlando-vazquez-career/seele"
           rel="noopener"
           target="_blank"
-        >MIT licensed</a>
+          class="brand-link"
+        >SEELE</a>
+        <span class="version">v0.1.0-alpha</span>
+      </div>
+
+      <div class="col col-links">
+        <span class="meta">// LINKS</span>
+        <ul>
+          <li><a href="https://github.com/orlando-vazquez-career/seele" rel="noopener" target="_blank">github ↗</a></li>
+          <li><a href="https://github.com/orlando-vazquez-career/seele/blob/main/CHANGELOG.md" rel="noopener" target="_blank">changelog ↗</a></li>
+          <li><a href="https://github.com/orlando-vazquez-career/seele/discussions" rel="noopener" target="_blank">discussions ↗</a></li>
+          <li><a href="https://github.com/orlando-vazquez-career/seele/blob/main/LICENSE" rel="noopener" target="_blank">mit license ↗</a></li>
+        </ul>
+      </div>
+
+      <div class="col col-respect">
+        <span class="meta">// INSPIRED BY</span>
+        <a
+          href="https://github.com/Gentleman-Programming/engram"
+          rel="noopener"
+          target="_blank"
+          class="inspired-link"
+        >Gentleman-Programming<br />/engram</a>
+        <span class="version">MIT · clean-room</span>
+      </div>
+
+      <div class="col col-meta">
+        <span class="meta">// PRIVACY</span>
+        <p class="privacy">
+          no tracking<br />
+          no analytics<br />
+          no cookies<br />
+          no SDKs
+        </p>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p class="copy">
+        © {year} DevZen SpA · all paths lead to localhost
+      </p>
+      <p class="motto">
+        <em lang="la">Super stellatum firmamentum iudicat Deus, sicut nos iudicamus.</em>
       </p>
     </div>
-
-    <div class="footer-links">
-      <a
-        href="https://github.com/orlando-vazquez-career/seele/blob/main/CHANGELOG.md"
-        rel="noopener"
-        target="_blank"
-      >Changelog</a>
-      <span class="sep" aria-hidden="true">·</span>
-      <a
-        href="https://github.com/orlando-vazquez-career/seele/discussions"
-        rel="noopener"
-        target="_blank"
-      >Discussions</a>
-      <span class="sep" aria-hidden="true">·</span>
-      <a
-        href="https://github.com/Gentleman-Programming/engram"
-        rel="noopener"
-        target="_blank"
-      >Inspired by ENGRAM</a>
-      <span class="sep" aria-hidden="true">·</span>
-      <a
-        href="https://github.com/orlando-vazquez-career/seele"
-        rel="noopener"
-        target="_blank"
-      >GitHub ↗</a>
-    </div>
-
-    <p class="disclosure">
-      No tracking · no analytics · no cookies · no SDKs. <br />
-      <em>Super stellatum firmamentum iudicat Deus, sicut nos iudicamus.</em>
-    </p>
   </div>
 </footer>
 
 <style>
   .site-footer {
-    padding-block: var(--space-10) var(--space-12);
-    border-top: 1px solid var(--semantic-border-subtle);
-    background:
-      radial-gradient(
-        ellipse 60% 40% at 50% 100%,
-        oklch(0.08 0.002 230) 0%,
-        oklch(0.06 0 0) 100%
-      );
+    padding-block: var(--space-12) var(--space-8);
+    border-top: var(--border-base) solid var(--semantic-border-base);
   }
 
   .footer-inner {
     container-type: inline-size;
   }
 
-  .footer-top {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-4);
-    margin-bottom: var(--space-6);
+  .footer-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-6);
+    margin-bottom: var(--space-10);
   }
 
-  .devzen-mark {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-3);
-    text-decoration: none;
-    color: inherit;
-  }
-
-  .devzen-text {
+  .col {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    line-height: 1;
+    gap: var(--space-2);
+    min-width: 0;
   }
 
-  .devzen-tag {
-    font-family: var(--font-display);
-    font-size: 9px;
-    font-weight: var(--weight-medium);
-    letter-spacing: var(--tracking-mega);
+  .meta {
+    font-size: var(--text-meta);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .brand-link {
+    font-size: var(--text-xl);
+    font-weight: var(--weight-black);
+    color: var(--fg);
+    text-decoration: none;
+    letter-spacing: var(--tracking-tight);
+  }
+
+  .brand-link:hover {
+    background: var(--accent);
+    color: var(--bg);
+    padding: 0 4px;
+  }
+
+  .version {
+    font-size: var(--text-meta);
+    color: var(--fg-faint);
+    letter-spacing: var(--tracking-caps);
     text-transform: uppercase;
   }
 
-  .devzen-name {
-    font-family: var(--font-display);
-    font-size: var(--text-lg);
-    font-weight: var(--weight-black);
-    letter-spacing: var(--tracking-wide);
-  }
-
-  .legal {
-    font-size: var(--text-xs);
-    color: var(--semantic-text-tertiary);
-  }
-
-  .legal a {
-    color: var(--semantic-text-secondary);
-  }
-
-  .footer-links {
+  .col-links ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-3);
-    margin-bottom: var(--space-6);
-    font-size: var(--text-xs);
+    flex-direction: column;
+    gap: var(--space-1);
   }
 
-  .footer-links a {
-    color: var(--semantic-text-secondary);
+  .col-links a {
+    font-size: var(--text-sm);
+    color: var(--fg-muted);
     text-decoration: none;
   }
 
-  .footer-links a:hover {
-    color: var(--semantic-text-gold);
+  .col-links a:hover {
+    color: var(--accent);
   }
 
-  .sep {
-    color: var(--semantic-text-quaternary);
+  .inspired-link {
+    font-size: var(--text-sm);
+    color: var(--fg);
+    text-decoration: none;
+    line-height: var(--leading-tight);
   }
 
-  .disclosure {
-    font-size: var(--text-xs);
-    color: var(--semantic-text-tertiary);
+  .inspired-link:hover {
+    color: var(--accent);
+  }
+
+  .privacy {
+    font-size: var(--text-sm);
+    color: var(--fg-muted);
     line-height: var(--leading-relaxed);
-    max-width: 640px;
+    margin: 0;
   }
 
-  .disclosure em {
-    color: var(--semantic-text-secondary);
+  .footer-bottom {
+    border-top: var(--border-hair) solid var(--semantic-border-muted);
+    padding-top: var(--space-4);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--space-3);
+    font-size: var(--text-xs);
+    color: var(--fg-faint);
+  }
+
+  .copy {
+    margin: 0;
+  }
+
+  .motto {
+    margin: 0;
+  }
+
+  .motto em {
+    color: var(--fg-muted);
     font-style: italic;
-    font-family: var(--font-display);
+  }
+
+  @media (max-width: 900px) {
+    .footer-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  @media (max-width: 540px) {
+    .footer-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .footer-bottom {
+      flex-direction: column;
+    }
   }
 </style>

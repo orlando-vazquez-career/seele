@@ -3,28 +3,28 @@ import FeatureCard from './FeatureCard.astro';
 
 const features = [
   {
-    icon: '⌨',
+    num: '// 01',
     title: 'CLI',
-    blurb: '17 subcommands. Save, search, link, sync, doctor, projects, setup. Local SQLite, zero network.',
-    meta: 'seele save / search / show / list / link / sync …',
+    blurb: '17 subcommands. save · search · link · sync · doctor · projects · setup. Local SQLite, zero network.',
+    meta: 'seele save / search / list ...',
     href: 'https://github.com/orlando-vazquez-career/seele#what-you-get',
   },
   {
-    icon: '◉',
+    num: '// 02',
     title: 'MCP',
     blurb: '19 tools under seele_* namespace. Drops into Claude Code, Cursor, Windsurf with one command.',
     meta: 'seele setup --agent claude-code',
     href: 'https://github.com/orlando-vazquez-career/seele/blob/main/docs/AGENT-SETUP.md',
   },
   {
-    icon: '↗',
+    num: '// 03',
     title: 'HTTP',
     blurb: '18 paths + OpenAPI 3.1 + Swagger UI at /docs. Bearer auth, optional legacy ENGRAM aliases.',
     meta: 'seele serve --port 7777',
     href: 'https://github.com/orlando-vazquez-career/seele#what-you-get',
   },
   {
-    icon: '▦',
+    num: '// 04',
     title: 'TUI',
     blurb: 'Ratatui interface. 5 panes (Home, Browse, Search, Detail, Stats). Vi-style keymap.',
     meta: 'seele tui',
@@ -35,13 +35,17 @@ const features = [
 
 <section id="features" class="features">
   <div class="page-container features-inner">
-    <p class="features-eyebrow silver-text">/ Features</p>
-    <h2 class="features-heading">
-      One binary, <span class="gold-text">four interfaces</span>
-    </h2>
-    <p class="features-lead">
-      Pick the one your agent prefers — they all speak to the same local SQLite.
-    </p>
+    <header class="features-header">
+      <span class="features-eyebrow">// FEATURES</span>
+      <h2 class="features-heading">
+        One binary.<br />
+        Four interfaces.
+      </h2>
+      <p class="features-lead">
+        Pick the one your agent prefers — they all speak to the same local SQLite.
+      </p>
+    </header>
+
     <div class="features-grid">
       {features.map((f) => (
         <FeatureCard {...f} />
@@ -52,47 +56,54 @@ const features = [
 
 <style>
   .features {
-    padding-block: clamp(var(--space-16), 8vw, var(--space-20));
-    border-top: 1px solid var(--semantic-border-subtle);
+    padding-block: var(--space-20);
+    border-bottom: var(--border-base) solid var(--semantic-border-base);
   }
 
-  .features-inner {
-    container-type: inline-size;
+  .features-header {
+    margin-bottom: var(--space-10);
+    max-width: 60ch;
   }
 
   .features-eyebrow {
-    font-family: var(--font-display);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-semibold);
-    letter-spacing: var(--tracking-mega);
+    display: block;
+    font-size: var(--text-meta);
+    letter-spacing: var(--tracking-caps);
     text-transform: uppercase;
-    margin-bottom: var(--space-3);
+    color: var(--accent);
+    margin-bottom: var(--space-4);
   }
 
   .features-heading {
-    font-family: var(--font-display);
-    font-size: clamp(var(--text-2xl), 5vw, var(--text-3xl));
+    font-size: clamp(32px, 5vw, 56px);
     font-weight: var(--weight-black);
     letter-spacing: var(--tracking-tight);
-    margin-bottom: var(--space-4);
+    line-height: 1.05;
+    margin-bottom: var(--space-5);
   }
 
   .features-lead {
     font-size: var(--text-base);
-    color: var(--semantic-text-secondary);
-    margin-bottom: var(--space-10);
-    max-width: 560px;
+    color: var(--fg-muted);
+    line-height: var(--leading-relaxed);
   }
 
   .features-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
-    gap: var(--space-4);
+    /* Asymmetric tile ratios: 30% / 25% / 25% / 20% — CLI dominates */
+    grid-template-columns: 1.5fr 1.25fr 1.25fr 1fr;
+    gap: var(--space-3);
   }
 
-  @container (min-width: 920px) {
+  @media (max-width: 960px) {
     .features-grid {
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  @media (max-width: 540px) {
+    .features-grid {
+      grid-template-columns: 1fr;
     }
   }
 </style>

@@ -4,125 +4,217 @@ import DonateButtons from './DonateButtons.astro';
 
 <section id="support" class="support">
   <div class="page-container support-inner">
-    <p class="support-eyebrow silver-text">/ Support · Apoyar</p>
-    <h2 class="support-heading">
-      Built by <span class="gold-text">one developer</span>,
-      in spare hours.
-    </h2>
-    <p class="support-lead">
-      SEELE is built as a labor of love by
-      <a
-        href="https://github.com/orlando-vazquez-career"
-        rel="noopener"
-        target="_blank"
-      >Orlando Nahuel Vazquez Gonzalez</a>
-      under DevZen SpA. If it saves you time, here are the ways to help:
-    </p>
-
-    <ul class="support-list">
-      <li>
-        <strong>Star · share</strong> the
-        <a
-          href="https://github.com/orlando-vazquez-career/seele"
+    <header class="support-header">
+      <span class="support-eyebrow">// SUPPORT</span>
+      <h2 class="support-heading">
+        One developer.<br />
+        Spare hours.
+      </h2>
+      <p class="support-lead">
+        SEELE is built by <a
+          href="https://github.com/orlando-vazquez-career"
           rel="noopener"
           target="_blank"
-        >repo</a>. Visibility brings contributors, contributors make the tool better for everyone.
-      </li>
-      <li>
-        <strong>Open issues</strong> with feedback or bug reports.
-      </li>
-      <li>
-        <strong>Hire · consult</strong> via a
-        <a
-          href="https://github.com/orlando-vazquez-career/seele/discussions"
-          rel="noopener"
-          target="_blank"
-        >Discussion</a> if your team uses SEELE in production.
-      </li>
-    </ul>
+        >Orlando Nahuel Vazquez Gonzalez</a> under DevZen SpA. No funding, no team — only what a single person can ship in a week of evenings. If it saves you time, here are the ways to give some back.
+      </p>
+    </header>
 
-    <h3 class="donate-heading">
-      <span class="gold-text">Crypto donations</span>
-      <span class="silver-text">— one click</span>
-    </h3>
-    <DonateButtons />
+    <ol class="ways">
+      <li>
+        <span class="way-num">// 01</span>
+        <div class="way-body">
+          <h3 class="way-title">Star <span class="amp">·</span> share</h3>
+          <p>
+            The <a
+              href="https://github.com/orlando-vazquez-career/seele"
+              rel="noopener"
+              target="_blank"
+            >repo</a>. Visibility brings contributors. Contributors make the tool better for everyone.
+          </p>
+        </div>
+      </li>
+      <li>
+        <span class="way-num">// 02</span>
+        <div class="way-body">
+          <h3 class="way-title">Open issues</h3>
+          <p>Feedback. Bug reports. Friction. Tell me what hurts when you use it.</p>
+        </div>
+      </li>
+      <li>
+        <span class="way-num">// 03</span>
+        <div class="way-body">
+          <h3 class="way-title">Hire <span class="amp">·</span> consult</h3>
+          <p>
+            Via a <a
+              href="https://github.com/orlando-vazquez-career/seele/discussions"
+              rel="noopener"
+              target="_blank"
+            >Discussion</a> if your team uses SEELE in production.
+          </p>
+        </div>
+      </li>
+    </ol>
+
+    <div class="donate-block">
+      <span class="donate-eyebrow">// 04 — crypto donations</span>
+      <h3 class="donate-heading">
+        One click. <span class="accent">No SDK.</span>
+      </h3>
+      <p class="donate-lead">
+        EIP-1193 for EVM. BIP-21 for Bitcoin. Solana Pay for Phantom. No WalletConnect, no tracking.
+      </p>
+      <DonateButtons />
+    </div>
   </div>
 </section>
 
 <style>
   .support {
-    padding-block: clamp(var(--space-16), 8vw, var(--space-20));
-    border-top: 1px solid var(--semantic-border-subtle);
+    padding-block: var(--space-20);
+    border-bottom: var(--border-base) solid var(--semantic-border-base);
   }
 
-  .support-inner {
-    container-type: inline-size;
+  .support-header {
+    margin-bottom: var(--space-10);
+    max-width: 60ch;
   }
 
   .support-eyebrow {
-    font-family: var(--font-display);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-semibold);
-    letter-spacing: var(--tracking-mega);
+    display: block;
+    font-size: var(--text-meta);
+    letter-spacing: var(--tracking-caps);
     text-transform: uppercase;
-    margin-bottom: var(--space-3);
+    color: var(--accent);
+    margin-bottom: var(--space-4);
   }
 
   .support-heading {
-    font-family: var(--font-display);
-    font-size: clamp(var(--text-2xl), 5vw, var(--text-3xl));
+    font-size: clamp(32px, 5vw, 56px);
     font-weight: var(--weight-black);
     letter-spacing: var(--tracking-tight);
-    margin-bottom: var(--space-4);
-    max-width: 720px;
+    line-height: 1.05;
+    margin-bottom: var(--space-5);
   }
 
   .support-lead {
     font-size: var(--text-base);
-    color: var(--semantic-text-secondary);
+    color: var(--fg-muted);
     line-height: var(--leading-relaxed);
-    margin-bottom: var(--space-8);
-    max-width: 720px;
   }
 
-  .support-list {
+  .support-lead a {
+    color: var(--fg);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    text-decoration-thickness: 1px;
+  }
+
+  .support-lead a:hover {
+    background: var(--accent);
+    color: var(--bg);
+    text-decoration: none;
+    padding: 0 4px;
+  }
+
+  .ways {
     list-style: none;
     padding: 0;
-    margin: 0 0 var(--space-12);
+    margin: 0 0 var(--space-16);
     display: flex;
     flex-direction: column;
-    gap: var(--space-3);
+    gap: var(--space-5);
     max-width: 720px;
+    margin-left: var(--space-14);
   }
 
-  .support-list li {
+  .ways li {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    gap: var(--space-3);
+    padding-block: var(--space-3);
+    border-top: var(--border-hair) solid var(--semantic-border-muted);
+  }
+
+  .way-num {
+    font-size: var(--text-meta);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    color: var(--accent);
+    padding-top: var(--space-1);
+  }
+
+  .way-title {
+    font-size: var(--text-lg);
+    font-weight: var(--weight-bold);
+    color: var(--fg);
+    margin: 0 0 var(--space-1);
+  }
+
+  .way-body p {
     font-size: var(--text-sm);
-    color: var(--semantic-text-secondary);
+    color: var(--fg-muted);
     line-height: var(--leading-relaxed);
-    padding-left: var(--space-4);
-    position: relative;
-    overflow-wrap: anywhere;
+    margin: 0;
   }
 
-  .support-list li::before {
-    content: '▴';
-    position: absolute;
-    left: 0;
-    color: var(--semantic-text-gold);
-    font-size: var(--text-base);
-    line-height: 1.4;
+  .way-body a {
+    color: var(--fg);
+    text-decoration: underline;
+    text-underline-offset: 4px;
   }
 
-  .support-list strong {
-    color: var(--semantic-text-primary);
-    font-weight: var(--weight-semibold);
+  .way-body a:hover {
+    background: var(--accent);
+    color: var(--bg);
+    text-decoration: none;
+    padding: 0 4px;
+  }
+
+  .amp {
+    color: var(--accent);
+  }
+
+  .donate-block {
+    border-top: var(--border-base) solid var(--semantic-border-base);
+    padding-top: var(--space-8);
+  }
+
+  .donate-eyebrow {
+    display: block;
+    font-size: var(--text-meta);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: var(--space-3);
   }
 
   .donate-heading {
-    font-family: var(--font-display);
-    font-size: var(--text-lg);
-    margin-bottom: var(--space-5);
-    color: var(--semantic-text-primary);
+    font-size: var(--text-2xl);
     font-weight: var(--weight-bold);
+    margin-bottom: var(--space-3);
+    color: var(--fg);
+  }
+
+  .donate-heading .accent {
+    color: var(--accent);
+  }
+
+  .donate-lead {
+    font-size: var(--text-sm);
+    color: var(--fg-muted);
+    line-height: var(--leading-relaxed);
+    max-width: 720px;
+    margin-bottom: var(--space-6);
+  }
+
+  @media (max-width: 640px) {
+    .ways {
+      margin-left: 0;
+    }
+
+    .ways li {
+      grid-template-columns: 1fr;
+      gap: var(--space-2);
+    }
   }
 </style>

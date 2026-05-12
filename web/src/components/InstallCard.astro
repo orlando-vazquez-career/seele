@@ -1,27 +1,31 @@
 ---
 interface Props {
+  num: string;
   title: string;
   description: string;
   command: string;
   recommended?: boolean;
   notes?: string;
 }
-const { title, description, command, recommended = false, notes } = Astro.props;
+const { num, title, description, command, recommended = false, notes } = Astro.props;
 ---
 
 <article class={`install-card${recommended ? ' is-recommended' : ''}`}>
-  {recommended && <span class="badge">recomendado</span>}
+  <header class="install-header">
+    <span class="num">{num}</span>
+    {recommended && <span class="badge">RECOMENDADO</span>}
+  </header>
   <h3 class="title">{title}</h3>
   <p class="description">{description}</p>
   <div class="cmd-wrap">
-    <pre class="cmd"><code>{command}</code></pre>
+    <pre class="cmd"><code>$ {command}</code></pre>
     <button
       class="copy-btn"
       type="button"
       data-copy={command}
       aria-label={`Copy ${title} command`}
     >
-      copy
+      COPY
     </button>
   </div>
   {notes && <p class="notes">{notes}</p>}
@@ -35,89 +39,63 @@ const { title, description, command, recommended = false, notes } = Astro.props;
       try {
         await navigator.clipboard.writeText(cmd);
         const original = btn.textContent;
-        btn.textContent = 'copied';
+        btn.textContent = 'COPIED';
         btn.classList.add('is-copied');
         window.setTimeout(() => {
           btn.textContent = original;
           btn.classList.remove('is-copied');
         }, 1500);
-      } catch {
-        /* silent fail */
-      }
+      } catch { /* silent fail */ }
     });
   });
 </script>
 
 <style>
   .install-card {
-    position: relative;
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
-    padding: var(--space-6);
-    background: var(--semantic-surface-elevated);
-    border: 1px solid var(--semantic-border-subtle);
-    border-radius: var(--rounded-md);
+    padding: var(--space-5);
+    border: var(--border-base) solid var(--semantic-border-base);
+    background: var(--bg);
     min-width: 0;
-    overflow: hidden;
   }
 
   .install-card.is-recommended {
-    border-color: transparent;
+    border-color: var(--accent);
   }
 
-  .install-card.is-recommended::before {
-    /* Metal-finish frame for recommended */
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1px;
-    background: linear-gradient(
-      135deg,
-      var(--gold-400) 0%,
-      var(--gold-100) 50%,
-      var(--gold-300) 100%
-    );
-    -webkit-mask:
-      linear-gradient(#fff 0 0) content-box,
-      linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
+  .install-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .num {
+    font-size: var(--text-meta);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    color: var(--accent);
   }
 
   .badge {
-    position: absolute;
-    top: calc(var(--space-3) * -1);
-    left: var(--space-4);
-    padding: 3px var(--space-3);
-    background: linear-gradient(
-      135deg,
-      var(--gold-300) 0%,
-      var(--gold-100) 50%,
-      var(--gold-200) 100%
-    );
-    color: var(--black-0);
     font-size: 10px;
     font-weight: var(--weight-bold);
-    letter-spacing: var(--tracking-mega);
-    text-transform: uppercase;
-    border-radius: var(--rounded-pill);
-    z-index: 1;
+    letter-spacing: var(--tracking-caps);
+    background: var(--accent);
+    color: var(--bg);
+    padding: 2px var(--space-2);
   }
 
   .title {
-    font-size: var(--text-base);
-    color: var(--semantic-text-primary);
-    font-family: var(--font-display);
-    font-weight: var(--weight-semibold);
+    font-size: var(--text-lg);
+    color: var(--fg);
   }
 
   .description {
     font-size: var(--text-sm);
-    color: var(--semantic-text-secondary);
-    line-height: var(--leading-normal);
+    color: var(--fg-muted);
+    line-height: var(--leading-relaxed);
   }
 
   .cmd-wrap {
@@ -129,12 +107,11 @@ const { title, description, command, recommended = false, notes } = Astro.props;
   .cmd {
     flex: 1;
     margin: 0;
-    padding: var(--space-3) var(--space-10) var(--space-3) var(--space-4);
-    background: var(--semantic-surface-canvas);
-    border: 1px solid var(--semantic-border-subtle);
-    border-radius: var(--rounded-sm);
+    padding: var(--space-3) var(--space-10) var(--space-3) var(--space-3);
+    background: transparent;
+    border: var(--border-hair) solid var(--semantic-border-muted);
     font-size: var(--text-xs);
-    color: var(--semantic-text-primary);
+    color: var(--fg);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     word-break: normal;
@@ -146,30 +123,31 @@ const { title, description, command, recommended = false, notes } = Astro.props;
     top: 6px;
     right: 6px;
     padding: var(--space-1) var(--space-2);
-    background: var(--semantic-surface-overlay);
-    color: var(--semantic-text-secondary);
-    border: 1px solid var(--semantic-border-strong);
-    border-radius: var(--rounded-sm);
-    font-size: var(--text-xs);
+    background: transparent;
+    color: var(--fg-muted);
+    border: var(--border-hair) solid var(--semantic-border-muted);
+    font-size: 10px;
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
     cursor: pointer;
-    transition: color var(--duration-fast) var(--easing-standard),
-      background var(--duration-fast) var(--easing-standard);
   }
 
   .copy-btn:hover {
-    color: var(--semantic-text-primary);
-    background: var(--semantic-surface-elevated);
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
   }
 
   .copy-btn.is-copied {
-    color: var(--semantic-text-success);
-    border-color: var(--semantic-text-success);
+    background: var(--success);
+    color: var(--bg);
+    border-color: var(--success);
   }
 
   .notes {
     font-size: var(--text-xs);
-    color: var(--semantic-text-tertiary);
-    line-height: var(--leading-normal);
+    color: var(--fg-faint);
+    line-height: var(--leading-relaxed);
     overflow-wrap: anywhere;
   }
 </style>
