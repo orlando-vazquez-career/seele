@@ -134,19 +134,33 @@ contributors and contributors make the tool better for everyone.
 ### Crypto
 
 Wallet-to-wallet, zero intermediary fees. Pick the network with the
-lowest gas/fees for your donation size:
+lowest gas/fees for your donation size. Each badge links to a public
+block explorer so you can verify the address before sending.
 
-| Network | Address | Best for |
-|---|---|---|
-| Ethereum mainnet (ETH + ERC-20: USDC, USDT, DAI) | `0x0f47273B14118EDD15b40A5CfDBFc4A7891F08D8` | Larger donations ($50+). Gas fees $1-10. |
-| Base L2 (same address, ETH + ERC-20: USDC) | `0x0f47273B14118EDD15b40A5CfDBFc4A7891F08D8` | Smaller donations. Gas fees ~$0.01-0.10. |
-| Bitcoin (BTC, on-chain SegWit) | `bc1qzznr7lwzeyp738079k34yserkzketyju9k7kte` | BTC holders. Network fees $1-10. |
-| Solana (SOL + SPL stables: USDC) | `Ecz5kPxCx3oaX64kmos6wzCpswA5LwDqttp2Y1HrQQ7K` | Any size. Fees ~$0.001. |
+[![Bitcoin](https://img.shields.io/badge/Bitcoin-F7931A?style=for-the-badge&logo=bitcoin&logoColor=white)](https://mempool.space/address/bc1qzznr7lwzeyp738079k34yserkzketyju9k7kte)
+`bc1qzznr7lwzeyp738079k34yserkzketyju9k7kte`
+Best for BTC holders. Network fees $1-10.
+
+[![Ethereum](https://img.shields.io/badge/Ethereum-627EEA?style=for-the-badge&logo=ethereum&logoColor=white)](https://etherscan.io/address/0x0f47273B14118EDD15b40A5CfDBFc4A7891F08D8)
+`0x0f47273B14118EDD15b40A5CfDBFc4A7891F08D8`
+ETH + ERC-20 stables (USDC, USDT, DAI). Best for larger donations ($50+). Gas $1-10.
+
+[![Base](https://img.shields.io/badge/Base-0052FF?style=for-the-badge&logo=coinbase&logoColor=white)](https://basescan.org/address/0x0f47273B14118EDD15b40A5CfDBFc4A7891F08D8)
+`0x0f47273B14118EDD15b40A5CfDBFc4A7891F08D8` *(same address as Ethereum — Base is an L2)*
+ETH + USDC on Base L2. Best for smaller donations. Gas ~$0.01-0.10.
+
+[![Syscoin NEVM](https://img.shields.io/badge/Syscoin_NEVM-1F87FF?style=for-the-badge&logoColor=white)](https://explorer.syscoin.org/address/0x0f47273B14118EDD15b40A5CfDBFc4A7891F08D8)
+`0x0f47273B14118EDD15b40A5CfDBFc4A7891F08D8` *(same EVM address — Syscoin's NEVM layer)*
+SYS + ERC-20 tokens on Syscoin NEVM (Chain ID 57). Bitcoin-merged-mined security with EVM compatibility. Fees ~$0.001.
+
+[![Solana](https://img.shields.io/badge/Solana-9945FF?style=for-the-badge&logo=solana&logoColor=white)](https://solscan.io/account/Ecz5kPxCx3oaX64kmos6wzCpswA5LwDqttp2Y1HrQQ7K)
+`Ecz5kPxCx3oaX64kmos6wzCpswA5LwDqttp2Y1HrQQ7K`
+SOL + SPL stables (USDC). Any size. Fees ~$0.001.
 
 All addresses verified via their respective checksums (EIP-55 for
-EVM, bech32 for BTC, base58 ed25519 for SOL). Always cross-check
-against the latest commit on `main` before sending — never trust a
-copy pasted from somewhere else.
+EVM, bech32 SegWit P2WPKH for BTC, base58 ed25519 for SOL). Always
+cross-check the address on this README against the latest commit on
+`main` before sending — never trust a copy pasted from somewhere else.
 
 ### Hire / consult
 
