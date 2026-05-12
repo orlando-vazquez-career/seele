@@ -1,0 +1,20 @@
+{
+  "name": "seele-web",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SEELE landing page — Astro 5 static site",
+  "license": "MIT",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "astro": "^6.0.0"
+  }
+}

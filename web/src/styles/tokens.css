@@ -1,0 +1,202 @@
+/* SEELE Web — design tokens v0.1.0
+ *
+ * Two layers per DESIGN.md:
+ *   1. Primitives — absolute values.
+ *   2. Semantics  — references to primitives, consumed by components.
+ *
+ * Components MUST consume semantic tokens, not primitives directly.
+ * Rebrand/dark-mode/whitelabel = swap one mapping.
+ */
+
+:root {
+  /* ───────── Primitives — color ───────── */
+  --color-bg-near-black: #0a0a0a;
+  --color-bg-elevated: #131313;
+  --color-bg-overlay: #1a1a1a;
+  --color-fg-near-white: #e5e5e5;
+  --color-fg-muted: #888888;
+  --color-fg-faint: #555555;
+  --color-purple-500: #7e3eff;
+  --color-purple-700: #5a23c4;
+  --color-purple-300: #a87aff;
+  --color-border-subtle: #1f1f1f;
+  --color-border-strong: #2a2a2a;
+  --color-success: #4ade80;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
+
+  /* Network brand colors — for donate buttons */
+  --color-network-btc: #f7931a;
+  --color-network-eth: #627eea;
+  --color-network-base: #0052ff;
+  --color-network-sys: #1f87ff;
+  --color-network-sol: #9945ff;
+
+  /* ───────── Primitives — spacing ───────── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-24: 96px;
+  --space-32: 128px;
+
+  /* ───────── Primitives — typography ───────── */
+  --font-mono: ui-monospace, "Cascadia Code", "JetBrains Mono", Menlo, Monaco,
+    Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 24px;
+  --text-2xl: 32px;
+  --text-3xl: 48px;
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.7;
+
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-bold: 700;
+
+  /* ───────── Primitives — motion ───────── */
+  --duration-fast: 120ms;
+  --duration-base: 220ms;
+  --duration-slow: 400ms;
+  --easing-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --easing-enter: cubic-bezier(0, 0, 0.2, 1);
+  --easing-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  /* ───────── Primitives — rounded ───────── */
+  --rounded-sm: 4px;
+  --rounded-md: 8px;
+  --rounded-lg: 12px;
+  --rounded-pill: 999px;
+
+  /* ───────── Primitives — z-index ───────── */
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-overlay: 20;
+  --z-modal: 30;
+
+  /* ───────── Semantics — surface ───────── */
+  --semantic-surface-base: var(--color-bg-near-black);
+  --semantic-surface-elevated: var(--color-bg-elevated);
+  --semantic-surface-overlay: var(--color-bg-overlay);
+
+  /* ───────── Semantics — text ───────── */
+  --semantic-text-primary: var(--color-fg-near-white);
+  --semantic-text-secondary: var(--color-fg-muted);
+  --semantic-text-tertiary: var(--color-fg-faint);
+  --semantic-text-accent: var(--color-purple-500);
+  --semantic-text-on-accent: #ffffff;
+  --semantic-text-success: var(--color-success);
+
+  /* ───────── Semantics — border ───────── */
+  --semantic-border-subtle: var(--color-border-subtle);
+  --semantic-border-strong: var(--color-border-strong);
+
+  /* ───────── Semantics — action ───────── */
+  --semantic-action-primary-bg: var(--color-purple-500);
+  --semantic-action-primary-bg-hover: var(--color-purple-700);
+  --semantic-action-primary-text: #ffffff;
+  --semantic-action-secondary-bg: transparent;
+  --semantic-action-secondary-bg-hover: var(--color-bg-overlay);
+  --semantic-action-secondary-text: var(--color-fg-near-white);
+
+  /* ───────── Semantics — focus ───────── */
+  --semantic-focus-ring: var(--color-purple-500);
+  --semantic-focus-ring-offset: 2px;
+}
+
+/* ───────── Reset + base ───────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--semantic-surface-base);
+  color: var(--semantic-text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0;
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--semantic-text-accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--semantic-focus-ring);
+  outline-offset: var(--semantic-focus-ring-offset);
+  border-radius: var(--rounded-sm);
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+}
+
+code,
+pre {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+::selection {
+  background: var(--color-purple-500);
+  color: #ffffff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

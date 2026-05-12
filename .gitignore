@@ -42,3 +42,10 @@ desktop.ini
 
 # Backup files que setup wizard genera
 *.seele-backup-*
+
+# Web/ Astro build artifacts (sprint LUMEN-01+)
+/web/node_modules/
+/web/dist/
+/web/.astro/
+/web/.cache/
+/web/package-lock.json.bak
