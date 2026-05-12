@@ -182,9 +182,14 @@ const targets = [
     width: 32px;
     height: 32px;
     background: var(--brand);
-    color: #ffffff;
+    /* Near-black symbol over brand-color circle — chosen so all 5 networks
+     * pass WCAG 1.4.11 (non-text contrast 3:1). Verified against bg-near-black:
+     * BTC 6.74 · ETH 6.02 · Base 3.05 · Sys 4.65 · SOL 4.54.
+     * Pure white (#ffffff) failed on BTC orange (2.78). */
+    color: var(--color-bg-near-black);
     border-radius: var(--rounded-pill);
     font-size: var(--text-lg);
+    font-weight: var(--weight-bold);
     flex-shrink: 0;
   }
 
