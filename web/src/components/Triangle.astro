@@ -1,0 +1,79 @@
+---
+/**
+ * Triangle — DevZen brand motif.
+ *
+ * Reusable SVG with internal linearGradient that blends gold → silver-cyan.
+ * Use as decoration, badge, or motif behind hero.
+ */
+
+interface Props {
+  /** Visual variant: 'outline' (default) or 'filled' */
+  variant?: 'outline' | 'filled';
+  /** Size in pixels (square) */
+  size?: number;
+  /** Opacity 0-1 */
+  opacity?: number;
+  /** Extra class for positioning */
+  class?: string;
+  /** Decorative — hides from screen readers */
+  decorative?: boolean;
+}
+
+const {
+  variant = 'outline',
+  size = 60,
+  opacity = 1,
+  class: className = '',
+  decorative = true,
+} = Astro.props;
+
+const gradientId = `tri-${Math.random().toString(36).slice(2, 9)}`;
+---
+
+<svg
+  width={size}
+  height={size}
+  viewBox="0 0 100 100"
+  class={`triangle ${className}`}
+  aria-hidden={decorative ? 'true' : undefined}
+  role={decorative ? undefined : 'img'}
+  style={`opacity: ${opacity};`}
+>
+  <defs>
+    <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="oklch(0.82 0.13 85)" />
+      <stop offset="35%" stop-color="oklch(0.92 0.10 88)" />
+      <stop offset="65%" stop-color="oklch(0.78 0.05 195)" />
+      <stop offset="100%" stop-color="oklch(0.65 0.06 195)" />
+    </linearGradient>
+    <linearGradient id={`${gradientId}-edge`} x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="oklch(0.45 0.018 230)" />
+      <stop offset="50%" stop-color="oklch(0.92 0.018 230)" />
+      <stop offset="100%" stop-color="oklch(0.32 0.015 230)" />
+    </linearGradient>
+  </defs>
+  {variant === 'filled' ? (
+    <polygon
+      points="50,10 90,85 10,85"
+      fill={`url(#${gradientId})`}
+      stroke={`url(#${gradientId}-edge)`}
+      stroke-width="2"
+      stroke-linejoin="round"
+    />
+  ) : (
+    <polygon
+      points="50,10 90,85 10,85"
+      fill="none"
+      stroke={`url(#${gradientId}-edge)`}
+      stroke-width="3"
+      stroke-linejoin="round"
+    />
+  )}
+</svg>
+
+<style>
+  .triangle {
+    display: inline-block;
+    overflow: visible;
+  }
+</style>

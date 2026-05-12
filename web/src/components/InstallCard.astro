@@ -28,8 +28,6 @@ const { title, description, command, recommended = false, notes } = Astro.props;
 </article>
 
 <script>
-  // Tiny copy-to-clipboard, hydrated globally for all install cards on the page.
-  // Inline because it's <30 LOC and avoids creating a second client island.
   document.querySelectorAll<HTMLButtonElement>('.copy-btn').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const cmd = btn.dataset.copy;
@@ -44,7 +42,7 @@ const { title, description, command, recommended = false, notes } = Astro.props;
           btn.classList.remove('is-copied');
         }, 1500);
       } catch {
-        /* silent fail — clipboard API may be restricted */
+        /* silent fail */
       }
     });
   });
@@ -60,27 +58,60 @@ const { title, description, command, recommended = false, notes } = Astro.props;
     background: var(--semantic-surface-elevated);
     border: 1px solid var(--semantic-border-subtle);
     border-radius: var(--rounded-md);
+    min-width: 0;
+    overflow: hidden;
   }
 
   .install-card.is-recommended {
-    border-color: var(--semantic-action-primary-bg);
+    border-color: transparent;
+  }
+
+  .install-card.is-recommended::before {
+    /* Metal-finish frame for recommended */
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      135deg,
+      var(--gold-400) 0%,
+      var(--gold-100) 50%,
+      var(--gold-300) 100%
+    );
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
   }
 
   .badge {
     position: absolute;
     top: calc(var(--space-3) * -1);
     left: var(--space-4);
-    padding: 2px var(--space-2);
-    background: var(--semantic-action-primary-bg);
-    color: var(--semantic-action-primary-text);
-    font-size: var(--text-xs);
-    letter-spacing: 0.06em;
-    border-radius: var(--rounded-sm);
+    padding: 3px var(--space-3);
+    background: linear-gradient(
+      135deg,
+      var(--gold-300) 0%,
+      var(--gold-100) 50%,
+      var(--gold-200) 100%
+    );
+    color: var(--black-0);
+    font-size: 10px;
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-mega);
+    text-transform: uppercase;
+    border-radius: var(--rounded-pill);
+    z-index: 1;
   }
 
   .title {
     font-size: var(--text-base);
     color: var(--semantic-text-primary);
+    font-family: var(--font-display);
+    font-weight: var(--weight-semibold);
   }
 
   .description {
@@ -92,18 +123,22 @@ const { title, description, command, recommended = false, notes } = Astro.props;
   .cmd-wrap {
     position: relative;
     display: flex;
+    min-width: 0;
   }
 
   .cmd {
     flex: 1;
     margin: 0;
-    padding: var(--space-3) var(--space-4);
-    background: var(--semantic-surface-base);
+    padding: var(--space-3) var(--space-10) var(--space-3) var(--space-4);
+    background: var(--semantic-surface-canvas);
     border: 1px solid var(--semantic-border-subtle);
     border-radius: var(--rounded-sm);
-    overflow-x: auto;
     font-size: var(--text-xs);
     color: var(--semantic-text-primary);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    min-width: 0;
   }
 
   .copy-btn {
@@ -135,5 +170,6 @@ const { title, description, command, recommended = false, notes } = Astro.props;
     font-size: var(--text-xs);
     color: var(--semantic-text-tertiary);
     line-height: var(--leading-normal);
+    overflow-wrap: anywhere;
   }
 </style>

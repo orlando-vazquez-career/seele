@@ -10,9 +10,9 @@ const features = [
     href: 'https://github.com/orlando-vazquez-career/seele#what-you-get',
   },
   {
-    icon: '🜲',
+    icon: '◉',
     title: 'MCP',
-    blurb: '19 tools under the seele_* namespace. Drops into Claude Code, Cursor, Windsurf with one command.',
+    blurb: '19 tools under seele_* namespace. Drops into Claude Code, Cursor, Windsurf with one command.',
     meta: 'seele setup --agent claude-code',
     href: 'https://github.com/orlando-vazquez-career/seele/blob/main/docs/AGENT-SETUP.md',
   },
@@ -34,10 +34,13 @@ const features = [
 ---
 
 <section id="features" class="features">
-  <div class="features-inner">
-    <h2 class="features-heading">Features</h2>
+  <div class="page-container features-inner">
+    <p class="features-eyebrow silver-text">/ Features</p>
+    <h2 class="features-heading">
+      One binary, <span class="gold-text">four interfaces</span>
+    </h2>
     <p class="features-lead">
-      One binary, four interfaces. Pick the one your agent prefers — they all speak to the same local SQLite.
+      Pick the one your agent prefers — they all speak to the same local SQLite.
     </p>
     <div class="features-grid">
       {features.map((f) => (
@@ -49,42 +52,47 @@ const features = [
 
 <style>
   .features {
-    padding: var(--space-12) var(--space-6);
+    padding-block: clamp(var(--space-16), 8vw, var(--space-20));
     border-top: 1px solid var(--semantic-border-subtle);
   }
 
   .features-inner {
-    max-width: 1080px;
-    margin: 0 auto;
+    container-type: inline-size;
   }
 
-  .features-heading {
-    font-size: var(--text-2xl);
+  .features-eyebrow {
+    font-family: var(--font-display);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+    letter-spacing: var(--tracking-mega);
+    text-transform: uppercase;
     margin-bottom: var(--space-3);
   }
 
+  .features-heading {
+    font-family: var(--font-display);
+    font-size: clamp(var(--text-2xl), 5vw, var(--text-3xl));
+    font-weight: var(--weight-black);
+    letter-spacing: var(--tracking-tight);
+    margin-bottom: var(--space-4);
+  }
+
   .features-lead {
-    font-size: var(--text-sm);
+    font-size: var(--text-base);
     color: var(--semantic-text-secondary);
-    margin-bottom: var(--space-8);
+    margin-bottom: var(--space-10);
     max-width: 560px;
   }
 
   .features-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
     gap: var(--space-4);
   }
 
-  @media (max-width: 960px) {
+  @container (min-width: 920px) {
     .features-grid {
-      grid-template-columns: repeat(2, 1fr);
-    }
-  }
-
-  @media (max-width: 540px) {
-    .features-grid {
-      grid-template-columns: 1fr;
+      grid-template-columns: repeat(4, 1fr);
     }
   }
 </style>

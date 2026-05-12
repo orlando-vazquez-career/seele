@@ -1,0 +1,186 @@
+---
+/**
+ * SeeleStatus — pings the local SEELE HTTP server and shows detection state.
+ *
+ * Detection is best-effort:
+ *   - On localhost / http dev:  fetch('http://localhost:7777/health', {mode:'no-cors'})
+ *   - On https production: mixed-content blocks the request → graceful fallback to
+ *     "Install SEELE" CTA without auto-detection. (Future v0.2: `seele serve`
+ *     bundles the landing itself, so auto-detection works on the binary too.)
+ *
+ * States:
+ *   - "checking"     — initial, neutral spinner-ish
+ *   - "detected"     — green dot, "Running on your machine"
+ *   - "not-detected" — gray dot, "Install SEELE" CTA inline
+ *   - "blocked"      — mixed-content blocked, neutral CTA "Install SEELE"
+ */
+
+interface Props {
+  endpoint?: string; // override for tests
+}
+
+const { endpoint = 'http://localhost:7777/health' } = Astro.props;
+---
+
+<div
+  class="seele-status"
+  data-status="checking"
+  data-endpoint={endpoint}
+  aria-live="polite"
+  role="status"
+>
+  <span class="dot" aria-hidden="true"></span>
+  <span class="label" data-label>checking your machine…</span>
+  <a
+    class="cta"
+    data-cta
+    href="https://github.com/orlando-vazquez-career/seele#install"
+    rel="noopener"
+    target="_blank"
+    hidden
+  >install SEELE →</a>
+</div>
+
+<script>
+  const TIMEOUT_MS = 1500;
+  const CACHE_TTL_MS = 30_000;
+  const STORAGE_KEY = 'seele:status-cache:v1';
+
+  type Status = 'checking' | 'detected' | 'not-detected' | 'blocked';
+
+  function setStatus(el: HTMLElement, status: Status, message: string) {
+    el.dataset.status = status;
+    const label = el.querySelector<HTMLElement>('[data-label]');
+    const cta = el.querySelector<HTMLAnchorElement>('[data-cta]');
+    if (label) label.textContent = message;
+    if (cta) cta.hidden = status === 'detected';
+  }
+
+  function getCached(): Status | null {
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      const { status, ts } = JSON.parse(raw);
+      if (Date.now() - ts > CACHE_TTL_MS) return null;
+      return status;
+    } catch {
+      return null;
+    }
+  }
+
+  function setCached(status: Status) {
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ status, ts: Date.now() }));
+    } catch {
+      /* private mode etc — ignore */
+    }
+  }
+
+  async function detect(endpoint: string): Promise<Status> {
+    // Mixed-content rule: https pages cannot fetch http endpoints. Detect early.
+    if (location.protocol === 'https:' && endpoint.startsWith('http:')) {
+      return 'blocked';
+    }
+    try {
+      await fetch(endpoint, {
+        mode: 'no-cors',
+        cache: 'no-store',
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      return 'detected';
+    } catch {
+      return 'not-detected';
+    }
+  }
+
+  document.querySelectorAll<HTMLElement>('.seele-status').forEach(async (el) => {
+    const endpoint = el.dataset.endpoint ?? 'http://localhost:7777/health';
+    const cached = getCached();
+    if (cached) {
+      applyMessage(el, cached);
+      return;
+    }
+    const status = await detect(endpoint);
+    setCached(status);
+    applyMessage(el, status);
+  });
+
+  function applyMessage(el: HTMLElement, status: Status) {
+    const messages: Record<Status, string> = {
+      checking: 'checking your machine…',
+      detected: 'SEELE running on your machine',
+      'not-detected': 'SEELE not detected',
+      blocked: 'SEELE detection requires local hosting',
+    };
+    setStatus(el, status, messages[status]);
+  }
+</script>
+
+<style>
+  .seele-status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-3);
+    background: var(--semantic-surface-elevated);
+    border: 1px solid var(--semantic-border-subtle);
+    border-radius: var(--rounded-pill);
+    font-size: var(--text-xs);
+    color: var(--semantic-text-secondary);
+    transition: border-color var(--duration-fast) var(--easing-standard);
+  }
+
+  .dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: var(--rounded-pill);
+    background: var(--semantic-status-not-detected);
+    transition: background var(--duration-fast) var(--easing-standard),
+      box-shadow var(--duration-base) var(--easing-standard);
+  }
+
+  .seele-status[data-status='checking'] .dot {
+    background: var(--semantic-text-tertiary);
+    animation: pulse var(--duration-epic) ease-in-out infinite;
+  }
+
+  .seele-status[data-status='detected'] {
+    border-color: var(--semantic-status-seele-detected);
+  }
+  .seele-status[data-status='detected'] .dot {
+    background: var(--semantic-status-seele-detected);
+    box-shadow: 0 0 12px oklch(0.78 0.16 145 / 0.6);
+  }
+  .seele-status[data-status='detected'] .label {
+    color: var(--semantic-text-primary);
+  }
+
+  .seele-status[data-status='not-detected'] .dot,
+  .seele-status[data-status='blocked'] .dot {
+    background: var(--semantic-status-not-detected);
+  }
+
+  .cta {
+    color: var(--semantic-text-gold);
+    text-decoration: none;
+    font-weight: var(--weight-medium);
+    margin-left: var(--space-1);
+  }
+
+  .cta:hover {
+    color: var(--gold-100);
+    text-decoration: underline;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .seele-status[data-status='checking'] .dot {
+      animation: none;
+    }
+  }
+</style>

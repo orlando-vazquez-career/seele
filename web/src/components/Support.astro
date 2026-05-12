@@ -3,32 +3,36 @@ import DonateButtons from './DonateButtons.astro';
 ---
 
 <section id="support" class="support">
-  <div class="support-inner">
-    <h2 class="support-heading">Support · Apoyar</h2>
+  <div class="page-container support-inner">
+    <p class="support-eyebrow silver-text">/ Support · Apoyar</p>
+    <h2 class="support-heading">
+      Built by <span class="gold-text">one developer</span>,
+      in spare hours.
+    </h2>
     <p class="support-lead">
-      SEELE is built as a labor of love by one freelance developer
-      (<a
+      SEELE is built as a labor of love by
+      <a
         href="https://github.com/orlando-vazquez-career"
         rel="noopener"
         target="_blank"
-      >Orlando Nahuel Vazquez Gonzalez</a>)
-      in his spare hours. If it saves you time, here are the ways to help:
+      >Orlando Nahuel Vazquez Gonzalez</a>
+      under DevZen SpA. If it saves you time, here are the ways to help:
     </p>
 
     <ul class="support-list">
       <li>
-        <strong>Star + share</strong> the
+        <strong>Star · share</strong> the
         <a
           href="https://github.com/orlando-vazquez-career/seele"
           rel="noopener"
           target="_blank"
-        >repo</a>. Visibility brings contributors and contributors make the tool better for everyone.
+        >repo</a>. Visibility brings contributors, contributors make the tool better for everyone.
       </li>
       <li>
         <strong>Open issues</strong> with feedback or bug reports.
       </li>
       <li>
-        <strong>Hire / consult</strong> via a
+        <strong>Hire · consult</strong> via a
         <a
           href="https://github.com/orlando-vazquez-career/seele/discussions"
           rel="noopener"
@@ -37,39 +41,54 @@ import DonateButtons from './DonateButtons.astro';
       </li>
     </ul>
 
-    <h3 class="donate-heading">Crypto donations — one click</h3>
+    <h3 class="donate-heading">
+      <span class="gold-text">Crypto donations</span>
+      <span class="silver-text">— one click</span>
+    </h3>
     <DonateButtons />
   </div>
 </section>
 
 <style>
   .support {
-    padding: var(--space-12) var(--space-6);
+    padding-block: clamp(var(--space-16), 8vw, var(--space-20));
     border-top: 1px solid var(--semantic-border-subtle);
   }
 
   .support-inner {
-    max-width: 1080px;
-    margin: 0 auto;
+    container-type: inline-size;
   }
 
-  .support-heading {
-    font-size: var(--text-2xl);
+  .support-eyebrow {
+    font-family: var(--font-display);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+    letter-spacing: var(--tracking-mega);
+    text-transform: uppercase;
     margin-bottom: var(--space-3);
   }
 
+  .support-heading {
+    font-family: var(--font-display);
+    font-size: clamp(var(--text-2xl), 5vw, var(--text-3xl));
+    font-weight: var(--weight-black);
+    letter-spacing: var(--tracking-tight);
+    margin-bottom: var(--space-4);
+    max-width: 720px;
+  }
+
   .support-lead {
-    font-size: var(--text-sm);
+    font-size: var(--text-base);
     color: var(--semantic-text-secondary);
     line-height: var(--leading-relaxed);
-    margin-bottom: var(--space-6);
+    margin-bottom: var(--space-8);
     max-width: 720px;
   }
 
   .support-list {
     list-style: none;
     padding: 0;
-    margin: 0 0 var(--space-8);
+    margin: 0 0 var(--space-12);
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
@@ -82,24 +101,28 @@ import DonateButtons from './DonateButtons.astro';
     line-height: var(--leading-relaxed);
     padding-left: var(--space-4);
     position: relative;
+    overflow-wrap: anywhere;
   }
 
   .support-list li::before {
-    content: '·';
+    content: '▴';
     position: absolute;
     left: 0;
-    color: var(--semantic-text-accent);
-    font-weight: var(--weight-bold);
+    color: var(--semantic-text-gold);
+    font-size: var(--text-base);
+    line-height: 1.4;
   }
 
   .support-list strong {
     color: var(--semantic-text-primary);
-    font-weight: var(--weight-medium);
+    font-weight: var(--weight-semibold);
   }
 
   .donate-heading {
-    font-size: var(--text-base);
-    margin-bottom: var(--space-4);
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    margin-bottom: var(--space-5);
     color: var(--semantic-text-primary);
+    font-weight: var(--weight-bold);
   }
 </style>

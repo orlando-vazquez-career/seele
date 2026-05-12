@@ -1,71 +1,163 @@
 ---
-const base = import.meta.env.BASE_URL;
+import SeeleStatus from './SeeleStatus.astro';
+import Triangle from './Triangle.astro';
 ---
 
 <section class="hero">
-  <div class="hero-inner">
-    <h1 class="hero-title">SEELE</h1>
-    <p class="hero-tagline">Memoria local para tus agentes de IA.</p>
-    <p class="hero-subline">
-      Rust · SQLite · Hybrid FTS + sqlite-vec + ONNX embeddings · RRF.
-      <br />
-      One binary, three transports: <code>CLI</code> · <code>MCP</code> · <code>HTTP</code>.
-    </p>
-    <div class="hero-ctas">
-      <a class="cta cta-primary" href="#install">▶ Get started</a>
-      <a
-        class="cta cta-secondary"
-        href="https://github.com/orlando-vazquez-career/seele"
-        rel="noopener"
-        target="_blank"
-      >
-        GitHub <span aria-hidden="true">↗</span>
-      </a>
+  <div class="hero-canvas">
+    <div class="triangle-bg" aria-hidden="true">
+      <Triangle variant="outline" size={520} opacity={0.07} />
     </div>
-    <p class="hero-status">
-      <span class="status-dot" aria-hidden="true"></span>
-      v0.1.0 released · 322 tests green · MIT license
-    </p>
+    <div class="page-container hero-inner">
+      <p class="hero-eyebrow">
+        <span class="silver-text">a</span>
+        <span class="gold-text">DevZen</span>
+        <span class="silver-text">tool</span>
+      </p>
+      <h1 class="hero-title">
+        <span class="title-letter gold-text">S</span><span class="title-letter silver-text">E</span><span class="title-letter cyan-text">E</span><span class="title-letter silver-text">L</span><span class="title-letter gold-text">E</span>
+      </h1>
+      <p class="hero-tagline">
+        Memoria local <span class="hero-tagline-accent">para tus agentes de IA</span>
+      </p>
+      <p class="hero-subline">
+        Rust · SQLite · Hybrid FTS + sqlite-vec + ONNX · RRF.
+        <br />
+        One binary, three transports:
+        <code>CLI</code> · <code>MCP</code> · <code>HTTP</code>.
+      </p>
+      <div class="hero-ctas">
+        <a class="cta cta-primary" href="#install">
+          <span>Get started</span>
+          <span class="arrow" aria-hidden="true">→</span>
+        </a>
+        <a
+          class="cta cta-secondary"
+          href="https://github.com/orlando-vazquez-career/seele"
+          rel="noopener"
+          target="_blank"
+        >
+          <span>GitHub</span>
+          <span class="arrow" aria-hidden="true">↗</span>
+        </a>
+      </div>
+      <div class="hero-status-row">
+        <SeeleStatus />
+        <span class="hero-meta">
+          v0.1.0 · 322 tests · MIT
+        </span>
+      </div>
+    </div>
   </div>
 </section>
 
 <style>
   .hero {
-    padding: var(--space-24) var(--space-6) var(--space-16);
-    display: flex;
-    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-canvas {
+    position: relative;
+    padding-block: clamp(var(--space-16), 10vw, var(--space-24));
+    /* Subtle brushed-metal black canvas — radial bias from top */
+    background:
+      radial-gradient(
+        ellipse 100% 80% at 50% 0%,
+        oklch(0.16 0.005 230) 0%,
+        oklch(0.10 0.003 230) 50%,
+        oklch(0.06 0 0) 100%
+      );
+    isolation: isolate;
+  }
+
+  /* Noise overlay for brushed texture */
+  .hero-canvas::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='2' seed='7'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    mix-blend-mode: overlay;
+    opacity: 0.08;
+    z-index: 0;
+  }
+
+  .triangle-bg {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -42%);
+    z-index: 0;
+    pointer-events: none;
+    width: min(520px, 75vw);
+    aspect-ratio: 1;
   }
 
   .hero-inner {
-    max-width: 720px;
+    position: relative;
+    z-index: 1;
     text-align: center;
   }
 
+  .hero-eyebrow {
+    font-family: var(--font-display);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    letter-spacing: var(--tracking-mega);
+    text-transform: uppercase;
+    margin-bottom: var(--space-6);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
   .hero-title {
-    font-size: var(--text-3xl);
-    letter-spacing: 0.08em;
-    color: var(--semantic-text-primary);
-    margin-bottom: var(--space-4);
+    font-family: var(--font-display);
+    font-size: clamp(var(--text-4xl), 12vw, var(--text-5xl));
+    font-weight: var(--weight-black);
+    letter-spacing: var(--tracking-wide);
+    line-height: 1;
+    margin-bottom: var(--space-6);
+    /* The gradient text uses inline-block per letter; reset spacing */
+    display: flex;
+    justify-content: center;
+    gap: clamp(2px, 0.4vw, 6px);
+  }
+
+  .title-letter {
+    /* Each letter is a gradient-filled span */
+    display: inline-block;
   }
 
   .hero-tagline {
-    font-size: var(--text-xl);
+    font-size: clamp(var(--text-xl), 3vw, var(--text-2xl));
+    font-weight: var(--weight-medium);
     color: var(--semantic-text-primary);
-    margin-bottom: var(--space-4);
+    margin-bottom: var(--space-3);
+    line-height: var(--leading-tight);
+  }
+
+  .hero-tagline-accent {
+    color: var(--semantic-text-secondary);
+    font-weight: var(--weight-normal);
   }
 
   .hero-subline {
     font-size: var(--text-sm);
     color: var(--semantic-text-secondary);
     line-height: var(--leading-relaxed);
-    margin-bottom: var(--space-8);
+    margin-bottom: var(--space-10);
+    max-width: 560px;
+    margin-inline: auto;
   }
 
   .hero-subline code {
-    color: var(--semantic-text-accent);
+    color: var(--semantic-text-gold);
     background: var(--semantic-surface-elevated);
-    padding: 1px 6px;
+    padding: 2px 8px;
     border-radius: var(--rounded-sm);
+    font-size: 0.95em;
   }
 
   .hero-ctas {
@@ -73,7 +165,7 @@ const base = import.meta.env.BASE_URL;
     gap: var(--space-3);
     justify-content: center;
     flex-wrap: wrap;
-    margin-bottom: var(--space-6);
+    margin-bottom: var(--space-8);
   }
 
   .cta {
@@ -83,57 +175,97 @@ const base = import.meta.env.BASE_URL;
     padding: var(--space-3) var(--space-6);
     border-radius: var(--rounded-md);
     text-decoration: none;
-    font-weight: var(--weight-medium);
+    font-family: var(--font-mono);
+    font-weight: var(--weight-semibold);
     font-size: var(--text-sm);
-    transition: background var(--duration-fast) var(--easing-standard),
-      transform var(--duration-fast) var(--easing-standard);
+    letter-spacing: var(--tracking-wide);
+    transition: transform var(--duration-fast) var(--easing-standard),
+      box-shadow var(--duration-base) var(--easing-standard);
   }
 
   .cta-primary {
-    background: var(--semantic-action-primary-bg);
+    background: linear-gradient(
+      135deg,
+      var(--semantic-action-primary-bg-from) 0%,
+      var(--semantic-action-primary-bg-to) 100%
+    );
     color: var(--semantic-action-primary-text);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cta-primary::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='9'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.5 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    mix-blend-mode: overlay;
+    opacity: 0.18;
+    pointer-events: none;
   }
 
   .cta-primary:hover {
-    background: var(--semantic-action-primary-bg-hover);
     transform: translateY(-1px);
+    box-shadow: 0 8px 24px oklch(0.72 0.14 82 / 0.35);
   }
 
   .cta-secondary {
-    background: var(--semantic-action-secondary-bg);
+    background: transparent;
     color: var(--semantic-action-secondary-text);
-    border: 1px solid var(--semantic-border-strong);
+    position: relative;
+    border-radius: var(--rounded-md);
   }
-
+  .cta-secondary::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: inherit;
+    background: linear-gradient(
+      135deg,
+      var(--metal-400) 0%,
+      var(--metal-200) 50%,
+      var(--metal-400) 100%
+    );
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
   .cta-secondary:hover {
     background: var(--semantic-action-secondary-bg-hover);
+    transform: translateY(-1px);
   }
 
-  .hero-status {
+  .arrow {
+    transition: transform var(--duration-fast) var(--easing-standard);
+  }
+  .cta:hover .arrow {
+    transform: translateX(2px);
+  }
+
+  .hero-status-row {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .hero-meta {
     font-size: var(--text-xs);
     color: var(--semantic-text-tertiary);
+    letter-spacing: var(--tracking-wide);
   }
 
-  .status-dot {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-radius: var(--rounded-pill);
-    background: var(--semantic-text-success);
-  }
-
-  @media (max-width: 640px) {
-    .hero {
-      padding: var(--space-12) var(--space-4) var(--space-8);
+  @media (max-width: 540px) {
+    .hero-canvas {
+      padding-block: var(--space-12);
     }
     .hero-title {
-      font-size: var(--text-2xl);
-    }
-    .hero-tagline {
-      font-size: var(--text-lg);
+      gap: 1px;
     }
   }
 </style>

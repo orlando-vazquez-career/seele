@@ -1,162 +1,418 @@
 ---
 /**
- * Donate widget — the only client-hydrated island in the landing.
+ * DonateButtons — donate widget with REAL wallet integration.
  *
- * Pattern: URI scheme + 600ms clipboard fallback.
+ *   - EVM (ETH / Base / Syscoin NEVM): EIP-6963 discovery → EIP-1193
+ *     window.ethereum.request → opens the MetaMask/Pali popup with the
+ *     destination pre-filled. Chain switching via wallet_switchEthereumChain
+ *     with wallet_addEthereumChain fallback for Base + Syscoin.
+ *   - Solana: solana: URI scheme — Phantom desktop extension parses these
+ *     natively (per Phantom docs). Lighter than @solana/web3.js (80kB+).
+ *   - Bitcoin: BIP-21 URI — Sparrow/Electrum/Trezor Suite/Muun/etc.
+ *     register OS handler. No universal EIP-1193 equivalent for BTC.
  *
- *   1. Click  → `window.open(<uri>, '_self')`.
- *   2. OS handler registered → wallet opens with destination pre-filled.
- *   3. No handler → page stays visible. After 600ms we copy the address.
+ * All five share a fallback: if no handler/wallet → copy address + show
+ * "Install <wallet>" CTA pointing at the official Chrome Web Store page.
  *
- * Zero SDK, zero tracking, zero `projectId`. Vanilla JS only.
+ * Sources: EIP-1193 spec, EIP-6963 spec, MetaMask docs, Phantom docs,
+ * BIP-21 wiki, Solana Pay spec.
  */
 
 const targets = [
   {
     id: 'btc',
     label: 'Bitcoin',
-    glyph: '₿', // ₿
-    color: 'var(--color-network-btc)',
+    glyph: '₿',
+    color: 'var(--network-btc)',
     address: 'bc1qzznr7lwzeyp738079k34yserkzketyju9k7kte',
+    method: 'bip21',
     uri: 'bitcoin:bc1qzznr7lwzeyp738079k34yserkzketyju9k7kte?label=SEELE',
-    note: 'BIP-21',
+    install: 'https://sparrowwallet.com/download/',
+    walletName: 'Sparrow / Electrum',
+    chainId: null,
   },
   {
     id: 'eth',
     label: 'Ethereum',
-    glyph: 'Ξ', // Ξ
-    color: 'var(--color-network-eth)',
+    glyph: 'Ξ',
+    color: 'var(--network-eth)',
     address: '0x0f47273B14118EDD15b40A5CfDBFc4A7891F08D8',
-    uri: 'ethereum:0x0f47273B14118EDD15b40A5CfDBFc4A7891F08D8@1',
-    note: 'EIP-681 · chain 1',
+    method: 'evm',
+    uri: null,
+    install: 'https://chromewebstore.google.com/detail/metamask/nkbihfbeogaeaoehlefnkodbefgpgknn',
+    walletName: 'MetaMask',
+    chainId: 1,
   },
   {
     id: 'base',
     label: 'Base',
-    glyph: '⬢', // ⬢
-    color: 'var(--color-network-base)',
+    glyph: '⬢',
+    color: 'var(--network-base)',
     address: '0x0f47273B14118EDD15b40A5CfDBFc4A7891F08D8',
-    uri: 'ethereum:0x0f47273B14118EDD15b40A5CfDBFc4A7891F08D8@8453',
-    note: 'EIP-681 · chain 8453',
+    method: 'evm',
+    uri: null,
+    install: 'https://chromewebstore.google.com/detail/metamask/nkbihfbeogaeaoehlefnkodbefgpgknn',
+    walletName: 'MetaMask',
+    chainId: 8453,
   },
   {
     id: 'sys',
     label: 'Syscoin',
-    glyph: '⬡', // ⬡
-    color: 'var(--color-network-sys)',
+    glyph: '⬡',
+    color: 'var(--network-sys)',
     address: '0x0f47273B14118EDD15b40A5CfDBFc4A7891F08D8',
-    uri: 'ethereum:0x0f47273B14118EDD15b40A5CfDBFc4A7891F08D8@57',
-    note: 'EIP-681 · chain 57 (NEVM)',
+    method: 'evm',
+    uri: null,
+    install: 'https://chromewebstore.google.com/detail/pali-wallet/mgffkfbidihjpoaomajlbgchddlicgpn',
+    walletName: 'Pali',
+    chainId: 57,
   },
   {
     id: 'sol',
     label: 'Solana',
-    glyph: '◎', // ◎
-    color: 'var(--color-network-sol)',
+    glyph: '◎',
+    color: 'var(--network-sol)',
     address: 'Ecz5kPxCx3oaX64kmos6wzCpswA5LwDqttp2Y1HrQQ7K',
+    method: 'solana-pay',
     uri: 'solana:Ecz5kPxCx3oaX64kmos6wzCpswA5LwDqttp2Y1HrQQ7K?label=SEELE',
-    note: 'Solana Pay',
+    install: 'https://chromewebstore.google.com/detail/phantom/bfnaelmomeimhlpmgjnjophhpkkoljpa',
+    walletName: 'Phantom',
+    chainId: null,
   },
 ];
 ---
 
-<div class="donate-grid" role="group" aria-label="Donate to SEELE">
-  {targets.map((t) => (
-    <button
-      type="button"
-      class="donate-btn"
-      data-uri={t.uri}
-      data-address={t.address}
-      data-label={t.label}
-      style={`--brand: ${t.color};`}
-      aria-label={`Donate ${t.label}: copy address ${t.address} or open wallet`}
-    >
-      <span class="glyph" aria-hidden="true">{t.glyph}</span>
-      <span class="label">
-        <span class="name">{t.label}</span>
-        <span class="proto">{t.note}</span>
-      </span>
-      <span class="status" data-status></span>
-    </button>
-  ))}
+<div class="donate-wrapper">
+  <div class="donate-detect" data-detect>
+    <span class="detect-dot" aria-hidden="true"></span>
+    <span class="detect-label" data-detect-label>scanning for wallet extensions…</span>
+  </div>
+
+  <div class="donate-grid" role="group" aria-label="Donate to SEELE">
+    {targets.map((t) => (
+      <button
+        type="button"
+        class="donate-btn"
+        data-id={t.id}
+        data-method={t.method}
+        data-uri={t.uri ?? ''}
+        data-address={t.address}
+        data-chain-id={t.chainId ?? ''}
+        data-install={t.install}
+        data-wallet-name={t.walletName}
+        style={`--brand: ${t.color};`}
+        aria-label={`Donate ${t.label}: opens ${t.walletName} with address ${t.address} pre-filled`}
+      >
+        <span class="glyph" aria-hidden="true">{t.glyph}</span>
+        <span class="label">
+          <span class="name">{t.label}</span>
+          <span class="wallet-tag" data-wallet-tag>{t.walletName}</span>
+        </span>
+        <span class="status" data-status></span>
+      </button>
+    ))}
+  </div>
+
+  <p class="donate-note">
+    EVM (Ethereum · Base · Syscoin NEVM): clic abre el popup de MetaMask/Pali con
+    el destino pre-rellenado vía <strong>EIP-1193</strong>. Bitcoin abre Sparrow
+    /Electrum vía BIP-21. Solana abre Phantom vía Solana Pay. Sin SDK web3
+    pesado, sin WalletConnect, sin tracking. Si no se detecta wallet → CTA al
+    Chrome Web Store + dirección copiada al portapapeles.
+  </p>
 </div>
 
-<p class="donate-note">
-  Click opens your preferred wallet (MetaMask · Pali · Phantom · Sparrow · etc.).
-  If none is detected, the address is copied to your clipboard as fallback.
-  No tracking, no SDK, no WalletConnect.
-</p>
-
 <script>
-  // Hydrate when this island scrolls into view (Astro client:visible).
-  // Pattern: try URI scheme, fallback to clipboard after 600ms if we
-  // never lost focus to the wallet handler.
-  const buttons = document.querySelectorAll<HTMLButtonElement>('.donate-btn');
+  // ───────── EIP-6963 multi-provider discovery ─────────
+  type ProviderInfo = { uuid: string; name: string; icon: string; rdns: string };
+  type EvmProvider = {
+    request: (args: { method: string; params?: unknown[] | object }) => Promise<unknown>;
+    isMetaMask?: boolean;
+  };
+  type ProviderEntry = { info: ProviderInfo; provider: EvmProvider };
 
-  buttons.forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const uri = btn.dataset.uri ?? '';
-      const address = btn.dataset.address ?? '';
-      const statusEl = btn.querySelector<HTMLElement>('[data-status]');
+  const providers = new Map<string, ProviderEntry>();
 
-      if (statusEl) {
-        statusEl.textContent = 'opening…';
-        statusEl.dataset.state = 'opening';
-      }
-
-      // 1) Attempt to open the wallet via URI scheme.
-      //    Using window.location to trigger the OS handler. If a registered
-      //    wallet exists, it takes over; otherwise the browser is a no-op.
-      try {
-        window.location.href = uri;
-      } catch {
-        /* navigation may fail in sandboxed iframes — fall through to fallback */
-      }
-
-      // 2) After 600ms, if the page is still visible (wallet didn't take over),
-      //    fall back to clipboard.
-      window.setTimeout(async () => {
-        if (document.hidden) {
-          // wallet (or external app) took the user away — leave the button as is
-          if (statusEl) {
-            statusEl.textContent = '';
-            statusEl.dataset.state = '';
-          }
-          return;
-        }
-        try {
-          await navigator.clipboard.writeText(address);
-          if (statusEl) {
-            statusEl.textContent = 'copied';
-            statusEl.dataset.state = 'copied';
-          }
-        } catch {
-          if (statusEl) {
-            statusEl.textContent = address.slice(0, 8) + '…';
-            statusEl.dataset.state = 'fallback';
-          }
-        }
-        window.setTimeout(() => {
-          if (statusEl) {
-            statusEl.textContent = '';
-            statusEl.dataset.state = '';
-          }
-        }, 2000);
-      }, 600);
-    });
+  window.addEventListener('eip6963:announceProvider' as never, (event: Event) => {
+    const detail = (event as CustomEvent<ProviderEntry>).detail;
+    if (detail?.info?.rdns) providers.set(detail.info.rdns, detail);
   });
+  window.dispatchEvent(new Event('eip6963:requestProvider'));
+
+  function pickEvmProvider(): EvmProvider | null {
+    // Preference order: MetaMask → Pali → any 6963-announced → legacy window.ethereum
+    const preferred = ['io.metamask', 'io.metamask.flask', 'io.pali', 'io.paliwallet', 'app.phantom'];
+    for (const rdns of preferred) {
+      if (providers.has(rdns)) return providers.get(rdns)!.provider;
+    }
+    if (providers.size > 0) return providers.values().next().value!.provider;
+    const legacy = (window as unknown as { ethereum?: EvmProvider }).ethereum;
+    return legacy ?? null;
+  }
+
+  function getDetectedWalletNames(): string[] {
+    const names: string[] = [];
+    for (const { info } of providers.values()) names.push(info.name);
+    if (names.length === 0) {
+      const legacy = (window as unknown as { ethereum?: { isMetaMask?: boolean; isPali?: boolean } }).ethereum;
+      if (legacy?.isMetaMask) names.push('MetaMask');
+      else if (legacy?.isPali) names.push('Pali');
+      else if (legacy) names.push('Wallet');
+    }
+    return names;
+  }
+
+  function hasSolanaProvider(): boolean {
+    const w = window as unknown as { phantom?: { solana?: unknown }; solana?: unknown };
+    return Boolean(w.phantom?.solana || w.solana);
+  }
+
+  // ───────── Chain config (Base + Syscoin require wallet_addEthereumChain) ─────────
+  const CHAINS: Record<number, { hex: string; add?: object }> = {
+    1: { hex: '0x1' },
+    8453: {
+      hex: '0x2105',
+      add: {
+        chainId: '0x2105',
+        chainName: 'Base',
+        nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+        rpcUrls: ['https://mainnet.base.org'],
+        blockExplorerUrls: ['https://basescan.org'],
+      },
+    },
+    57: {
+      hex: '0x39',
+      add: {
+        chainId: '0x39',
+        chainName: 'Syscoin NEVM',
+        nativeCurrency: { name: 'Syscoin', symbol: 'SYS', decimals: 18 },
+        rpcUrls: ['https://rpc.syscoin.org/'],
+        blockExplorerUrls: ['https://explorer.syscoin.org/'],
+      },
+    },
+  };
+
+  async function ensureChain(provider: EvmProvider, chainId: number) {
+    const cfg = CHAINS[chainId];
+    if (!cfg) throw new Error(`Unsupported chain ${chainId}`);
+    try {
+      await provider.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: cfg.hex }],
+      });
+    } catch (err: unknown) {
+      const code = (err as { code?: number }).code;
+      if (code === 4902 && cfg.add) {
+        await provider.request({
+          method: 'wallet_addEthereumChain',
+          params: [cfg.add],
+        });
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  // ───────── Per-button handler ─────────
+  async function copyToClipboard(text: string): Promise<boolean> {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async function handleClick(btn: HTMLButtonElement) {
+    const id = btn.dataset.id!;
+    const method = btn.dataset.method!;
+    const uri = btn.dataset.uri || '';
+    const address = btn.dataset.address!;
+    const chainId = btn.dataset.chainId ? parseInt(btn.dataset.chainId, 10) : null;
+    const install = btn.dataset.install!;
+    const walletName = btn.dataset.walletName!;
+    const statusEl = btn.querySelector<HTMLElement>('[data-status]');
+
+    const setStatus = (text: string, state = '') => {
+      if (!statusEl) return;
+      statusEl.textContent = text;
+      statusEl.dataset.state = state;
+    };
+    const clearStatusAfter = (ms: number) => {
+      window.setTimeout(() => setStatus('', ''), ms);
+    };
+
+    if (method === 'evm') {
+      const provider = pickEvmProvider();
+      if (!provider) {
+        // No wallet → open install + copy address as fallback
+        setStatus('install →', 'install');
+        window.open(install, '_blank', 'noopener');
+        await copyToClipboard(address);
+        clearStatusAfter(3500);
+        return;
+      }
+      setStatus('opening…', 'opening');
+      try {
+        const accounts = (await provider.request({
+          method: 'eth_requestAccounts',
+        })) as string[];
+        const from = accounts[0];
+        if (!from) throw new Error('No account');
+        if (chainId !== null) {
+          await ensureChain(provider, chainId);
+        }
+        const txHash = (await provider.request({
+          method: 'eth_sendTransaction',
+          params: [{ from, to: address, value: '0x0' }],
+        })) as string;
+        setStatus('sent ✓', 'sent');
+        console.info(`[${id}] tx sent:`, txHash);
+        clearStatusAfter(4000);
+      } catch (err: unknown) {
+        const code = (err as { code?: number }).code;
+        if (code === 4001) {
+          setStatus('rejected', 'rejected');
+        } else if (code === -32002) {
+          setStatus('check wallet', 'pending');
+        } else {
+          setStatus('error', 'error');
+          console.error(`[${id}] error:`, err);
+        }
+        clearStatusAfter(3000);
+      }
+      return;
+    }
+
+    if (method === 'solana-pay') {
+      const hasPhantom = hasSolanaProvider();
+      if (!hasPhantom) {
+        setStatus('install →', 'install');
+        window.open(install, '_blank', 'noopener');
+        await copyToClipboard(address);
+        clearStatusAfter(3500);
+        return;
+      }
+      setStatus('opening…', 'opening');
+      // Phantom desktop extension parses solana: URIs natively.
+      window.location.href = uri;
+      window.setTimeout(async () => {
+        if (!document.hidden) {
+          await copyToClipboard(address);
+          setStatus('copied', 'copied');
+          clearStatusAfter(2000);
+        } else {
+          setStatus('', '');
+        }
+      }, 700);
+      return;
+    }
+
+    if (method === 'bip21') {
+      setStatus('opening…', 'opening');
+      // BIP-21: Sparrow/Electrum/Trezor Suite/Muun register OS handler.
+      // If none → fall through to clipboard.
+      window.location.href = uri;
+      window.setTimeout(async () => {
+        if (!document.hidden) {
+          await copyToClipboard(address);
+          setStatus('copied', 'copied');
+          clearStatusAfter(2000);
+        } else {
+          setStatus('', '');
+        }
+      }, 700);
+      return;
+    }
+  }
+
+  document.querySelectorAll<HTMLButtonElement>('.donate-btn').forEach((btn) => {
+    btn.addEventListener('click', () => handleClick(btn));
+  });
+
+  // ───────── Detection banner update ─────────
+  function updateDetect() {
+    const banner = document.querySelector<HTMLElement>('[data-detect]');
+    const label = document.querySelector<HTMLElement>('[data-detect-label]');
+    if (!banner || !label) return;
+    const evmWallets = getDetectedWalletNames();
+    const sol = hasSolanaProvider();
+    const detected: string[] = [];
+    if (evmWallets.length) detected.push(...evmWallets);
+    if (sol) detected.push('Phantom');
+    if (detected.length > 0) {
+      banner.dataset.state = 'detected';
+      label.textContent = `wallets detected: ${detected.join(' · ')}`;
+    } else {
+      banner.dataset.state = 'none';
+      label.textContent = 'no wallet extension detected — clicking will open the install page';
+    }
+    // Update per-button wallet-tag colors
+    document.querySelectorAll<HTMLButtonElement>('.donate-btn').forEach((btn) => {
+      const method = btn.dataset.method;
+      const tagEl = btn.querySelector<HTMLElement>('[data-wallet-tag]');
+      if (!tagEl) return;
+      const isAvailable =
+        (method === 'evm' && evmWallets.length > 0) ||
+        (method === 'solana-pay' && sol) ||
+        method === 'bip21'; // BTC always shows wallet name (OS handler can't be detected from JS)
+      tagEl.dataset.available = isAvailable ? 'yes' : 'no';
+    });
+  }
+
+  // Give wallets 200ms to announce themselves, then update
+  window.setTimeout(updateDetect, 200);
+  // Also update if a new provider announces later
+  window.addEventListener('eip6963:announceProvider' as never, () => updateDetect());
 </script>
 
 <style>
+  .donate-wrapper {
+    container-type: inline-size;
+  }
+
+  .donate-detect {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-3);
+    margin-bottom: var(--space-4);
+    background: var(--semantic-surface-elevated);
+    border: 1px solid var(--semantic-border-subtle);
+    border-radius: var(--rounded-pill);
+    font-size: var(--text-xs);
+    color: var(--semantic-text-secondary);
+    transition: border-color var(--duration-fast) var(--easing-standard);
+  }
+
+  .detect-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: var(--rounded-pill);
+    background: var(--semantic-text-tertiary);
+    transition: background var(--duration-fast) var(--easing-standard);
+  }
+
+  .donate-detect[data-state='detected'] {
+    border-color: var(--semantic-status-wallet-detected);
+  }
+  .donate-detect[data-state='detected'] .detect-dot {
+    background: var(--semantic-status-wallet-detected);
+    box-shadow: 0 0 10px oklch(0.78 0.05 195 / 0.6);
+  }
+  .donate-detect[data-state='detected'] .detect-label {
+    color: var(--semantic-text-primary);
+  }
+
   .donate-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
     gap: var(--space-3);
   }
 
   .donate-btn {
-    --brand: var(--semantic-action-primary-bg);
-    display: inline-flex;
+    --brand: var(--semantic-action-primary-bg-from);
+    display: flex;
     align-items: center;
     gap: var(--space-3);
     padding: var(--space-3) var(--space-4);
@@ -166,8 +422,32 @@ const targets = [
     border-radius: var(--rounded-md);
     cursor: pointer;
     text-align: left;
+    min-width: 0; /* allow grid cell to shrink */
+    position: relative;
+    overflow: hidden;
     transition: border-color var(--duration-fast) var(--easing-standard),
-      transform var(--duration-fast) var(--easing-standard);
+      transform var(--duration-fast) var(--easing-standard),
+      box-shadow var(--duration-base) var(--easing-standard);
+  }
+
+  .donate-btn::before {
+    /* subtle metal-finish hover sheen */
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      135deg,
+      transparent 0%,
+      var(--brand) 50%,
+      transparent 100%
+    );
+    opacity: 0;
+    transition: opacity var(--duration-base) var(--easing-standard);
+    mix-blend-mode: overlay;
+  }
+  .donate-btn:hover::before {
+    opacity: 0.12;
   }
 
   .donate-btn:hover {
@@ -179,64 +459,71 @@ const targets = [
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     background: var(--brand);
-    /* Near-black symbol over brand-color circle — chosen so all 5 networks
-     * pass WCAG 1.4.11 (non-text contrast 3:1). Verified against bg-near-black:
-     * BTC 6.74 · ETH 6.02 · Base 3.05 · Sys 4.65 · SOL 4.54.
-     * Pure white (#ffffff) failed on BTC orange (2.78). */
-    color: var(--color-bg-near-black);
+    color: var(--black-0);
     border-radius: var(--rounded-pill);
     font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-black);
     flex-shrink: 0;
+    position: relative;
+    z-index: 1;
   }
 
   .label {
     display: flex;
     flex-direction: column;
+    gap: 2px;
     flex: 1;
     min-width: 0;
+    position: relative;
+    z-index: 1;
   }
 
   .name {
     font-size: var(--text-sm);
     color: var(--semantic-text-primary);
+    font-weight: var(--weight-semibold);
   }
 
-  .proto {
-    font-size: var(--text-xs);
+  .wallet-tag {
+    font-size: 11px;
     color: var(--semantic-text-tertiary);
+    letter-spacing: var(--tracking-wide);
+  }
+  .wallet-tag[data-available='yes'] {
+    color: var(--semantic-status-wallet-detected);
   }
 
   .status {
     font-size: var(--text-xs);
     color: var(--semantic-text-tertiary);
     margin-left: var(--space-2);
-    transition: color var(--duration-fast) var(--easing-standard);
-    min-width: 56px;
+    min-width: 60px;
     text-align: right;
+    position: relative;
+    z-index: 1;
+    transition: color var(--duration-fast) var(--easing-standard);
   }
-
-  .status[data-state='copied'] {
-    color: var(--semantic-text-success);
-  }
-
-  .status[data-state='opening'] {
-    color: var(--semantic-text-accent);
-  }
-
-  .status[data-state='fallback'] {
-    color: var(--semantic-text-secondary);
-    font-family: var(--font-mono);
-  }
+  .status[data-state='opening'] { color: var(--semantic-text-gold); }
+  .status[data-state='copied']  { color: var(--semantic-text-success); }
+  .status[data-state='sent']    { color: var(--semantic-text-success); }
+  .status[data-state='rejected'] { color: var(--semantic-text-danger); }
+  .status[data-state='pending'] { color: var(--warning); }
+  .status[data-state='error']   { color: var(--semantic-text-danger); }
+  .status[data-state='install'] { color: var(--semantic-text-cyan); }
 
   .donate-note {
-    margin-top: var(--space-6);
+    margin-top: var(--space-5);
     font-size: var(--text-xs);
     color: var(--semantic-text-tertiary);
     line-height: var(--leading-relaxed);
-    max-width: 640px;
+    max-width: 720px;
+  }
+
+  .donate-note strong {
+    color: var(--semantic-text-secondary);
+    font-weight: var(--weight-semibold);
   }
 </style>
