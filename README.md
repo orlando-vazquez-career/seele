@@ -4,7 +4,6 @@
 [![Release](https://img.shields.io/github/v/release/orlando-vazquez-career/seele?include_prereleases&label=release)](https://github.com/orlando-vazquez-career/seele/releases)
 [![CI](https://github.com/orlando-vazquez-career/seele/actions/workflows/ci.yml/badge.svg)](https://github.com/orlando-vazquez-career/seele/actions/workflows/ci.yml)
 [![Rust](https://img.shields.io/badge/rust-1.85%2B-orange?logo=rust)](./rust-toolchain.toml)
-[![GitHub Sponsors](https://img.shields.io/github/sponsors/orlando-vazquez-career?label=sponsors)](https://github.com/sponsors/orlando-vazquez-career)
 
 > *Super stellatum firmamentum iudicat Deus, sicut nos iudicamus.*
 > Sobre el firmamento estrellado juzga Dios, como nosotros juzgamos.
@@ -132,35 +131,22 @@ The cheapest and most useful: star the repo, share it where AI-agent
 folks hang out, open issues with feedback. Visibility brings
 contributors and contributors make the tool better for everyone.
 
-### GitHub Sponsors
-
-The "♥ Sponsor" button at the top of the repo accepts one-time or
-monthly contributions via card (Stripe-backed). No fees taken by
-GitHub during the matching-fund period — your $1 lands as $1
-(plus whatever GitHub matches at the time).
-
-→ [github.com/sponsors/orlando-vazquez-career](https://github.com/sponsors/orlando-vazquez-career)
-
 ### Crypto
 
-Wallet-to-wallet, zero intermediary fees. Any network below works:
+Wallet-to-wallet, zero intermediary fees. Pick the network with the
+lowest gas/fees for your donation size:
 
-<!--
-TODO Orlando: replace the `<…>` placeholders with your real wallet
-addresses before going public. Lines without a real address SHOULD
-be removed entirely — an empty placeholder confuses donors.
--->
+| Network | Address | Best for |
+|---|---|---|
+| Ethereum mainnet (ETH + ERC-20: USDC, USDT, DAI) | `0x0f47273B14118EDD15b40A5CfDBFc4A7891F08D8` | Larger donations ($50+). Gas fees $1-10. |
+| Base L2 (same address, ETH + ERC-20: USDC) | `0x0f47273B14118EDD15b40A5CfDBFc4A7891F08D8` | Smaller donations. Gas fees ~$0.01-0.10. |
+| Bitcoin (BTC, on-chain SegWit) | `bc1qzznr7lwzeyp738079k34yserkzketyju9k7kte` | BTC holders. Network fees $1-10. |
+| Solana (SOL + SPL stables: USDC) | `Ecz5kPxCx3oaX64kmos6wzCpswA5LwDqttp2Y1HrQQ7K` | Any size. Fees ~$0.001. |
 
-| Network | Address |
-|---|---|
-| Bitcoin (BTC, on-chain) | `<BTC_ADDRESS>` |
-| Bitcoin Lightning | `<LIGHTNING_ADDRESS_or_BOLT12>` |
-| Ethereum (ETH + ERC-20 stables like USDC, USDT) | `<ETH_ADDRESS>` |
-| Solana (SOL + SPL stables like USDC) | `<SOL_ADDRESS>` |
-
-Verify addresses against the latest commit before sending — never
-trust a copy that came from somewhere other than this README on
-`main`.
+All addresses verified via their respective checksums (EIP-55 for
+EVM, bech32 for BTC, base58 ed25519 for SOL). Always cross-check
+against the latest commit on `main` before sending — never trust a
+copy pasted from somewhere else.
 
 ### Hire / consult
 
