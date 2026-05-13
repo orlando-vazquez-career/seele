@@ -42,6 +42,11 @@ const THEMES = [
   { value: 'light', label: 'light', colorScheme: 'light' },
 ];
 
+const LANGS = [
+  { value: 'en', label: 'en' },
+  { value: 'es', label: 'es' },
+];
+
 function parseArgs() {
   let url = DEFAULT_URL;
   for (let i = 2; i < argv.length; i++) {
@@ -53,18 +58,20 @@ function parseArgs() {
   return { url };
 }
 
-async function captureOne(browser, url, vp, theme, outDir, fileLabel) {
+async function captureOne(browser, url, vp, theme, lang, outDir, fileLabel) {
   const context = await browser.newContext({
     viewport: { width: vp.width, height: vp.height },
     deviceScaleFactor: 1,
-    reducedMotion: 'reduce', // honor prefers-reduced-motion (a11y)
+    reducedMotion: 'reduce',
     colorScheme: theme.colorScheme,
   });
   const page = await context.newPage();
-  // Force theme override via localStorage before page load
-  await context.addInitScript((t) => {
-    try { localStorage.setItem('seele-theme', t); } catch (_) {}
-  }, theme.value);
+  await context.addInitScript((args) => {
+    try {
+      localStorage.setItem('seele-theme', args.theme);
+      localStorage.setItem('seele-lang', args.lang);
+    } catch (_) {}
+  }, { theme: theme.value, lang: lang.value });
   try {
     await page.goto(url, { waitUntil: 'networkidle', timeout: 15_000 });
     await page.waitForTimeout(800);
@@ -102,18 +109,21 @@ async function main() {
   console.log(`Visual Critique Multi-Resolution`);
   console.log(`Base:    ${baseUrl}`);
   console.log(`Output:  ${outDir}`);
-  console.log(`Matrix:  ${PAGES.length} pages × ${VIEWPORTS.length} viewports × ${THEMES.length} themes = ${PAGES.length * VIEWPORTS.length * THEMES.length} shots`);
+  const total = PAGES.length * VIEWPORTS.length * THEMES.length * LANGS.length;
+  console.log(`Matrix:  ${PAGES.length} pages × ${VIEWPORTS.length} viewports × ${THEMES.length} themes × ${LANGS.length} langs = ${total} shots`);
   console.log();
 
   const browser = await chromium.launch({ headless: true });
   try {
     const results = [];
     for (const pg of PAGES) {
-      for (const theme of THEMES) {
-        for (const vp of VIEWPORTS) {
-          const pageUrl = `${baseUrl}${pg.path}`;
-          const fileLabel = `${pg.name}-${theme.label}-${vp.label}`;
-          results.push(await captureOne(browser, pageUrl, vp, theme, outDir, fileLabel));
+      for (const lang of LANGS) {
+        for (const theme of THEMES) {
+          for (const vp of VIEWPORTS) {
+            const pageUrl = `${baseUrl}${pg.path}`;
+            const fileLabel = `${pg.name}-${lang.label}-${theme.label}-${vp.label}`;
+            results.push(await captureOne(browser, pageUrl, vp, theme, lang, outDir, fileLabel));
+          }
         }
       }
     }

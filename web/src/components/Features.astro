@@ -5,28 +5,32 @@ const features = [
   {
     num: '// 01',
     title: 'CLI',
-    blurb: '17 subcommands. save · search · link · sync · doctor · projects · setup. Local SQLite, zero network.',
+    blurbEn: '17 subcommands. save · search · link · sync · doctor · projects · setup. Local SQLite, zero network.',
+    blurbEs: '17 subcomandos. save · search · link · sync · doctor · projects · setup. SQLite local, cero red.',
     meta: 'seele save / search / list ...',
     href: 'https://github.com/orlando-vazquez-career/seele#what-you-get',
   },
   {
     num: '// 02',
     title: 'MCP',
-    blurb: '19 tools under seele_* namespace. Drops into Claude Code, Cursor, Windsurf with one command.',
+    blurbEn: '19 tools under seele_* namespace. Drops into Claude Code, Cursor, Windsurf with one command.',
+    blurbEs: '19 tools bajo namespace seele_*. Se enchufa a Claude Code, Cursor, Windsurf con un comando.',
     meta: 'seele setup --agent claude-code',
     href: 'https://github.com/orlando-vazquez-career/seele/blob/main/docs/AGENT-SETUP.md',
   },
   {
     num: '// 03',
     title: 'HTTP',
-    blurb: '18 paths + OpenAPI 3.1 + Swagger UI at /docs. Bearer auth, optional legacy ENGRAM aliases.',
+    blurbEn: '18 paths + OpenAPI 3.1 + Swagger UI at /docs. Bearer auth, optional legacy ENGRAM aliases.',
+    blurbEs: '18 paths + OpenAPI 3.1 + Swagger UI en /docs. Auth Bearer, aliases ENGRAM legacy opcionales.',
     meta: 'seele serve --port 7777',
     href: 'https://github.com/orlando-vazquez-career/seele#what-you-get',
   },
   {
     num: '// 04',
     title: 'TUI',
-    blurb: 'Ratatui interface. 5 panes (Home, Browse, Search, Detail, Stats). Vi-style keymap.',
+    blurbEn: 'Ratatui interface. 5 panes (Home, Browse, Search, Detail, Stats). Vi-style keymap.',
+    blurbEs: 'Interfaz Ratatui. 5 paneles (Home, Browse, Search, Detail, Stats). Keymap estilo Vi.',
     meta: 'seele tui',
     href: 'https://github.com/orlando-vazquez-career/seele#what-you-get',
   },
@@ -36,19 +40,18 @@ const features = [
 <section id="features" class="features">
   <div class="page-container features-inner">
     <header class="features-header">
-      <span class="features-eyebrow">// FEATURES</span>
+      <span class="features-eyebrow"><span lang="en">// FEATURES</span><span lang="es">// CARACTERÍSTICAS</span></span>
       <h2 class="features-heading">
-        One binary.<br />
-        Four interfaces.
+        <span lang="en">One binary.<br />Four interfaces.</span><span lang="es">Un binario.<br />Cuatro interfaces.</span>
       </h2>
       <p class="features-lead">
-        Pick the one your agent prefers — they all speak to the same local SQLite.
+        <span lang="en">Pick the one your agent prefers — they all speak to the same local SQLite.</span><span lang="es">Elegí la que tu agente prefiera — todas hablan con la misma SQLite local.</span>
       </p>
     </header>
 
     <div class="features-grid">
       {features.map((f) => (
-        <FeatureCard {...f} />
+        <FeatureCard num={f.num} title={f.title} blurbEn={f.blurbEn} blurbEs={f.blurbEs} meta={f.meta} href={f.href} />
       ))}
     </div>
   </div>

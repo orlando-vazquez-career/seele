@@ -2,19 +2,22 @@
 interface Props {
   num: string;
   title: string;
-  blurb: string;
+  blurbEn: string;
+  blurbEs: string;
   meta: string;
   href: string;
 }
-const { num, title, blurb, meta, href } = Astro.props;
+const { num, title, blurbEn, blurbEs, meta, href } = Astro.props;
 ---
 
 <a class="feature-card" href={href} rel="noopener" target={href.startsWith('http') ? '_blank' : undefined}>
   <span class="num" aria-hidden="true">{num}</span>
   <h3 class="title">{title}</h3>
-  <p class="blurb">{blurb}</p>
+  <p class="blurb">
+    <span lang="en">{blurbEn}</span><span lang="es">{blurbEs}</span>
+  </p>
   <pre class="meta"><code>{meta}</code></pre>
-  <span class="link">view →</span>
+  <span class="link"><span lang="en">view →</span><span lang="es">ver →</span></span>
 </a>
 
 <style>

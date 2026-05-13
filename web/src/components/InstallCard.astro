@@ -1,34 +1,62 @@
 ---
 interface Props {
   num: string;
-  title: string;
-  description: string;
+  titleEn: string;
+  titleEs: string;
+  descriptionEn: string;
+  descriptionEs: string;
   command: string;
   recommended?: boolean;
   notes?: string;
+  notesEn?: string;
+  notesEs?: string;
 }
-const { num, title, description, command, recommended = false, notes } = Astro.props;
+const {
+  num,
+  titleEn,
+  titleEs,
+  descriptionEn,
+  descriptionEs,
+  command,
+  recommended = false,
+  notes,
+  notesEn,
+  notesEs,
+} = Astro.props;
 ---
 
 <article class={`install-card${recommended ? ' is-recommended' : ''}`}>
   <header class="install-header">
     <span class="num">{num}</span>
-    {recommended && <span class="badge">RECOMENDADO</span>}
+    {recommended && (
+      <span class="badge">
+        <span lang="en">RECOMMENDED</span><span lang="es">RECOMENDADO</span>
+      </span>
+    )}
   </header>
-  <h3 class="title">{title}</h3>
-  <p class="description">{description}</p>
+  <h3 class="title">
+    <span lang="en">{titleEn}</span><span lang="es">{titleEs}</span>
+  </h3>
+  <p class="description">
+    <span lang="en">{descriptionEn}</span><span lang="es">{descriptionEs}</span>
+  </p>
   <div class="cmd-wrap">
     <pre class="cmd"><code>$ {command}</code></pre>
     <button
       class="copy-btn"
       type="button"
       data-copy={command}
-      aria-label={`Copy ${title} command`}
+      aria-label={`Copy ${titleEn} command`}
     >
-      COPY
+      <span lang="en">COPY</span><span lang="es">COPIAR</span>
     </button>
   </div>
   {notes && <p class="notes">{notes}</p>}
+  {notesEn && notesEs && (
+    <p class="notes">
+      <span lang="en">{notesEn}</span><span lang="es">{notesEs}</span>
+    </p>
+  )}
 </article>
 
 <script>

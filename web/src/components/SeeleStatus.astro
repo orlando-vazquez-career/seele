@@ -87,13 +87,14 @@ const { endpoint = 'http://localhost:7777/health' } = Astro.props;
   });
 
   function applyMessage(el: HTMLElement, status: Status) {
-    const messages: Record<Status, string> = {
-      checking: 'checking machine…',
-      detected: 'SEELE running on this machine',
-      'not-detected': 'SEELE not detected',
-      blocked: 'auto-detect needs local hosting',
+    const lang = document.documentElement.getAttribute('lang') === 'es' ? 'es' : 'en';
+    const messages: Record<Status, { en: string; es: string }> = {
+      checking: { en: 'checking machine…', es: 'comprobando máquina…' },
+      detected: { en: 'SEELE running on this machine', es: 'SEELE corriendo en esta máquina' },
+      'not-detected': { en: 'SEELE not detected', es: 'SEELE no detectado' },
+      blocked: { en: 'auto-detect needs local hosting', es: 'auto-detect necesita hosting local' },
     };
-    setStatus(el, status, messages[status]);
+    setStatus(el, status, messages[status][lang]);
   }
 </script>
 

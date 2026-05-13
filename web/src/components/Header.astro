@@ -10,16 +10,16 @@ const isObservabilityPage = pathname.endsWith('/observability');
 const homeHref = base || '/';
 const navItems = isObservabilityPage
   ? [
-      { href: homeHref, label: 'home' },
-      { href: `${homeHref}#features`, label: 'features' },
-      { href: `${homeHref}#install`, label: 'install' },
-      { href: `${homeHref}#support`, label: 'support' },
+      { href: homeHref, en: 'home', es: 'inicio' },
+      { href: `${homeHref}#features`, en: 'features', es: 'características' },
+      { href: `${homeHref}#install`, en: 'install', es: 'instalar' },
+      { href: `${homeHref}#support`, en: 'support', es: 'apoyar' },
     ]
   : [
-      { href: '#features', label: 'features' },
-      { href: '#install', label: 'install' },
-      { href: '#support', label: 'support' },
-      { href: `${base}/observability`, label: 'observability' },
+      { href: '#features', en: 'features', es: 'características' },
+      { href: '#install', en: 'install', es: 'instalar' },
+      { href: '#support', en: 'support', es: 'apoyar' },
+      { href: `${base}/observability`, en: 'observability', es: 'observabilidad' },
     ];
 ---
 
@@ -35,7 +35,11 @@ const navItems = isObservabilityPage
     <nav aria-label="Primary">
       <ul class="nav-list">
         {navItems.map((item) => (
-          <li><a href={item.href}>{item.label}</a></li>
+          <li>
+            <a href={item.href}>
+              <span lang="en">{item.en}</span><span lang="es">{item.es}</span>
+            </a>
+          </li>
         ))}
         <li>
           <a
@@ -44,6 +48,17 @@ const navItems = isObservabilityPage
             rel="noopener"
             target="_blank"
           >github ↗</a>
+        </li>
+        <li>
+          <button
+            type="button"
+            class="lang-toggle"
+            data-lang-toggle
+            aria-label="Toggle Spanish / English"
+            title="Toggle Spanish / English"
+          >
+            <span data-lang-icon>[ EN ]</span>
+          </button>
         </li>
         <li>
           <button
@@ -62,16 +77,12 @@ const navItems = isObservabilityPage
 </header>
 
 <script is:inline>
-  // Inline script: runs before page paint to avoid theme flash.
-  // Resolution order:
-  //   1. localStorage 'seele-theme' = 'light' | 'dark' (explicit user choice)
-  //   2. system preference via matchMedia
-  //   3. default dark
+  // Inline script: runs before page paint to avoid theme/lang flash.
   (function () {
-    const STORAGE_KEY = 'seele-theme';
+    // Theme: localStorage 'seele-theme' → prefers-color-scheme → dark
     function resolveTheme() {
       try {
-        const saved = localStorage.getItem(STORAGE_KEY);
+        const saved = localStorage.getItem('seele-theme');
         if (saved === 'light' || saved === 'dark') return saved;
       } catch (_) { /* private mode */ }
       if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
@@ -79,40 +90,71 @@ const navItems = isObservabilityPage
       }
       return 'dark';
     }
-    const theme = resolveTheme();
-    document.documentElement.setAttribute('data-theme', theme);
+    // Lang: localStorage 'seele-lang' → navigator.language → en
+    function resolveLang() {
+      try {
+        const saved = localStorage.getItem('seele-lang');
+        if (saved === 'en' || saved === 'es') return saved;
+      } catch (_) { /* private mode */ }
+      var nav = (navigator.language || '').toLowerCase();
+      if (nav.indexOf('es') === 0) return 'es';
+      return 'en';
+    }
+    document.documentElement.setAttribute('data-theme', resolveTheme());
+    document.documentElement.setAttribute('lang', resolveLang());
   })();
 </script>
 
 <script>
-  // Toggle handler — runs after DOMContentLoaded
-  const STORAGE_KEY = 'seele-theme';
-
+  // ───────── Theme toggle ─────────
   function applyTheme(theme: 'light' | 'dark') {
     document.documentElement.setAttribute('data-theme', theme);
-    try {
-      localStorage.setItem(STORAGE_KEY, theme);
-    } catch (_) { /* private mode */ }
-    updateIcons(theme);
+    try { localStorage.setItem('seele-theme', theme); } catch (_) {}
+    updateThemeIcons(theme);
   }
-
-  function updateIcons(theme: 'light' | 'dark') {
+  function updateThemeIcons(theme: 'light' | 'dark') {
     document.querySelectorAll<HTMLElement>('[data-theme-icon]').forEach((el) => {
       el.textContent = theme === 'light' ? '[ ◑ ]' : '[ ◐ ]';
     });
   }
-
   function currentTheme(): 'light' | 'dark' {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'dark';
   }
-
-  // Initialize icon on load
-  updateIcons(currentTheme());
-
+  updateThemeIcons(currentTheme());
   document.querySelectorAll<HTMLButtonElement>('[data-theme-toggle]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const next = currentTheme() === 'light' ? 'dark' : 'light';
-      applyTheme(next);
+      applyTheme(currentTheme() === 'light' ? 'dark' : 'light');
+    });
+  });
+
+  // ───────── Lang toggle ─────────
+  function applyLang(lang: 'en' | 'es') {
+    document.documentElement.setAttribute('lang', lang);
+    try { localStorage.setItem('seele-lang', lang); } catch (_) {}
+    updateLangIcons(lang);
+    updatePlaceholders(lang);
+  }
+  function updatePlaceholders(lang: 'en' | 'es') {
+    document.querySelectorAll<HTMLInputElement>('[data-placeholder-en][data-placeholder-es]').forEach((el) => {
+      const next = lang === 'es' ? el.dataset.placeholderEs : el.dataset.placeholderEn;
+      if (next) el.placeholder = next;
+    });
+  }
+  function updateLangIcons(lang: 'en' | 'es') {
+    // Icon shows the OTHER language — the one a click will switch TO.
+    const next = lang === 'en' ? 'ES' : 'EN';
+    document.querySelectorAll<HTMLElement>('[data-lang-icon]').forEach((el) => {
+      el.textContent = `[ ${next} ]`;
+    });
+  }
+  function currentLang(): 'en' | 'es' {
+    return (document.documentElement.getAttribute('lang') as 'en' | 'es') || 'en';
+  }
+  updateLangIcons(currentLang());
+  updatePlaceholders(currentLang());
+  document.querySelectorAll<HTMLButtonElement>('[data-lang-toggle]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      applyLang(currentLang() === 'en' ? 'es' : 'en');
     });
   });
 </script>
@@ -198,7 +240,8 @@ const navItems = isObservabilityPage
     color: var(--semantic-text-primary) !important;
   }
 
-  .theme-toggle {
+  .theme-toggle,
+  .lang-toggle {
     background: transparent;
     border: var(--border-hair) solid var(--semantic-border-muted);
     color: var(--fg-muted);
@@ -209,7 +252,8 @@ const navItems = isObservabilityPage
     cursor: pointer;
   }
 
-  .theme-toggle:hover {
+  .theme-toggle:hover,
+  .lang-toggle:hover {
     background: var(--accent);
     color: var(--bg);
     border-color: var(--accent);

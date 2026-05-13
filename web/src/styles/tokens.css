@@ -259,6 +259,15 @@ img, svg {
   max-width: 100%;
 }
 
+/* ───────── i18n visibility (EN ↔ ES toggle) ───────── */
+/* Each translatable element renders BOTH languages as inline <span lang="en">
+ * and <span lang="es"> siblings. CSS hides the inactive one based on the
+ * <html lang> attribute set by the inline anti-FOUC script in Header. The
+ * descendant combinator excludes <html lang="..."> itself. <span lang="la">
+ * (Latin motto in footer) is intentionally not matched and stays visible. */
+html[lang="en"] [lang="es"] { display: none; }
+html[lang="es"] [lang="en"] { display: none; }
+
 /* prefers-reduced-motion: honor — disable even the SeeleStatus pulse */
 @media (prefers-reduced-motion: reduce) {
   *,

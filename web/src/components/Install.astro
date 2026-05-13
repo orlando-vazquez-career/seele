@@ -4,8 +4,10 @@ import InstallCard from './InstallCard.astro';
 const installPaths = [
   {
     num: '// 01',
-    title: 'install script',
-    description: 'SHA256-verified pre-built binary. Linux, macOS, Windows.',
+    titleEn: 'install script',
+    titleEs: 'script de instalación',
+    descriptionEn: 'SHA256-verified pre-built binary. Linux, macOS, Windows.',
+    descriptionEs: 'Binario pre-built verificado SHA256. Linux, macOS, Windows.',
     command:
       'curl -fsSL https://raw.githubusercontent.com/orlando-vazquez-career/seele/main/scripts/install.sh | bash',
     recommended: true,
@@ -13,19 +15,25 @@ const installPaths = [
   },
   {
     num: '// 02',
-    title: 'cargo install',
-    description: 'Compile from source via crates.io toolchain.',
+    titleEn: 'cargo install',
+    titleEs: 'cargo install',
+    descriptionEn: 'Compile from source via crates.io toolchain.',
+    descriptionEs: 'Compilar desde fuente vía toolchain crates.io.',
     command:
       'cargo install --git https://github.com/orlando-vazquez-career/seele.git --locked seele-cli',
-    notes: 'Requires Rust 1.85+ (MSRV). 5-10 min first build.',
+    notesEn: 'Requires Rust 1.85+ (MSRV). 5-10 min first build.',
+    notesEs: 'Requiere Rust 1.85+ (MSRV). 5-10 min el primer build.',
   },
   {
     num: '// 03',
-    title: 'build from source',
-    description: 'Clone and build the workspace.',
+    titleEn: 'build from source',
+    titleEs: 'build desde fuente',
+    descriptionEn: 'Clone and build the workspace.',
+    descriptionEs: 'Clonar y buildear el workspace.',
     command:
       'git clone https://github.com/orlando-vazquez-career/seele.git\ncd seele && cargo build --release -p seele-cli',
-    notes: 'Output: target/release/seele',
+    notesEn: 'Output: target/release/seele',
+    notesEs: 'Output: target/release/seele',
   },
 ];
 ---
@@ -33,14 +41,12 @@ const installPaths = [
 <section id="install" class="install">
   <div class="page-container install-inner">
     <header class="install-header">
-      <span class="install-eyebrow">// INSTALL</span>
+      <span class="install-eyebrow"><span lang="en">// INSTALL</span><span lang="es">// INSTALAR</span></span>
       <h2 class="install-heading">
-        Three paths.<br />
-        One binary.
+        <span lang="en">Three paths.<br />One binary.</span><span lang="es">Tres caminos.<br />Un binario.</span>
       </h2>
       <p class="install-lead">
-        Pick whichever fits. Full matrix in
-        <a
+        <span lang="en">Pick whichever fits. Full matrix in </span><span lang="es">Elegí el que encaje. Matriz completa en </span><a
           href="https://github.com/orlando-vazquez-career/seele/blob/main/docs/INSTALLATION.md"
           rel="noopener"
           target="_blank"
@@ -55,7 +61,7 @@ const installPaths = [
     </div>
 
     <details class="post-install">
-      <summary>// after install — first save + search</summary>
+      <summary><span lang="en">// after install — first save + search</span><span lang="es">// después del install — primer save + search</span></summary>
       <pre><code>$ seele save "WAL is faster than DELETE" \
     "Postgres uses WAL by default since 9.1." \
     --project notes

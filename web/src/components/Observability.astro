@@ -37,28 +37,28 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
 
   <!-- Initial probing state -->
   <div class="obs-state obs-state-probing" data-show-when="probing">
-    <p class="obs-msg">probing localhost…</p>
+    <p class="obs-msg"><span lang="en">probing localhost…</span><span lang="es">sondeando localhost…</span></p>
   </div>
 
   <!-- SEELE not detected — show preview sample data so the panel feels alive -->
   <div class="obs-state obs-state-off" data-show-when="offline">
     <div class="preview-banner">
-      <span class="preview-label">PREVIEW · sample data</span>
+      <span class="preview-label"><span lang="en">PREVIEW · sample data</span><span lang="es">VISTA PREVIA · datos de muestra</span></span>
       <p class="preview-note">
-        Run <code class="inline-cmd">seele serve</code> locally to see your own memories live here.
+        <span lang="en">Run <code class="inline-cmd">seele serve</code> locally to see your own memories live here.</span><span lang="es">Corré <code class="inline-cmd">seele serve</code> localmente para ver tus memorias en vivo acá.</span>
       </p>
     </div>
     <div class="obs-preview-grid">
       <section class="obs-section">
-        <span class="obs-section-eyebrow">// STATS</span>
+        <span class="obs-section-eyebrow"><span lang="en">// STATS</span><span lang="es">// ESTADÍSTICAS</span></span>
         <div class="stats-grid">
           <div class="stat"><span class="stat-label">total</span><span class="stat-value">142</span></div>
-          <div class="stat"><span class="stat-label">projects</span><span class="stat-value">4</span></div>
-          <div class="stat"><span class="stat-label">last save</span><span class="stat-value">23m</span></div>
+          <div class="stat"><span class="stat-label"><span lang="en">projects</span><span lang="es">proyectos</span></span><span class="stat-value">4</span></div>
+          <div class="stat"><span class="stat-label"><span lang="en">last save</span><span lang="es">último</span></span><span class="stat-value">23m</span></div>
         </div>
       </section>
       <section class="obs-section">
-        <span class="obs-section-eyebrow">// BY TYPE</span>
+        <span class="obs-section-eyebrow"><span lang="en">// BY TYPE</span><span lang="es">// POR TIPO</span></span>
         <ol class="bars">
           <li class="bar-row"><span class="bar-key">decision</span><span class="bar-track"><span class="bar-fill" style="width:100%"></span></span><span class="bar-count">38</span></li>
           <li class="bar-row"><span class="bar-key">pattern</span><span class="bar-track"><span class="bar-fill" style="width:74%"></span></span><span class="bar-count">28</span></li>
@@ -68,7 +68,7 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
         </ol>
       </section>
       <section class="obs-section">
-        <span class="obs-section-eyebrow">// RECENT</span>
+        <span class="obs-section-eyebrow"><span lang="en">// RECENT</span><span lang="es">// RECIENTES</span></span>
         <ol class="recent">
           <li class="recent-item recent-static">
             <span class="recent-title">RRF combiner: weight tuning for hybrid search</span>
@@ -85,7 +85,7 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
         </ol>
       </section>
       <section class="obs-section">
-        <span class="obs-section-eyebrow">// BY PROJECT</span>
+        <span class="obs-section-eyebrow"><span lang="en">// BY PROJECT</span><span lang="es">// POR PROYECTO</span></span>
         <ol class="bars">
           <li class="bar-row"><span class="bar-key">seele</span><span class="bar-track"><span class="bar-fill" style="width:100%"></span></span><span class="bar-count">68</span></li>
           <li class="bar-row"><span class="bar-key">mnema</span><span class="bar-track"><span class="bar-fill" style="width:63%"></span></span><span class="bar-count">43</span></li>
@@ -94,7 +94,7 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
         </ol>
       </section>
       <section class="obs-section">
-        <span class="obs-section-eyebrow">// SAVES (LAST 14 DAYS)</span>
+        <span class="obs-section-eyebrow"><span lang="en">// SAVES (LAST 14 DAYS)</span><span lang="es">// GUARDADOS (ÚLTIMOS 14 DÍAS)</span></span>
         <div class="spark">
           <span class="spark-bars">▁▂▁▃▂▄▃▅▄▆▅▇▆█</span>
           <span class="spark-meta">142 saves · last 14d</span>
@@ -106,23 +106,23 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
   <!-- CORS blocked — same preview as offline + explicit fix instruction at top -->
   <div class="obs-state obs-state-cors" data-show-when="cors-blocked">
     <div class="preview-banner">
-      <span class="preview-label">CORS BLOCKED · sample data</span>
+      <span class="preview-label"><span lang="en">CORS BLOCKED · sample data</span><span lang="es">CORS BLOQUEADO · datos de muestra</span></span>
       <p class="preview-note">
-        SEELE is up but rejects cross-origin reads. Restart with:
+        <span lang="en">SEELE is up but rejects cross-origin reads. Restart with:</span><span lang="es">SEELE está arriba pero rechaza lecturas cross-origin. Reiniciá con:</span>
       </p>
       <pre class="obs-cmd"><code>$ seele serve --cors-allow {endpoint.replace(/\/$/, '')}</code></pre>
     </div>
     <div class="obs-preview-grid">
       <section class="obs-section">
-        <span class="obs-section-eyebrow">// STATS</span>
+        <span class="obs-section-eyebrow"><span lang="en">// STATS</span><span lang="es">// ESTADÍSTICAS</span></span>
         <div class="stats-grid">
           <div class="stat"><span class="stat-label">total</span><span class="stat-value">142</span></div>
-          <div class="stat"><span class="stat-label">projects</span><span class="stat-value">4</span></div>
-          <div class="stat"><span class="stat-label">last save</span><span class="stat-value">23m</span></div>
+          <div class="stat"><span class="stat-label"><span lang="en">projects</span><span lang="es">proyectos</span></span><span class="stat-value">4</span></div>
+          <div class="stat"><span class="stat-label"><span lang="en">last save</span><span lang="es">último</span></span><span class="stat-value">23m</span></div>
         </div>
       </section>
       <section class="obs-section">
-        <span class="obs-section-eyebrow">// BY TYPE</span>
+        <span class="obs-section-eyebrow"><span lang="en">// BY TYPE</span><span lang="es">// POR TIPO</span></span>
         <ol class="bars">
           <li class="bar-row"><span class="bar-key">decision</span><span class="bar-track"><span class="bar-fill" style="width:100%"></span></span><span class="bar-count">38</span></li>
           <li class="bar-row"><span class="bar-key">pattern</span><span class="bar-track"><span class="bar-fill" style="width:74%"></span></span><span class="bar-count">28</span></li>
@@ -132,7 +132,7 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
         </ol>
       </section>
       <section class="obs-section">
-        <span class="obs-section-eyebrow">// RECENT</span>
+        <span class="obs-section-eyebrow"><span lang="en">// RECENT</span><span lang="es">// RECIENTES</span></span>
         <ol class="recent">
           <li class="recent-item recent-static">
             <span class="recent-title">RRF combiner: weight tuning for hybrid search</span>
@@ -149,7 +149,7 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
         </ol>
       </section>
       <section class="obs-section">
-        <span class="obs-section-eyebrow">// BY PROJECT</span>
+        <span class="obs-section-eyebrow"><span lang="en">// BY PROJECT</span><span lang="es">// POR PROYECTO</span></span>
         <ol class="bars">
           <li class="bar-row"><span class="bar-key">seele</span><span class="bar-track"><span class="bar-fill" style="width:100%"></span></span><span class="bar-count">68</span></li>
           <li class="bar-row"><span class="bar-key">mnema</span><span class="bar-track"><span class="bar-fill" style="width:63%"></span></span><span class="bar-count">43</span></li>
@@ -158,7 +158,7 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
         </ol>
       </section>
       <section class="obs-section">
-        <span class="obs-section-eyebrow">// SAVES (LAST 14 DAYS)</span>
+        <span class="obs-section-eyebrow"><span lang="en">// SAVES (LAST 14 DAYS)</span><span lang="es">// GUARDADOS (ÚLTIMOS 14 DÍAS)</span></span>
         <div class="spark">
           <span class="spark-bars">▁▂▁▃▂▄▃▅▄▆▅▇▆█</span>
           <span class="spark-meta">142 saves · last 14d</span>
@@ -172,7 +172,7 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
 
     <!-- Stats grid -->
     <section class="obs-section">
-      <span class="obs-section-eyebrow">// STATS</span>
+      <span class="obs-section-eyebrow"><span lang="en">// STATS</span><span lang="es">// ESTADÍSTICAS</span></span>
       <div class="stats-grid">
         <div class="stat">
           <span class="stat-label">total</span>
@@ -191,7 +191,7 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
 
     <!-- By type -->
     <section class="obs-section">
-      <span class="obs-section-eyebrow">// BY TYPE</span>
+      <span class="obs-section-eyebrow"><span lang="en">// BY TYPE</span><span lang="es">// POR TIPO</span></span>
       <ol class="bars" data-bars-type>
         <li class="bars-empty">no data</li>
       </ol>
@@ -199,7 +199,7 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
 
     <!-- By project -->
     <section class="obs-section">
-      <span class="obs-section-eyebrow">// BY PROJECT</span>
+      <span class="obs-section-eyebrow"><span lang="en">// BY PROJECT</span><span lang="es">// POR PROYECTO</span></span>
       <ol class="bars" data-bars-project>
         <li class="bars-empty">no data</li>
       </ol>
@@ -207,12 +207,14 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
 
     <!-- Search -->
     <section class="obs-section">
-      <span class="obs-section-eyebrow">// SEARCH</span>
+      <span class="obs-section-eyebrow"><span lang="en">// SEARCH</span><span lang="es">// BUSCAR</span></span>
       <input
         class="search-input"
         type="search"
         placeholder="query…"
         data-search-input
+        data-placeholder-en="query…"
+        data-placeholder-es="consulta…"
         aria-label="Search memories"
       />
       <ol class="results" data-search-results></ol>
@@ -220,7 +222,7 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
 
     <!-- Recent -->
     <section class="obs-section">
-      <span class="obs-section-eyebrow">// RECENT</span>
+      <span class="obs-section-eyebrow"><span lang="en">// RECENT</span><span lang="es">// RECIENTES</span></span>
       <ol class="recent" data-recent>
         <li class="bars-empty">no data</li>
       </ol>
@@ -228,7 +230,7 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
 
     <!-- Sparkline -->
     <section class="obs-section">
-      <span class="obs-section-eyebrow">// SAVES (LAST 14 DAYS)</span>
+      <span class="obs-section-eyebrow"><span lang="en">// SAVES (LAST 14 DAYS)</span><span lang="es">// GUARDADOS (ÚLTIMOS 14 DÍAS)</span></span>
       <div class="spark" data-spark>
         <span class="spark-bars" data-spark-bars></span>
         <span class="spark-meta" data-spark-meta>—</span>
