@@ -21,8 +21,8 @@ const targets = [
     address: 'bc1qzznr7lwzeyp738079k34yserkzketyju9k7kte',
     method: 'bip21',
     uri: 'bitcoin:bc1qzznr7lwzeyp738079k34yserkzketyju9k7kte?label=SEELE',
-    install: 'https://sparrowwallet.com/download/',
-    walletName: 'Sparrow / Electrum',
+    install: 'https://chromewebstore.google.com/detail/xverse-wallet/idnnbdplmphpflfnlkomgpfbpcgelopg',
+    walletName: 'Xverse / UniSat / Leather',
     chainId: null,
   },
   {
@@ -143,6 +143,59 @@ const targets = [
   function hasSolanaProvider(): boolean {
     const w = window as unknown as { phantom?: { solana?: unknown }; solana?: unknown };
     return Boolean(w.phantom?.solana || w.solana);
+  }
+
+  // ───────── Bitcoin browser-extension detection ─────────
+  // No EIP-6963 equivalent yet for BTC. Detect by global namespace.
+
+  type BtcProvider = {
+    name: 'unisat' | 'xverse' | 'leather';
+    open: (address: string) => Promise<void>;
+    install: string;
+  };
+
+  // UniSat exposes sendBitcoin(toAddress, satoshi). We pre-fill with 1000 sats
+  // (~$0.50 at 2026 prices) which the user can edit in the popup before signing.
+  // Leather and Xverse follow the sats-connect spec: request('sendTransfer',...).
+  function pickBtcProvider(): BtcProvider | null {
+    const w = window as unknown as {
+      unisat?: { sendBitcoin: (addr: string, sats: number) => Promise<string> };
+      LeatherProvider?: { request: (m: string, p: unknown) => Promise<unknown> };
+      btc?: { request: (m: string, p: unknown) => Promise<unknown> };
+      XverseProviders?: { BitcoinProvider?: { request: (m: string, p: unknown) => Promise<unknown> } };
+    };
+
+    if (w.unisat) {
+      return {
+        name: 'unisat',
+        install: 'https://chromewebstore.google.com/detail/unisat-wallet/ppbibelpcjmhbdihakflkdcoccbgbkpo',
+        open: async (address: string) => {
+          await w.unisat!.sendBitcoin(address, 1000);
+        },
+      };
+    }
+    if (w.XverseProviders?.BitcoinProvider) {
+      return {
+        name: 'xverse',
+        install: 'https://chromewebstore.google.com/detail/xverse-wallet/idnnbdplmphpflfnlkomgpfbpcgelopg',
+        open: async (address: string) => {
+          await w.XverseProviders!.BitcoinProvider!.request('sendTransfer', {
+            recipients: [{ address, amount: 1000 }],
+          });
+        },
+      };
+    }
+    const leather = w.LeatherProvider ?? w.btc;
+    if (leather) {
+      return {
+        name: 'leather',
+        install: 'https://chromewebstore.google.com/detail/leather/ldinpeekobnhjjdofggfgjlcehhmanlj',
+        open: async (address: string) => {
+          await leather.request('sendTransfer', { address, amount: '0.00001' });
+        },
+      };
+    }
+    return null;
   }
 
   const CHAINS: Record<number, { hex: string; add?: object }> = {
@@ -282,13 +335,41 @@ const targets = [
     }
 
     if (method === 'bip21') {
+      // 1) Browser-extension Bitcoin wallet (UniSat / Xverse / Leather) — preferred
+      const btc = pickBtcProvider();
+      if (btc) {
+        setStatus('OPENING…', 'opening');
+        try {
+          await btc.open(address);
+          setStatus('SENT', 'sent');
+          clearStatusAfter(4000);
+        } catch (err: unknown) {
+          const code = (err as { code?: number; message?: string }).code;
+          const msg = (err as { message?: string }).message ?? '';
+          if (code === 4001 || /reject|denied|cancel/i.test(msg)) {
+            setStatus('REJECTED', 'rejected');
+          } else {
+            setStatus('ERROR', 'error');
+            console.error(`[${id}] btc error:`, err);
+          }
+          clearStatusAfter(3000);
+        }
+        return;
+      }
+
+      // 2) No browser-extension. Try desktop wallet via bitcoin: URI scheme
+      //    (Sparrow / Electrum / Trezor Suite register OS handler).
+      //    After 700ms: if document still visible, no app intercepted → offer
+      //    install of a Bitcoin browser wallet (Xverse) + copy as last resort.
       setStatus('OPENING…', 'opening');
       window.location.href = uri;
       window.setTimeout(async () => {
         if (!document.hidden) {
+          // No OS handler. Match EVM behavior: open install page + copy fallback.
+          setStatus('INSTALL →', 'install');
+          window.open(install, '_blank', 'noopener');
           await copyToClipboard(address);
-          setStatus('COPIED', 'copied');
-          clearStatusAfter(2000);
+          clearStatusAfter(3500);
         } else {
           setStatus('', '');
         }
@@ -307,9 +388,11 @@ const targets = [
     if (!banner || !label) return;
     const evmWallets = getDetectedWalletNames();
     const sol = hasSolanaProvider();
+    const btc = pickBtcProvider();
     const detected: string[] = [];
     if (evmWallets.length) detected.push(...evmWallets);
     if (sol) detected.push('Phantom');
+    if (btc) detected.push(`${btc.name[0].toUpperCase()}${btc.name.slice(1)}`);
     if (detected.length > 0) {
       banner.dataset.state = 'detected';
       label.textContent = `wallets detected: ${detected.join(' · ')}`;
@@ -324,7 +407,7 @@ const targets = [
       const isAvailable =
         (method === 'evm' && evmWallets.length > 0) ||
         (method === 'solana-pay' && sol) ||
-        method === 'bip21';
+        (method === 'bip21' && btc !== null);
       tagEl.dataset.available = isAvailable ? 'yes' : 'no';
     });
   }
