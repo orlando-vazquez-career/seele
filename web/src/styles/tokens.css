@@ -31,16 +31,17 @@
   --font-mono: ui-monospace, "JetBrains Mono", "Cascadia Code", Menlo, Monaco,
     Consolas, "Liberation Mono", "Courier New", monospace;
 
-  /* Aggressive scale bump (v0.4.0): base 18px JetBrains Mono — bigger than
-     conventional dev-tool landings, on purpose. The brutalist character
-     amplifies at larger size. */
-  --text-meta: 12px;
-  --text-xs: 14px;
-  --text-sm: 15px;
+  /* Scale v0.4.1: rebalanced — small end +1px (eyebrows / meta / faint
+     info now readable), large end -25% (hero 84→64, lg 24→22, 2xl 32→28).
+     Less dramatic delta between body and display preserves brutalist
+     character without dominating the viewport. */
+  --text-meta: 13px;
+  --text-xs: 15px;
+  --text-sm: 16px;
   --text-base: 18px;
-  --text-lg: 24px;
-  --text-2xl: 32px;
-  --text-hero: 84px;
+  --text-lg: 22px;
+  --text-2xl: 28px;
+  --text-hero: 64px;
 
   --weight-light: 300;
   --weight-normal: 400;

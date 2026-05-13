@@ -88,9 +88,9 @@ import SeeleStatus from './SeeleStatus.astro';
   }
 
   .hero-title {
-    /* Lower bound is 28px so it fits at 320px viewport (the headline
-       has up to 13 chars per line in JetBrains Mono Bold). */
-    font-size: clamp(28px, 7vw, var(--text-hero));
+    /* Lower bound 28px fits at 320px viewport. Upper bound caps at
+       --text-hero (64px in v0.4.1) — was 84px in v0.4.0, too dominant. */
+    font-size: clamp(28px, 5.5vw, var(--text-hero));
     font-weight: var(--weight-black);
     letter-spacing: var(--tracking-tight);
     line-height: 1.05;
