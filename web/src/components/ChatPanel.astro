@@ -474,9 +474,16 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
   }
 
   function stripThinking(s: string): string {
-    // Some models (Minimax M2 in particular) emit <think>…</think> blocks
-    // that should never reach the user. Drop them and trim.
-    return s.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+    // Reasoning models emit thinking traces inside ad-hoc tags that should
+    // never reach the user. Patterns seen in the wild:
+    //   <think>…</think>          — Minimax M2, DeepSeek-R1, Qwen QwQ
+    //   <thinking>…</thinking>    — older Claude-style passthrough
+    //   <|thinking|>…<|/thinking|> — some Together / vLLM templates
+    return s
+      .replace(/<think>[\s\S]*?<\/think>/gi, '')
+      .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
+      .replace(/<\|thinking\|>[\s\S]*?<\|\/thinking\|>/gi, '')
+      .trim();
   }
 
   function renderAssistantBody(text: string): string {

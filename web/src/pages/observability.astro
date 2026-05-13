@@ -14,13 +14,20 @@ import Footer from '../components/Footer.astro';
   <main>
     <section class="obs-page">
       <div class="page-container-centered">
+        <aside class="obs-banner" role="note">
+          <span class="obs-banner-tag">// LOCAL-ONLY</span>
+          <p class="obs-banner-text">
+            <span lang="en">This panel and the chat below read from <strong>your own</strong> <code>seele serve</code> on <code>localhost:7777</code>. The hosted site has no database of its own — without your local server running, you see sample data and the chat panel asks you to plug in your own AI key. Setup: <code>cargo install --path crates/seele-cli</code>, then <code>seele serve --cors-allow {Astro.url.origin}</code>.</span><span lang="es">Este panel y el chat de abajo leen desde <strong>tu propio</strong> <code>seele serve</code> en <code>localhost:7777</code>. El sitio público no tiene base de datos propia — sin tu servidor local corriendo vas a ver datos de muestra y el chat te va a pedir tu propia API key. Setup: <code>cargo install --path crates/seele-cli</code>, después <code>seele serve --cors-allow {Astro.url.origin}</code>.</span>
+          </p>
+        </aside>
+
         <header class="obs-page-header">
           <span class="obs-page-eyebrow"><span lang="en">// OBSERVABILITY</span><span lang="es">// OBSERVABILIDAD</span></span>
           <h1 class="obs-page-title">
             <span lang="en">What your<br />memory engine<br />is doing.</span><span lang="es">Lo que está<br />haciendo tu<br />memoria.</span>
           </h1>
           <p class="obs-page-lead">
-            <span lang="en">Live read of your local SEELE database via the HTTP server. Sample data shown until you run <code>seele serve --cors-allow {Astro.url.origin}</code>. No telemetry leaves your machine.</span><span lang="es">Lectura en vivo de tu base SEELE local vía el servidor HTTP. Datos de muestra hasta que corras <code>seele serve --cors-allow {Astro.url.origin}</code>. Sin telemetría hacia afuera.</span>
+            <span lang="en">No telemetry ever leaves your machine — neither database reads nor chat keys.</span><span lang="es">Cero telemetría sale de tu máquina — ni lecturas de base ni keys de chat.</span>
           </p>
         </header>
 
@@ -36,6 +43,44 @@ import Footer from '../components/Footer.astro';
   .obs-page {
     padding-block: var(--space-14) var(--space-20);
     border-bottom: var(--border-base) solid var(--semantic-border-base);
+  }
+
+  .obs-banner {
+    display: block;
+    border: var(--border-base) solid var(--accent);
+    padding: var(--space-4) var(--space-5);
+    margin-bottom: var(--space-10);
+    background: transparent;
+  }
+
+  .obs-banner-tag {
+    display: block;
+    font-size: var(--text-meta);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: var(--space-2);
+  }
+
+  .obs-banner-text {
+    font-size: var(--text-sm);
+    color: var(--fg);
+    line-height: var(--leading-relaxed);
+    margin: 0;
+  }
+
+  .obs-banner-text strong {
+    color: var(--accent);
+    font-weight: var(--weight-bold);
+  }
+
+  .obs-banner-text code {
+    background: transparent;
+    border-bottom: var(--border-hair) solid var(--fg-faint);
+    padding: 0 4px;
+    color: var(--fg);
+    overflow-wrap: anywhere;
   }
 
   .obs-page-header {

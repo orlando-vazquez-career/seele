@@ -30,6 +30,13 @@ jobs:
           cache: 'npm'
           cache-dependency-path: web/package-lock.json
 
+      # configure-pages flips the Pages site to `build_type: workflow`
+      # automatically. Without this step the deploy-pages action fails
+      # against a site initialised with a branch source (which is what
+      # the manual gh-pages fallback uses).
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
       - name: Install dependencies
         run: npm ci
         working-directory: web
