@@ -37,6 +37,18 @@ const year = new Date().getFullYear();
         <span class="version">MIT · clean-room</span>
       </div>
 
+      <div class="col col-connect">
+        <span class="meta"><span lang="en">// CONNECT</span><span lang="es">// CONTACTO</span></span>
+        <ul>
+          <li><a href="https://www.linkedin.com/in/orvazgon/" rel="noopener" target="_blank">linkedin ↗</a></li>
+          <li><a href="https://wa.me/56931840592" rel="noopener" target="_blank">whatsapp ↗</a></li>
+          <li><a href="https://www.youtube.com/@DevZenMode" rel="noopener" target="_blank">youtube ↗</a></li>
+          <li><a href="https://www.instagram.com/devzenmode/" rel="noopener" target="_blank">instagram ↗</a></li>
+          <li><a href="https://www.tiktok.com/@orlandoov" rel="noopener" target="_blank">tiktok ↗</a></li>
+          <li><a href="https://www.facebook.com/orlando.vazquez.793170" rel="noopener" target="_blank">facebook ↗</a></li>
+        </ul>
+      </div>
+
       <div class="col col-meta">
         <span class="meta"><span lang="en">// PRIVACY</span><span lang="es">// PRIVACIDAD</span></span>
         <p class="privacy">
@@ -68,7 +80,7 @@ const year = new Date().getFullYear();
 
   .footer-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: var(--space-6);
     margin-bottom: var(--space-10);
   }
@@ -109,7 +121,8 @@ const year = new Date().getFullYear();
     text-transform: uppercase;
   }
 
-  .col-links ul {
+  .col-links ul,
+  .col-connect ul {
     list-style: none;
     padding: 0;
     margin: 0;
@@ -118,13 +131,15 @@ const year = new Date().getFullYear();
     gap: var(--space-1);
   }
 
-  .col-links a {
+  .col-links a,
+  .col-connect a {
     font-size: var(--text-sm);
     color: var(--fg-muted);
     text-decoration: none;
   }
 
-  .col-links a:hover {
+  .col-links a:hover,
+  .col-connect a:hover {
     color: var(--accent);
   }
 
@@ -170,9 +185,15 @@ const year = new Date().getFullYear();
     font-style: italic;
   }
 
-  @media (max-width: 900px) {
+  @media (max-width: 1100px) {
     .footer-grid {
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  @media (max-width: 720px) {
+    .footer-grid {
+      grid-template-columns: repeat(2, 1fr);
     }
   }
 
