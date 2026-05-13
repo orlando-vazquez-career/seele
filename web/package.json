@@ -9,12 +9,17 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "check": "astro check"
+    "check": "astro check",
+    "visual": "node scripts/visual-critique.mjs",
+    "visual:preview": "node scripts/visual-critique.mjs --url http://localhost:4321/seele"
   },
   "engines": {
     "node": ">=20.0.0"
   },
   "dependencies": {
     "astro": "^6.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0"
   }
 }

@@ -6,3 +6,7 @@ dist/
 *.log
 .env
 .env.local
+
+# Playwright visual critique artifacts (Sprint LUMEN-03+)
+test-results/
+playwright-report/

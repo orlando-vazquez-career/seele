@@ -1,0 +1,1057 @@
+---
+/**
+ * Observability — live panel that reads from a local SEELE HTTP server
+ * (default http://localhost:7777). Renders nothing until /health confirms
+ * the server is reachable AND CORS is enabled (response body readable).
+ *
+ * Sections (rendered in order, every section degrades gracefully if its
+ * endpoint fails):
+ *   - Stats card: total memories, projects, last save timestamp
+ *   - By-type bar chart: top N types from /stats
+ *   - Recent saves list: 10 most recent from /memories?limit=10
+ *   - Search input: pegs /search and renders matches inline
+ *   - Detail panel: click a recent/result entry → full content
+ *   - By-project bar chart: counts per project (derived client-side)
+ *   - Sparkline saves/day: last 14 days, bucketed client-side
+ *
+ * Server selection: read from data-endpoint attribute (default
+ * http://localhost:7777). User can override via <Observability endpoint="..."/>.
+ *
+ * CORS contract: SEELE must be started with `seele serve --cors-allow <origin>`.
+ * If CORS is disabled, the panel shows an "enable observability" CTA instead
+ * of failing silently.
+ */
+
+interface Props {
+  endpoint?: string;
+}
+
+const { endpoint = 'http://localhost:7777' } = Astro.props;
+---
+
+<aside class="obs" data-obs data-endpoint={endpoint} data-state="probing" aria-label="SEELE observability">
+  <header class="obs-header">
+    <span class="obs-eyebrow" data-obs-eyebrow>// OBSERVABILITY</span>
+    <span class="obs-dot" aria-hidden="true" data-obs-dot></span>
+  </header>
+
+  <!-- Initial probing state -->
+  <div class="obs-state obs-state-probing" data-show-when="probing">
+    <p class="obs-msg">probing localhost…</p>
+  </div>
+
+  <!-- SEELE not detected — show preview sample data so the panel feels alive -->
+  <div class="obs-state obs-state-off" data-show-when="offline">
+    <div class="preview-banner">
+      <span class="preview-label">PREVIEW · sample data</span>
+      <p class="preview-note">
+        Run <code class="inline-cmd">seele serve</code> locally to see your own memories live here.
+      </p>
+    </div>
+    <div class="obs-preview-grid">
+      <section class="obs-section">
+        <span class="obs-section-eyebrow">// STATS</span>
+        <div class="stats-grid">
+          <div class="stat"><span class="stat-label">total</span><span class="stat-value">142</span></div>
+          <div class="stat"><span class="stat-label">projects</span><span class="stat-value">4</span></div>
+          <div class="stat"><span class="stat-label">last save</span><span class="stat-value">23m</span></div>
+        </div>
+      </section>
+      <section class="obs-section">
+        <span class="obs-section-eyebrow">// BY TYPE</span>
+        <ol class="bars">
+          <li class="bar-row"><span class="bar-key">decision</span><span class="bar-track"><span class="bar-fill" style="width:100%"></span></span><span class="bar-count">38</span></li>
+          <li class="bar-row"><span class="bar-key">pattern</span><span class="bar-track"><span class="bar-fill" style="width:74%"></span></span><span class="bar-count">28</span></li>
+          <li class="bar-row"><span class="bar-key">bugfix</span><span class="bar-track"><span class="bar-fill" style="width:53%"></span></span><span class="bar-count">20</span></li>
+          <li class="bar-row"><span class="bar-key">discovery</span><span class="bar-track"><span class="bar-fill" style="width:38%"></span></span><span class="bar-count">14</span></li>
+          <li class="bar-row"><span class="bar-key">learning</span><span class="bar-track"><span class="bar-fill" style="width:25%"></span></span><span class="bar-count">9</span></li>
+        </ol>
+      </section>
+      <section class="obs-section">
+        <span class="obs-section-eyebrow">// RECENT</span>
+        <ol class="recent">
+          <li class="recent-item recent-static">
+            <span class="recent-title">RRF combiner: weight tuning for hybrid search</span>
+            <span class="recent-meta"><span class="recent-type">pattern</span><span class="recent-sep">·</span><span class="recent-project">seele</span><span class="recent-sep">·</span><span class="recent-age">23m ago</span></span>
+          </li>
+          <li class="recent-item recent-static">
+            <span class="recent-title">Migrate ENGRAM SQLite via seele import from-engram</span>
+            <span class="recent-meta"><span class="recent-type">decision</span><span class="recent-sep">·</span><span class="recent-project">seele</span><span class="recent-sep">·</span><span class="recent-age">2h ago</span></span>
+          </li>
+          <li class="recent-item recent-static">
+            <span class="recent-title">ONNX model auto-download via hf-hub</span>
+            <span class="recent-meta"><span class="recent-type">architecture</span><span class="recent-sep">·</span><span class="recent-project">seele</span><span class="recent-sep">·</span><span class="recent-age">5h ago</span></span>
+          </li>
+        </ol>
+      </section>
+      <section class="obs-section">
+        <span class="obs-section-eyebrow">// BY PROJECT</span>
+        <ol class="bars">
+          <li class="bar-row"><span class="bar-key">seele</span><span class="bar-track"><span class="bar-fill" style="width:100%"></span></span><span class="bar-count">68</span></li>
+          <li class="bar-row"><span class="bar-key">mnema</span><span class="bar-track"><span class="bar-fill" style="width:63%"></span></span><span class="bar-count">43</span></li>
+          <li class="bar-row"><span class="bar-key">akiveo</span><span class="bar-track"><span class="bar-fill" style="width:31%"></span></span><span class="bar-count">21</span></li>
+          <li class="bar-row"><span class="bar-key">default</span><span class="bar-track"><span class="bar-fill" style="width:15%"></span></span><span class="bar-count">10</span></li>
+        </ol>
+      </section>
+      <section class="obs-section">
+        <span class="obs-section-eyebrow">// SAVES (LAST 14 DAYS)</span>
+        <div class="spark">
+          <span class="spark-bars">▁▂▁▃▂▄▃▅▄▆▅▇▆█</span>
+          <span class="spark-meta">142 saves · last 14d</span>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- CORS blocked — same preview as offline + explicit fix instruction at top -->
+  <div class="obs-state obs-state-cors" data-show-when="cors-blocked">
+    <div class="preview-banner">
+      <span class="preview-label">CORS BLOCKED · sample data</span>
+      <p class="preview-note">
+        SEELE is up but rejects cross-origin reads. Restart with:
+      </p>
+      <pre class="obs-cmd"><code>$ seele serve --cors-allow {endpoint.replace(/\/$/, '')}</code></pre>
+    </div>
+    <div class="obs-preview-grid">
+      <section class="obs-section">
+        <span class="obs-section-eyebrow">// STATS</span>
+        <div class="stats-grid">
+          <div class="stat"><span class="stat-label">total</span><span class="stat-value">142</span></div>
+          <div class="stat"><span class="stat-label">projects</span><span class="stat-value">4</span></div>
+          <div class="stat"><span class="stat-label">last save</span><span class="stat-value">23m</span></div>
+        </div>
+      </section>
+      <section class="obs-section">
+        <span class="obs-section-eyebrow">// BY TYPE</span>
+        <ol class="bars">
+          <li class="bar-row"><span class="bar-key">decision</span><span class="bar-track"><span class="bar-fill" style="width:100%"></span></span><span class="bar-count">38</span></li>
+          <li class="bar-row"><span class="bar-key">pattern</span><span class="bar-track"><span class="bar-fill" style="width:74%"></span></span><span class="bar-count">28</span></li>
+          <li class="bar-row"><span class="bar-key">bugfix</span><span class="bar-track"><span class="bar-fill" style="width:53%"></span></span><span class="bar-count">20</span></li>
+          <li class="bar-row"><span class="bar-key">discovery</span><span class="bar-track"><span class="bar-fill" style="width:38%"></span></span><span class="bar-count">14</span></li>
+          <li class="bar-row"><span class="bar-key">learning</span><span class="bar-track"><span class="bar-fill" style="width:25%"></span></span><span class="bar-count">9</span></li>
+        </ol>
+      </section>
+      <section class="obs-section">
+        <span class="obs-section-eyebrow">// RECENT</span>
+        <ol class="recent">
+          <li class="recent-item recent-static">
+            <span class="recent-title">RRF combiner: weight tuning for hybrid search</span>
+            <span class="recent-meta"><span class="recent-type">pattern</span><span class="recent-sep">·</span><span class="recent-project">seele</span><span class="recent-sep">·</span><span class="recent-age">23m ago</span></span>
+          </li>
+          <li class="recent-item recent-static">
+            <span class="recent-title">Migrate ENGRAM SQLite via seele import from-engram</span>
+            <span class="recent-meta"><span class="recent-type">decision</span><span class="recent-sep">·</span><span class="recent-project">seele</span><span class="recent-sep">·</span><span class="recent-age">2h ago</span></span>
+          </li>
+          <li class="recent-item recent-static">
+            <span class="recent-title">ONNX model auto-download via hf-hub</span>
+            <span class="recent-meta"><span class="recent-type">architecture</span><span class="recent-sep">·</span><span class="recent-project">seele</span><span class="recent-sep">·</span><span class="recent-age">5h ago</span></span>
+          </li>
+        </ol>
+      </section>
+      <section class="obs-section">
+        <span class="obs-section-eyebrow">// BY PROJECT</span>
+        <ol class="bars">
+          <li class="bar-row"><span class="bar-key">seele</span><span class="bar-track"><span class="bar-fill" style="width:100%"></span></span><span class="bar-count">68</span></li>
+          <li class="bar-row"><span class="bar-key">mnema</span><span class="bar-track"><span class="bar-fill" style="width:63%"></span></span><span class="bar-count">43</span></li>
+          <li class="bar-row"><span class="bar-key">akiveo</span><span class="bar-track"><span class="bar-fill" style="width:31%"></span></span><span class="bar-count">21</span></li>
+          <li class="bar-row"><span class="bar-key">default</span><span class="bar-track"><span class="bar-fill" style="width:15%"></span></span><span class="bar-count">10</span></li>
+        </ol>
+      </section>
+      <section class="obs-section">
+        <span class="obs-section-eyebrow">// SAVES (LAST 14 DAYS)</span>
+        <div class="spark">
+          <span class="spark-bars">▁▂▁▃▂▄▃▅▄▆▅▇▆█</span>
+          <span class="spark-meta">142 saves · last 14d</span>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Online state — all sections appear here -->
+  <div class="obs-state obs-state-online" data-show-when="online">
+
+    <!-- Stats grid -->
+    <section class="obs-section">
+      <span class="obs-section-eyebrow">// STATS</span>
+      <div class="stats-grid">
+        <div class="stat">
+          <span class="stat-label">total</span>
+          <span class="stat-value" data-stat-total>—</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">projects</span>
+          <span class="stat-value" data-stat-projects>—</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">last save</span>
+          <span class="stat-value" data-stat-last>—</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- By type -->
+    <section class="obs-section">
+      <span class="obs-section-eyebrow">// BY TYPE</span>
+      <ol class="bars" data-bars-type>
+        <li class="bars-empty">no data</li>
+      </ol>
+    </section>
+
+    <!-- By project -->
+    <section class="obs-section">
+      <span class="obs-section-eyebrow">// BY PROJECT</span>
+      <ol class="bars" data-bars-project>
+        <li class="bars-empty">no data</li>
+      </ol>
+    </section>
+
+    <!-- Search -->
+    <section class="obs-section">
+      <span class="obs-section-eyebrow">// SEARCH</span>
+      <input
+        class="search-input"
+        type="search"
+        placeholder="query…"
+        data-search-input
+        aria-label="Search memories"
+      />
+      <ol class="results" data-search-results></ol>
+    </section>
+
+    <!-- Recent -->
+    <section class="obs-section">
+      <span class="obs-section-eyebrow">// RECENT</span>
+      <ol class="recent" data-recent>
+        <li class="bars-empty">no data</li>
+      </ol>
+    </section>
+
+    <!-- Sparkline -->
+    <section class="obs-section">
+      <span class="obs-section-eyebrow">// SAVES (LAST 14 DAYS)</span>
+      <div class="spark" data-spark>
+        <span class="spark-bars" data-spark-bars></span>
+        <span class="spark-meta" data-spark-meta>—</span>
+      </div>
+    </section>
+
+    <!-- Detail panel (hidden until item clicked) -->
+    <section class="obs-section obs-detail-panel" data-detail-panel hidden>
+      <button type="button" class="detail-close" data-detail-close aria-label="Close detail">[ × CLOSE ]</button>
+      <span class="obs-section-eyebrow" data-detail-eyebrow>// DETAIL</span>
+      <h4 class="detail-title" data-detail-title></h4>
+      <dl class="detail-meta" data-detail-meta></dl>
+      <pre class="detail-content"><code data-detail-content></code></pre>
+    </section>
+
+  </div>
+</aside>
+
+<script>
+  type Status =
+    | 'probing'
+    | 'offline'
+    | 'cors-blocked'
+    | 'online';
+
+  type MemoryRecord = {
+    id: string;
+    title: string;
+    type: string;
+    project: string | null;
+    scope: string | null;
+    topic_key: string | null;
+    content: string;
+    created_at: number;
+    updated_at: number;
+    revision_count?: number;
+    metadata?: Record<string, unknown> | null;
+  };
+
+  type StatsResponse = {
+    observations: {
+      active: number;
+      deleted: number;
+      projects: number;
+      by_type: Array<{ key: string; count: number }>;
+      by_scope: Array<{ key: string; count: number }>;
+    };
+    sessions: { total: number; by_status: Array<{ key: string; count: number }> };
+  };
+
+  const TIMEOUT_MS = 1500;
+  const POLL_INTERVAL_MS = 15_000;
+  const RECENT_LIMIT = 10;
+  const SPARK_DAYS = 14;
+  const SPARK_BLOCKS = '▁▂▃▄▅▆▇█';
+
+  const root = document.querySelector<HTMLElement>('[data-obs]');
+  if (root) initObservability(root);
+
+  function initObservability(root: HTMLElement) {
+    const endpoint = (root.dataset.endpoint || 'http://localhost:7777').replace(/\/$/, '');
+
+    setState(root, 'probing');
+
+    void probeAndStart(root, endpoint);
+  }
+
+  function setState(root: HTMLElement, status: Status) {
+    root.dataset.state = status;
+    root.querySelectorAll<HTMLElement>('[data-show-when]').forEach((el) => {
+      el.hidden = el.dataset.showWhen !== status;
+    });
+  }
+
+  async function probeAndStart(root: HTMLElement, endpoint: string) {
+    const status = await probe(endpoint);
+    setState(root, status);
+    if (status !== 'online') return;
+    await refreshAll(root, endpoint);
+    window.setInterval(() => void refreshAll(root, endpoint), POLL_INTERVAL_MS);
+    bindSearch(root, endpoint);
+  }
+
+  async function probe(endpoint: string): Promise<Status> {
+    // First try a readable cross-origin GET. If CORS is configured the
+    // browser exposes the body. If not, the fetch throws — we then fall
+    // back to a no-cors probe to distinguish "server is down" from
+    // "server is up but CORS blocked".
+    try {
+      const res = await fetch(`${endpoint}/health`, {
+        cache: 'no-store',
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if (!res.ok) return 'offline';
+      return 'online';
+    } catch {
+      // First fetch failed. Could be (a) server down, (b) CORS rejection.
+      // Distinguish via no-cors probe — it won't expose the body but it
+      // succeeds when the server responds at all.
+      try {
+        await fetch(`${endpoint}/health`, {
+          mode: 'no-cors',
+          cache: 'no-store',
+          signal: AbortSignal.timeout(TIMEOUT_MS),
+        });
+        return 'cors-blocked';
+      } catch {
+        return 'offline';
+      }
+    }
+  }
+
+  async function refreshAll(root: HTMLElement, endpoint: string) {
+    await Promise.allSettled([
+      refreshStats(root, endpoint),
+      refreshRecent(root, endpoint),
+    ]);
+  }
+
+  async function fetchJson<T>(url: string): Promise<T | null> {
+    try {
+      const res = await fetch(url, {
+        cache: 'no-store',
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if (!res.ok) return null;
+      return (await res.json()) as T;
+    } catch {
+      return null;
+    }
+  }
+
+  async function refreshStats(root: HTMLElement, endpoint: string) {
+    const stats = await fetchJson<StatsResponse>(`${endpoint}/stats`);
+    if (!stats) return;
+    const obs = stats.observations;
+    const total = obs.active;
+    const projects = obs.projects;
+
+    setText(root, '[data-stat-total]', String(total));
+    setText(root, '[data-stat-projects]', String(projects));
+
+    renderBars(root, '[data-bars-type]', obs.by_type, total);
+  }
+
+  async function refreshRecent(root: HTMLElement, endpoint: string) {
+    const memories = await fetchJson<MemoryRecord[]>(
+      `${endpoint}/memories?limit=${RECENT_LIMIT}`,
+    );
+    if (!memories) return;
+    renderRecent(root, memories);
+
+    if (memories.length > 0) {
+      const last = memories[0]!;
+      setText(root, '[data-stat-last]', relativeAge(last.created_at));
+    }
+
+    renderProjectBars(root, memories);
+    renderSparkline(root, memories);
+  }
+
+  function renderRecent(root: HTMLElement, memories: MemoryRecord[]) {
+    const ol = root.querySelector<HTMLElement>('[data-recent]');
+    if (!ol) return;
+    if (memories.length === 0) {
+      ol.innerHTML = '<li class="bars-empty">no memories yet</li>';
+      return;
+    }
+    ol.innerHTML = '';
+    for (const m of memories) {
+      const li = document.createElement('li');
+      li.className = 'recent-item';
+      li.tabIndex = 0;
+      li.setAttribute('role', 'button');
+      li.dataset.memoryId = m.id;
+      li.innerHTML = `
+        <span class="recent-title">${escapeHtml(truncate(m.title, 60))}</span>
+        <span class="recent-meta">
+          <span class="recent-type">${escapeHtml(m.type)}</span>
+          <span class="recent-sep">·</span>
+          <span class="recent-project">${escapeHtml(m.project ?? '—')}</span>
+          <span class="recent-sep">·</span>
+          <span class="recent-age">${escapeHtml(relativeAge(m.created_at))}</span>
+        </span>
+      `;
+      li.addEventListener('click', () => showDetail(root, m));
+      li.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          showDetail(root, m);
+        }
+      });
+      ol.appendChild(li);
+    }
+  }
+
+  function renderBars(
+    root: HTMLElement,
+    selector: string,
+    items: Array<{ key: string; count: number }>,
+    total: number,
+  ) {
+    const ol = root.querySelector<HTMLElement>(selector);
+    if (!ol) return;
+    if (items.length === 0) {
+      ol.innerHTML = '<li class="bars-empty">no data</li>';
+      return;
+    }
+    const max = Math.max(...items.map((i) => i.count), 1);
+    ol.innerHTML = '';
+    for (const it of items.slice(0, 6)) {
+      const pct = Math.max((it.count / max) * 100, 4);
+      const li = document.createElement('li');
+      li.className = 'bar-row';
+      li.innerHTML = `
+        <span class="bar-key">${escapeHtml(it.key)}</span>
+        <span class="bar-track">
+          <span class="bar-fill" style="width: ${pct.toFixed(1)}%"></span>
+        </span>
+        <span class="bar-count">${it.count}</span>
+      `;
+      ol.appendChild(li);
+    }
+  }
+
+  function renderProjectBars(root: HTMLElement, memories: MemoryRecord[]) {
+    const counts = new Map<string, number>();
+    for (const m of memories) {
+      const k = m.project ?? '—';
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    }
+    const items = Array.from(counts.entries())
+      .map(([key, count]) => ({ key, count }))
+      .sort((a, b) => b.count - a.count);
+    renderBars(root, '[data-bars-project]', items, memories.length);
+  }
+
+  function renderSparkline(root: HTMLElement, memories: MemoryRecord[]) {
+    const bars = root.querySelector<HTMLElement>('[data-spark-bars]');
+    const meta = root.querySelector<HTMLElement>('[data-spark-meta]');
+    if (!bars || !meta) return;
+    if (memories.length === 0) {
+      bars.textContent = SPARK_BLOCKS[0].repeat(SPARK_DAYS);
+      meta.textContent = '0 saves total';
+      return;
+    }
+    const now = Date.now();
+    const buckets = new Array<number>(SPARK_DAYS).fill(0);
+    let inWindow = 0;
+    for (const m of memories) {
+      const ageDays = Math.floor((now - m.created_at) / (1000 * 60 * 60 * 24));
+      if (ageDays >= 0 && ageDays < SPARK_DAYS) {
+        const idx = SPARK_DAYS - 1 - ageDays;
+        buckets[idx] = (buckets[idx] ?? 0) + 1;
+        inWindow++;
+      }
+    }
+    const max = Math.max(...buckets, 1);
+    const out = buckets
+      .map((b) => {
+        const idx = b === 0 ? 0 : Math.min(SPARK_BLOCKS.length - 1, Math.ceil((b / max) * (SPARK_BLOCKS.length - 1)));
+        return SPARK_BLOCKS[idx];
+      })
+      .join('');
+    bars.textContent = out;
+    meta.textContent = `${inWindow} saves · last ${SPARK_DAYS}d`;
+  }
+
+  function showDetail(root: HTMLElement, m: MemoryRecord) {
+    const panel = root.querySelector<HTMLElement>('[data-detail-panel]');
+    if (!panel) return;
+    setText(root, '[data-detail-title]', m.title);
+    const meta = root.querySelector<HTMLElement>('[data-detail-meta]');
+    if (meta) {
+      meta.innerHTML = `
+        <dt>id</dt><dd>${escapeHtml(m.id)}</dd>
+        <dt>type</dt><dd>${escapeHtml(m.type)}</dd>
+        <dt>project</dt><dd>${escapeHtml(m.project ?? '—')}</dd>
+        <dt>topic</dt><dd>${escapeHtml(m.topic_key ?? '—')}</dd>
+        <dt>created</dt><dd>${escapeHtml(new Date(m.created_at).toISOString())}</dd>
+      `;
+    }
+    setText(root, '[data-detail-content]', m.content);
+    panel.hidden = false;
+    panel.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+
+    const closeBtn = root.querySelector<HTMLButtonElement>('[data-detail-close]');
+    closeBtn?.addEventListener(
+      'click',
+      () => {
+        panel.hidden = true;
+      },
+      { once: true },
+    );
+  }
+
+  function bindSearch(root: HTMLElement, endpoint: string) {
+    const input = root.querySelector<HTMLInputElement>('[data-search-input]');
+    const results = root.querySelector<HTMLElement>('[data-search-results]');
+    if (!input || !results) return;
+    let abortPrev: AbortController | null = null;
+    let debounceTimer: number | null = null;
+    input.addEventListener('input', () => {
+      if (debounceTimer) window.clearTimeout(debounceTimer);
+      debounceTimer = window.setTimeout(async () => {
+        const q = input.value.trim();
+        if (q.length < 2) {
+          results.innerHTML = '';
+          return;
+        }
+        if (abortPrev) abortPrev.abort();
+        abortPrev = new AbortController();
+        try {
+          const res = await fetch(`${endpoint}/search`, {
+            method: 'POST',
+            cache: 'no-store',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: q, limit: 8 }),
+            signal: abortPrev.signal,
+          });
+          if (!res.ok) {
+            results.innerHTML = '<li class="bars-empty">search failed</li>';
+            return;
+          }
+          const data = (await res.json()) as { results?: Array<{ memory: MemoryRecord; score?: number }> };
+          renderSearchResults(root, results, data.results ?? []);
+        } catch (err) {
+          if ((err as { name?: string }).name !== 'AbortError') {
+            results.innerHTML = '<li class="bars-empty">search error</li>';
+          }
+        }
+      }, 220);
+    });
+  }
+
+  function renderSearchResults(
+    root: HTMLElement,
+    el: HTMLElement,
+    items: Array<{ memory: MemoryRecord; score?: number }>,
+  ) {
+    if (items.length === 0) {
+      el.innerHTML = '<li class="bars-empty">no matches</li>';
+      return;
+    }
+    el.innerHTML = '';
+    for (const r of items) {
+      const m = r.memory;
+      const li = document.createElement('li');
+      li.className = 'recent-item';
+      li.tabIndex = 0;
+      li.setAttribute('role', 'button');
+      li.innerHTML = `
+        <span class="recent-title">${escapeHtml(truncate(m.title, 60))}</span>
+        <span class="recent-meta">
+          <span class="recent-type">${escapeHtml(m.type)}</span>
+          <span class="recent-sep">·</span>
+          <span class="recent-project">${escapeHtml(m.project ?? '—')}</span>
+          ${r.score !== undefined ? `<span class="recent-sep">·</span><span class="recent-score">${r.score.toFixed(2)}</span>` : ''}
+        </span>
+      `;
+      li.addEventListener('click', () => showDetail(root, m));
+      li.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          showDetail(root, m);
+        }
+      });
+      el.appendChild(li);
+    }
+  }
+
+  function setText(root: HTMLElement, selector: string, text: string) {
+    const el = root.querySelector<HTMLElement>(selector);
+    if (el) el.textContent = text;
+  }
+
+  function truncate(s: string, n: number): string {
+    if (s.length <= n) return s;
+    return s.slice(0, n - 1) + '…';
+  }
+
+  function escapeHtml(s: string): string {
+    return s
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function relativeAge(ms: number): string {
+    const diff = Date.now() - ms;
+    if (diff < 60_000) return 'just now';
+    if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+    if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+    if (diff < 2_592_000_000) return `${Math.floor(diff / 86_400_000)}d ago`;
+    return new Date(ms).toISOString().slice(0, 10);
+  }
+</script>
+
+<style>
+  .obs {
+    container-type: inline-size;
+    font-family: var(--font-mono);
+    color: var(--fg);
+    border: var(--border-base) solid var(--semantic-border-base);
+    padding: var(--space-4);
+    background: var(--bg);
+  }
+
+  .obs-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-3);
+    padding-bottom: var(--space-3);
+    border-bottom: var(--border-hair) solid var(--semantic-border-muted);
+  }
+
+  .obs-eyebrow {
+    font-size: var(--text-meta);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .obs-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--fg-faint);
+  }
+
+  .obs[data-state='probing'] .obs-dot {
+    background: var(--fg-muted);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  .obs[data-state='offline'] .obs-dot { background: var(--fg-faint); }
+  .obs[data-state='cors-blocked'] .obs-dot { background: var(--warning, var(--accent)); }
+  .obs[data-state='online'] .obs-dot {
+    background: var(--success);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .obs-state {
+    display: block;
+  }
+
+  .obs-state[hidden] {
+    display: none !important;
+  }
+
+  .obs-msg {
+    font-size: var(--text-sm);
+    margin: 0 0 var(--space-2);
+    color: var(--fg-muted);
+  }
+
+  .msg-strong {
+    color: var(--fg);
+    font-weight: var(--weight-bold);
+  }
+
+  .obs-detail {
+    font-size: var(--text-xs);
+    color: var(--fg-faint);
+    line-height: var(--leading-relaxed);
+    margin: 0 0 var(--space-2);
+  }
+
+  .obs-detail-small {
+    font-size: 10px;
+    color: var(--fg-faint);
+    line-height: var(--leading-relaxed);
+    margin: var(--space-2) 0 0;
+  }
+
+  .obs-cmd {
+    margin: var(--space-2) 0;
+    padding: var(--space-2) var(--space-3);
+    border: var(--border-hair) solid var(--semantic-border-muted);
+    font-size: var(--text-xs);
+    color: var(--fg);
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+
+  /* Preview / sample-data treatment for offline + cors-blocked states */
+  .preview-banner {
+    border: var(--border-hair) solid var(--accent);
+    padding: var(--space-2) var(--space-3);
+    margin-bottom: var(--space-3);
+  }
+
+  .preview-label {
+    display: block;
+    font-size: 10px;
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: var(--space-1);
+  }
+
+  .preview-note {
+    font-size: var(--text-xs);
+    color: var(--fg-muted);
+    line-height: var(--leading-relaxed);
+    margin: 0;
+  }
+
+  .inline-cmd {
+    color: var(--fg);
+    background: transparent;
+    border-bottom: var(--border-hair) solid var(--fg-faint);
+    padding: 0 2px;
+    font-family: inherit;
+  }
+
+  .obs-preview-grid {
+    /* Subtle visual cue that this is sample, not live */
+    opacity: 0.72;
+  }
+
+  .recent-static {
+    cursor: default;
+  }
+
+  .recent-static:hover {
+    background: transparent;
+    color: var(--fg);
+    border-left-color: var(--fg-faint);
+  }
+
+  .recent-static:hover .recent-title,
+  .recent-static:hover .recent-meta {
+    color: var(--fg);
+  }
+
+  .cors-help {
+    font-size: var(--text-xs);
+    color: var(--fg-muted);
+    line-height: var(--leading-relaxed);
+    margin: var(--space-3) 0 0;
+  }
+
+  .obs-section {
+    padding-top: var(--space-4);
+    margin-top: var(--space-3);
+    border-top: var(--border-hair) solid var(--semantic-border-muted);
+  }
+
+  .obs-section:first-of-type {
+    padding-top: 0;
+    margin-top: 0;
+    border-top: 0;
+  }
+
+  .obs-section-eyebrow {
+    display: block;
+    font-size: 10px;
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: var(--space-2);
+  }
+
+  /* Stats grid */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-2);
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--space-2);
+    border: var(--border-hair) solid var(--semantic-border-muted);
+    min-width: 0;
+  }
+
+  .stat-label {
+    font-size: 10px;
+    color: var(--fg-faint);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+  }
+
+  .stat-value {
+    font-size: var(--text-base);
+    font-weight: var(--weight-black);
+    color: var(--fg);
+    overflow-wrap: anywhere;
+  }
+
+  /* Bars */
+  .bars {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .bars-empty {
+    font-size: var(--text-xs);
+    color: var(--fg-faint);
+    font-style: italic;
+  }
+
+  .bar-row {
+    display: grid;
+    grid-template-columns: minmax(0, 100px) 1fr auto;
+    gap: var(--space-2);
+    align-items: center;
+    font-size: var(--text-xs);
+  }
+
+  .bar-key {
+    color: var(--fg-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .bar-track {
+    display: block;
+    background: transparent;
+    border-bottom: var(--border-hair) solid var(--fg-faint);
+    height: 10px;
+    position: relative;
+  }
+
+  .bar-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    background: var(--accent);
+    height: 100%;
+  }
+
+  .bar-count {
+    color: var(--fg);
+    font-weight: var(--weight-bold);
+    min-width: 2ch;
+    text-align: right;
+  }
+
+  /* Recent + search results */
+  .recent,
+  .results {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .recent-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--space-2);
+    border-left: var(--border-base) solid var(--fg-faint);
+    cursor: pointer;
+    min-width: 0;
+  }
+
+  .recent-item:hover,
+  .recent-item:focus-visible {
+    border-left-color: var(--accent);
+    background: var(--fg);
+    color: var(--bg);
+    outline: none;
+  }
+
+  .recent-item:hover .recent-title,
+  .recent-item:focus-visible .recent-title {
+    color: var(--bg);
+  }
+
+  .recent-item:hover .recent-meta,
+  .recent-item:focus-visible .recent-meta {
+    color: var(--bg);
+  }
+
+  .recent-title {
+    font-size: var(--text-xs);
+    color: var(--fg);
+    line-height: var(--leading-normal);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .recent-meta {
+    font-size: 10px;
+    color: var(--fg-faint);
+    letter-spacing: var(--tracking-wide);
+  }
+
+  .recent-sep {
+    margin: 0 4px;
+    color: var(--fg-faint);
+  }
+
+  .recent-type {
+    color: var(--accent);
+  }
+
+  /* Search input */
+  .search-input {
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    background: transparent;
+    color: var(--fg);
+    border: var(--border-hair) solid var(--semantic-border-muted);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    margin-bottom: var(--space-2);
+  }
+
+  .search-input:focus {
+    outline: var(--border-hair) solid var(--accent);
+    outline-offset: 0;
+    border-color: var(--accent);
+  }
+
+  .search-input::placeholder {
+    color: var(--fg-faint);
+  }
+
+  /* Sparkline */
+  .spark {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .spark-bars {
+    font-size: var(--text-base);
+    color: var(--accent);
+    line-height: 1;
+    letter-spacing: 2px;
+  }
+
+  .spark-meta {
+    font-size: 10px;
+    color: var(--fg-faint);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+  }
+
+  /* Detail panel */
+  .obs-detail-panel {
+    border-top: var(--border-base) solid var(--accent);
+    background: var(--bg);
+  }
+
+  .detail-close {
+    float: right;
+    font-size: 10px;
+    color: var(--accent);
+    background: transparent;
+    border: var(--border-hair) solid var(--accent);
+    padding: 2px var(--space-2);
+    letter-spacing: var(--tracking-caps);
+    cursor: pointer;
+  }
+
+  .detail-close:hover {
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  .detail-title {
+    font-size: var(--text-base);
+    margin: var(--space-2) 0;
+    color: var(--fg);
+    font-weight: var(--weight-bold);
+    overflow-wrap: anywhere;
+  }
+
+  .detail-meta {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 2px var(--space-3);
+    font-size: 10px;
+    margin: 0 0 var(--space-3);
+  }
+
+  .detail-meta dt {
+    color: var(--fg-faint);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+  }
+
+  .detail-meta dd {
+    color: var(--fg-muted);
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .detail-content {
+    padding: var(--space-2);
+    border: var(--border-hair) solid var(--semantic-border-muted);
+    font-size: 11px;
+    color: var(--fg);
+    max-height: 280px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-height: var(--leading-relaxed);
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+</style>

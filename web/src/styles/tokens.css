@@ -9,7 +9,7 @@
  */
 
 :root {
-  /* ───────── 3-color palette (only 3 colors allowed) ───────── */
+  /* ───────── 3-color palette (dark default) ───────── */
   --bg: oklch(0.08 0 0);
   --fg: oklch(0.94 0 0);
   --accent: oklch(0.65 0.18 50);
@@ -31,12 +31,16 @@
   --font-mono: ui-monospace, "JetBrains Mono", "Cascadia Code", Menlo, Monaco,
     Consolas, "Liberation Mono", "Courier New", monospace;
 
-  --text-meta: 11px;
-  --text-xs: 12px;
-  --text-sm: 13px;
-  --text-base: 15px;
-  --text-lg: 18px;
-  --text-hero: 72px;
+  /* Aggressive scale bump (v0.4.0): base 18px JetBrains Mono — bigger than
+     conventional dev-tool landings, on purpose. The brutalist character
+     amplifies at larger size. */
+  --text-meta: 12px;
+  --text-xs: 14px;
+  --text-sm: 15px;
+  --text-base: 18px;
+  --text-lg: 24px;
+  --text-2xl: 32px;
+  --text-hero: 84px;
 
   --weight-light: 300;
   --weight-normal: 400;
@@ -109,6 +113,43 @@
   --z-base: 0;
   --z-sticky: 10;
   --z-modal: 30;
+}
+
+/* ───────── Light mode (system pref + manual toggle override) ───────── */
+
+/* System pref: light → flip palette */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: oklch(0.96 0 0);
+    --fg: oklch(0.18 0 0);
+    --fg-muted: oklch(0.42 0 0);
+    --fg-faint: oklch(0.58 0 0);
+    --accent: oklch(0.55 0.18 50);
+    --danger: oklch(0.50 0.20 25);
+    --success: oklch(0.55 0.16 145);
+  }
+}
+
+/* Manual override: data-theme="light" on <html> from header toggle */
+:root[data-theme="light"] {
+  --bg: oklch(0.96 0 0);
+  --fg: oklch(0.18 0 0);
+  --fg-muted: oklch(0.42 0 0);
+  --fg-faint: oklch(0.58 0 0);
+  --accent: oklch(0.55 0.18 50);
+  --danger: oklch(0.50 0.20 25);
+  --success: oklch(0.55 0.16 145);
+}
+
+/* Manual override: data-theme="dark" forces dark even if system pref light */
+:root[data-theme="dark"] {
+  --bg: oklch(0.08 0 0);
+  --fg: oklch(0.94 0 0);
+  --fg-muted: oklch(0.65 0 0);
+  --fg-faint: oklch(0.42 0 0);
+  --accent: oklch(0.65 0.18 50);
+  --danger: oklch(0.60 0.20 25);
+  --success: oklch(0.78 0.16 145);
 }
 
 /* ───────── Reset + base ───────── */
@@ -228,22 +269,39 @@ img, svg {
   }
 }
 
-/* ───────── Layout container ───────── */
+/* ───────── Page container (asymmetric below 1400px, centered above) ───────── */
 
+/*
+ * Brutalist asymmetric "left commit, right breathe" works at viewports
+ * up to ~1400px. Beyond that, asymmetric becomes wasted space — switch
+ * to centered max-width 1300px. Single-column structure throughout; the
+ * observability panel lives at /observability (separate page) and is
+ * linked from the header.
+ */
 .page-container {
   width: 100%;
   max-width: 1100px;
-  margin-inline-start: clamp(var(--space-4), 4vw, var(--space-14));
-  margin-inline-end: clamp(var(--space-8), 12vw, var(--space-50));
+  margin-inline-start: clamp(var(--space-3), 4vw, var(--space-14));
+  margin-inline-end: clamp(var(--space-3), 12vw, var(--space-50));
   padding-inline: 0;
 }
 
-/* Inverse for sections that need centered constraint (rare — only footer copy) */
+@media (min-width: 1400px) {
+  /* Center with symmetric margins, raise max-width to 1300px so content
+     uses the wider viewport without becoming line-length-unreadable. */
+  .page-container {
+    max-width: 1300px;
+    margin-inline: auto;
+    padding-inline: clamp(var(--space-6), 4vw, var(--space-14));
+  }
+}
+
+/* Centered variant for full-width sections (footer, observability page) */
 .page-container-centered {
   width: 100%;
-  max-width: 1100px;
+  max-width: 1300px;
   margin-inline: auto;
-  padding-inline: clamp(var(--space-4), 4vw, var(--space-8));
+  padding-inline: clamp(var(--space-4), 4vw, var(--space-14));
 }
 
 /* ───────── Incomplete border utilities ───────── */

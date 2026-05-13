@@ -1,0 +1,78 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Observability from '../components/Observability.astro';
+import Footer from '../components/Footer.astro';
+---
+
+<Layout
+  title="SEELE — observability"
+  description="Live observability panel for your local SEELE memory engine. Stats, recent saves, full-text search, by-type and by-project breakdowns, 14-day save sparkline. Reads directly from the local HTTP server."
+>
+  <Header />
+  <main>
+    <section class="obs-page">
+      <div class="page-container-centered">
+        <header class="obs-page-header">
+          <span class="obs-page-eyebrow">// OBSERVABILITY</span>
+          <h1 class="obs-page-title">
+            What your<br />
+            memory engine<br />
+            is doing.
+          </h1>
+          <p class="obs-page-lead">
+            Live read of your local SEELE database via the HTTP server.
+            Sample data shown until you run <code>seele serve --cors-allow {Astro.url.origin}</code>.
+            No telemetry leaves your machine.
+          </p>
+        </header>
+
+        <Observability />
+      </div>
+    </section>
+  </main>
+  <Footer />
+</Layout>
+
+<style>
+  .obs-page {
+    padding-block: var(--space-14) var(--space-20);
+    border-bottom: var(--border-base) solid var(--semantic-border-base);
+  }
+
+  .obs-page-header {
+    margin-bottom: var(--space-10);
+    max-width: 60ch;
+  }
+
+  .obs-page-eyebrow {
+    display: block;
+    font-size: var(--text-meta);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: var(--space-4);
+  }
+
+  .obs-page-title {
+    font-size: clamp(40px, 7vw, var(--text-hero));
+    font-weight: var(--weight-black);
+    letter-spacing: var(--tracking-tight);
+    line-height: 1.05;
+    margin-bottom: var(--space-6);
+  }
+
+  .obs-page-lead {
+    font-size: var(--text-base);
+    color: var(--fg-muted);
+    line-height: var(--leading-relaxed);
+  }
+
+  .obs-page-lead code {
+    background: transparent;
+    border-bottom: var(--border-hair) solid var(--fg-faint);
+    padding: 0 4px;
+    color: var(--fg);
+    overflow-wrap: anywhere;
+  }
+</style>

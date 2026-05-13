@@ -88,12 +88,15 @@ import SeeleStatus from './SeeleStatus.astro';
   }
 
   .hero-title {
-    font-size: clamp(40px, 8vw, var(--text-hero));
+    /* Lower bound is 28px so it fits at 320px viewport (the headline
+       has up to 13 chars per line in JetBrains Mono Bold). */
+    font-size: clamp(28px, 7vw, var(--text-hero));
     font-weight: var(--weight-black);
     letter-spacing: var(--tracking-tight);
     line-height: 1.05;
     margin-bottom: var(--space-8);
     max-width: 18ch;
+    overflow-wrap: anywhere;
   }
 
   .hero-subline {

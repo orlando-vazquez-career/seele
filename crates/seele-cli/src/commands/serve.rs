@@ -18,6 +18,12 @@ pub struct Args {
     /// Require `Authorization: Bearer <token>` for non-public routes.
     #[arg(long)]
     pub auth_bearer: Option<String>,
+    /// Enable CORS for the given origin. Repeatable for multiple origins.
+    /// Empty = CORS disabled (default; safe for local-only use). Today any
+    /// non-empty value enables permissive `Access-Control-Allow-Origin: *`;
+    /// per-origin allowlist refinement is on the backlog.
+    #[arg(long = "cors-allow", value_name = "ORIGIN")]
+    pub cors_allow: Vec<String>,
 }
 
 pub async fn run(args: Args, db: &Option<PathBuf>, fake_embedder: bool) -> anyhow::Result<()> {
@@ -27,7 +33,7 @@ pub async fn run(args: Args, db: &Option<PathBuf>, fake_embedder: bool) -> anyho
         svc,
         ServerConfig {
             addr,
-            cors_origins: vec![],
+            cors_origins: args.cors_allow,
             auth_bearer: args.auth_bearer,
             legacy_engram_paths: args.legacy_engram_paths,
         },

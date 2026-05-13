@@ -1,18 +1,29 @@
 ---
 import Triangle from './Triangle.astro';
 
-const base = import.meta.env.BASE_URL;
-const navItems = [
-  { href: '#features', label: 'features' },
-  { href: '#install', label: 'install' },
-  { href: '#support', label: 'support' },
-];
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const pathname = Astro.url.pathname.replace(/\/$/, '');
+const isObservabilityPage = pathname.endsWith('/observability');
+
+const navItems = isObservabilityPage
+  ? [
+      { href: `${base}/`, label: 'home' },
+      { href: `${base}/#features`, label: 'features' },
+      { href: `${base}/#install`, label: 'install' },
+      { href: `${base}/#support`, label: 'support' },
+    ]
+  : [
+      { href: '#features', label: 'features' },
+      { href: '#install', label: 'install' },
+      { href: '#support', label: 'support' },
+      { href: `${base}/observability/`, label: 'observability' },
+    ];
 ---
 
 <header class="site-header">
   <div class="page-container header-inner">
-    <a href={base} class="brand" aria-label="SEELE home — a DevZen tool">
-      <Triangle size={24} variant="framed" />
+    <a href={`${base}/`} class="brand" aria-label="SEELE home — a DevZen tool">
+      <Triangle size={28} variant="framed" />
       <span class="brand-text">
         <span class="brand-tag">DevZen</span>
         <span class="brand-name">SEELE</span>
@@ -31,10 +42,77 @@ const navItems = [
             target="_blank"
           >github ↗</a>
         </li>
+        <li>
+          <button
+            type="button"
+            class="theme-toggle"
+            data-theme-toggle
+            aria-label="Toggle light / dark mode"
+            title="Toggle light / dark mode"
+          >
+            <span data-theme-icon>[ ◐ ]</span>
+          </button>
+        </li>
       </ul>
     </nav>
   </div>
 </header>
+
+<script is:inline>
+  // Inline script: runs before page paint to avoid theme flash.
+  // Resolution order:
+  //   1. localStorage 'seele-theme' = 'light' | 'dark' (explicit user choice)
+  //   2. system preference via matchMedia
+  //   3. default dark
+  (function () {
+    const STORAGE_KEY = 'seele-theme';
+    function resolveTheme() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved === 'light' || saved === 'dark') return saved;
+      } catch (_) { /* private mode */ }
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+        return 'light';
+      }
+      return 'dark';
+    }
+    const theme = resolveTheme();
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+</script>
+
+<script>
+  // Toggle handler — runs after DOMContentLoaded
+  const STORAGE_KEY = 'seele-theme';
+
+  function applyTheme(theme: 'light' | 'dark') {
+    document.documentElement.setAttribute('data-theme', theme);
+    try {
+      localStorage.setItem(STORAGE_KEY, theme);
+    } catch (_) { /* private mode */ }
+    updateIcons(theme);
+  }
+
+  function updateIcons(theme: 'light' | 'dark') {
+    document.querySelectorAll<HTMLElement>('[data-theme-icon]').forEach((el) => {
+      el.textContent = theme === 'light' ? '[ ◑ ]' : '[ ◐ ]';
+    });
+  }
+
+  function currentTheme(): 'light' | 'dark' {
+    return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'dark';
+  }
+
+  // Initialize icon on load
+  updateIcons(currentTheme());
+
+  document.querySelectorAll<HTMLButtonElement>('[data-theme-toggle]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const next = currentTheme() === 'light' ? 'dark' : 'light';
+      applyTheme(next);
+    });
+  });
+</script>
 
 <style>
   .site-header {
@@ -117,8 +195,27 @@ const navItems = [
     color: var(--semantic-text-primary) !important;
   }
 
+  .theme-toggle {
+    background: transparent;
+    border: var(--border-hair) solid var(--semantic-border-muted);
+    color: var(--fg-muted);
+    padding: 4px var(--space-2);
+    font-family: inherit;
+    font-size: var(--text-meta);
+    letter-spacing: var(--tracking-caps);
+    cursor: pointer;
+  }
+
+  .theme-toggle:hover {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+  }
+
   @media (max-width: 640px) {
-    .nav-list li:not(:last-child) {
+    .nav-list li:nth-child(-n+2),
+    .nav-list li:nth-child(3) {
+      /* keep on mobile: only nav-github + theme-toggle (last two children) */
       display: none;
     }
     .nav-list {
