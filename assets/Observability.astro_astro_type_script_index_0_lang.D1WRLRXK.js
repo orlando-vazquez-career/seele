@@ -1,0 +1,30 @@
+const f="▁▂▃▄▅▆▇█",S=document.querySelector("[data-obs]");S&&$(S);function $(t){const e=(t.dataset.endpoint||"http://localhost:7777").replace(/\/$/,"");b(t,"probing"),A(t,e)}function b(t,e){t.dataset.state=e,t.querySelectorAll("[data-show-when]").forEach(n=>{n.hidden=n.dataset.showWhen!==e})}async function A(t,e){const n=await L(e);b(t,n),n==="online"&&(await m(t,e),window.setInterval(()=>{m(t,e)},15e3),x(t,e))}async function L(t){try{return(await fetch(`${t}/health`,{cache:"no-store",signal:AbortSignal.timeout(1500)})).ok?"online":"offline"}catch{try{return await fetch(`${t}/health`,{mode:"no-cors",cache:"no-store",signal:AbortSignal.timeout(1500)}),"cors-blocked"}catch{return"offline"}}}async function m(t,e){await Promise.allSettled([k(t,e),E(t,e)])}async function g(t){try{const e=await fetch(t,{cache:"no-store",signal:AbortSignal.timeout(1500)});return e.ok?await e.json():null}catch{return null}}async function k(t,e){const n=await g(`${e}/stats`);if(!n)return;const a=n.observations,s=a.active,r=a.projects;u(t,"[data-stat-total]",String(s)),u(t,"[data-stat-projects]",String(r)),w(t,"[data-bars-type]",a.by_type)}async function E(t,e){const n=await g(`${e}/memories?limit=10`);if(n){if(_(t,n),n.length>0){const a=n[0];u(t,"[data-stat-last]",T(a.created_at))}v(t,n),j(t,n)}}function _(t,e){const n=t.querySelector("[data-recent]");if(n){if(e.length===0){n.innerHTML='<li class="bars-empty">no memories yet</li>';return}n.innerHTML="";for(const a of e){const s=document.createElement("li");s.className="recent-item",s.tabIndex=0,s.setAttribute("role","button"),s.dataset.memoryId=a.id,s.innerHTML=`
+        <span class="recent-title">${o(M(a.title,60))}</span>
+        <span class="recent-meta">
+          <span class="recent-type">${o(a.type)}</span>
+          <span class="recent-sep">·</span>
+          <span class="recent-project">${o(a.project??"—")}</span>
+          <span class="recent-sep">·</span>
+          <span class="recent-age">${o(T(a.created_at))}</span>
+        </span>
+      `,s.addEventListener("click",()=>h(t,a)),s.addEventListener("keydown",r=>{(r.key==="Enter"||r.key===" ")&&(r.preventDefault(),h(t,a))}),n.appendChild(s)}}}function w(t,e,n,a){const s=t.querySelector(e);if(!s)return;if(n.length===0){s.innerHTML='<li class="bars-empty">no data</li>';return}const r=Math.max(...n.map(c=>c.count),1);s.innerHTML="";for(const c of n.slice(0,6)){const i=Math.max(c.count/r*100,4),l=document.createElement("li");l.className="bar-row",l.innerHTML=`
+        <span class="bar-key">${o(c.key)}</span>
+        <span class="bar-track">
+          <span class="bar-fill" style="width: ${i.toFixed(1)}%"></span>
+        </span>
+        <span class="bar-count">${c.count}</span>
+      `,s.appendChild(l)}}function v(t,e){const n=new Map;for(const s of e){const r=s.project??"—";n.set(r,(n.get(r)??0)+1)}const a=Array.from(n.entries()).map(([s,r])=>({key:s,count:r})).sort((s,r)=>r.count-s.count);w(t,"[data-bars-project]",a,e.length)}function j(t,e){const n=t.querySelector("[data-spark-bars]"),a=t.querySelector("[data-spark-meta]");if(!n||!a)return;if(e.length===0){n.textContent=f[0].repeat(14),a.textContent="0 saves total";return}const s=Date.now(),r=new Array(14).fill(0);let c=0;for(const p of e){const d=Math.floor((s-p.created_at)/864e5);if(d>=0&&d<14){const y=13-d;r[y]=(r[y]??0)+1,c++}}const i=Math.max(...r,1),l=r.map(p=>{const d=p===0?0:Math.min(f.length-1,Math.ceil(p/i*(f.length-1)));return f[d]}).join("");n.textContent=l,a.textContent=`${c} saves · last 14d`}function h(t,e){const n=t.querySelector("[data-detail-panel]");if(!n)return;u(t,"[data-detail-title]",e.title);const a=t.querySelector("[data-detail-meta]");a&&(a.innerHTML=`
+        <dt>id</dt><dd>${o(e.id)}</dd>
+        <dt>type</dt><dd>${o(e.type)}</dd>
+        <dt>project</dt><dd>${o(e.project??"—")}</dd>
+        <dt>topic</dt><dd>${o(e.topic_key??"—")}</dd>
+        <dt>created</dt><dd>${o(new Date(e.created_at).toISOString())}</dd>
+      `),u(t,"[data-detail-content]",e.content),n.hidden=!1,n.scrollIntoView({behavior:"auto",block:"nearest"}),t.querySelector("[data-detail-close]")?.addEventListener("click",()=>{n.hidden=!0},{once:!0})}function x(t,e){const n=t.querySelector("[data-search-input]"),a=t.querySelector("[data-search-results]");if(!n||!a)return;let s=null,r=null;n.addEventListener("input",()=>{r&&window.clearTimeout(r),r=window.setTimeout(async()=>{const c=n.value.trim();if(c.length<2){a.innerHTML="";return}s&&s.abort(),s=new AbortController;try{const i=await fetch(`${e}/search`,{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify({query:c,limit:8}),signal:s.signal});if(!i.ok){a.innerHTML='<li class="bars-empty">search failed</li>';return}const l=await i.json();I(t,a,l.results??[])}catch(i){i.name!=="AbortError"&&(a.innerHTML='<li class="bars-empty">search error</li>')}},220)})}function I(t,e,n){if(n.length===0){e.innerHTML='<li class="bars-empty">no matches</li>';return}e.innerHTML="";for(const a of n){const s=a.memory,r=document.createElement("li");r.className="recent-item",r.tabIndex=0,r.setAttribute("role","button"),r.innerHTML=`
+        <span class="recent-title">${o(M(s.title,60))}</span>
+        <span class="recent-meta">
+          <span class="recent-type">${o(s.type)}</span>
+          <span class="recent-sep">·</span>
+          <span class="recent-project">${o(s.project??"—")}</span>
+          ${a.score!==void 0?`<span class="recent-sep">·</span><span class="recent-score">${a.score.toFixed(2)}</span>`:""}
+        </span>
+      `,r.addEventListener("click",()=>h(t,s)),r.addEventListener("keydown",c=>{(c.key==="Enter"||c.key===" ")&&(c.preventDefault(),h(t,s))}),e.appendChild(r)}}function u(t,e,n){const a=t.querySelector(e);a&&(a.textContent=n)}function M(t,e){return t.length<=e?t:t.slice(0,e-1)+"…"}function o(t){return t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")}function T(t){const e=Date.now()-t;return e<6e4?"just now":e<36e5?`${Math.floor(e/6e4)}m ago`:e<864e5?`${Math.floor(e/36e5)}h ago`:e<2592e6?`${Math.floor(e/864e5)}d ago`:new Date(t).toISOString().slice(0,10)}
