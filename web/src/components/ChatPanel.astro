@@ -5,17 +5,18 @@
  * Talks to SEELE's local `POST /chat` endpoint, which runs a tool-use loop
  * server-side: the model decides when to call `seele_search`, the server
  * executes the search, feeds results back to the model, and only the final
- * assistant text returns to the browser. The user's AI API key never
- * leaves the box running `seele serve`.
+ * assistant text returns to the browser. The user's AI API key is stored
+ * in this browser's localStorage and only forwarded to the SEELE server
+ * on this machine — it never reaches a third party from this page.
  *
  * Three states:
  *
- *   1. probing      — checking /chat/info
- *   2. not-enabled  — server is up but chat is not configured
- *   3. enabled      — chat works; provider + model are shown
+ *   1. probing       — checking /chat/info + localStorage
+ *   2. needs-config  — neither server config nor stored settings present
+ *   3. enabled       — chat works; provider + model are shown
  *
- * In state 2 we show the exact CLI command the user needs to restart
- * seele serve with, for the most common provider (Minimax).
+ * In needs-config we render an [ OPEN SETTINGS ] CTA that pops a dialog
+ * for provider / api key / model / endpoint.
  */
 
 interface Props {
@@ -29,6 +30,13 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
   <header class="chat-header">
     <span class="chat-eyebrow"><span lang="en">// CHAT</span><span lang="es">// CHAT</span></span>
     <span class="chat-meta" data-chat-meta></span>
+    <button
+      type="button"
+      class="chat-gear"
+      data-chat-gear
+      aria-label="Configure chat provider"
+      title="Configure chat provider"
+    >[ ⚙ ]</button>
   </header>
 
   <!-- probing -->
@@ -36,21 +44,17 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
     <p class="chat-msg"><span lang="en">probing /chat…</span><span lang="es">sondeando /chat…</span></p>
   </div>
 
-  <!-- not enabled -->
-  <div class="chat-state" data-show-when="not-enabled">
+  <!-- needs config (no key set anywhere) -->
+  <div class="chat-state" data-show-when="needs-config">
     <p class="chat-msg">
-      <span class="msg-strong"><span lang="en">chat is not enabled on this server</span><span lang="es">chat no está habilitado en este servidor</span></span>
+      <span class="msg-strong"><span lang="en">configure your AI provider to start</span><span lang="es">configurá tu proveedor IA para empezar</span></span>
     </p>
     <p class="chat-detail">
-      <span lang="en">Restart <code>seele serve</code> with a provider + API key. Minimax example:</span><span lang="es">Reiniciá <code>seele serve</code> con un provider + API key. Ejemplo Minimax:</span>
+      <span lang="en">Click <span class="inline-gear">[ ⚙ ]</span> above. Provider + API key are stored in this browser's localStorage and sent only to the SEELE server on this machine. The key never reaches a third party from this page.</span><span lang="es">Hacé click en <span class="inline-gear">[ ⚙ ]</span> arriba. El provider + API key se guardan en el localStorage de este browser y se envían solo al servidor SEELE local. La key nunca llega a terceros desde esta página.</span>
     </p>
-    <pre class="chat-cmd"><code>$ MINIMAX_API_KEY=sk-... seele serve \
-    --cors-allow {endpoint.replace(/\/$/, '')} \
-    --chat-provider minimax \
-    --chat-key $MINIMAX_API_KEY</code></pre>
-    <p class="chat-detail-small">
-      <span lang="en">Other supported providers: <code>openai</code>, <code>openrouter</code>, <code>together</code>, <code>groq</code>, <code>deepseek</code>, <code>anthropic</code>. The API key stays on your machine — never sent to the browser.</span><span lang="es">Otros providers: <code>openai</code>, <code>openrouter</code>, <code>together</code>, <code>groq</code>, <code>deepseek</code>, <code>anthropic</code>. La API key queda en tu máquina — nunca se envía al browser.</span>
-    </p>
+    <button type="button" class="chat-open-settings" data-chat-open-settings>
+      <span lang="en">[ OPEN SETTINGS ]</span><span lang="es">[ ABRIR AJUSTES ]</span>
+    </button>
   </div>
 
   <!-- enabled -->
@@ -74,6 +78,57 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
 
     <p class="chat-status" data-chat-status></p>
   </div>
+
+  <!-- Settings dialog (always present, hidden by default) -->
+  <dialog class="chat-settings" data-chat-settings aria-label="Chat provider settings">
+    <form class="chat-settings-form" data-chat-settings-form method="dialog">
+      <header class="chat-settings-header">
+        <span class="chat-settings-eyebrow"><span lang="en">// CHAT · SETTINGS</span><span lang="es">// CHAT · AJUSTES</span></span>
+        <button type="button" class="chat-settings-close" data-chat-settings-close aria-label="Close">[ × ]</button>
+      </header>
+
+      <label class="chat-field">
+        <span class="chat-field-label"><span lang="en">provider</span><span lang="es">proveedor</span></span>
+        <select name="provider" data-chat-field-provider required>
+          <option value="minimax">minimax</option>
+          <option value="openai">openai</option>
+          <option value="anthropic">anthropic</option>
+          <option value="openrouter">openrouter</option>
+          <option value="together">together</option>
+          <option value="groq">groq</option>
+          <option value="deepseek">deepseek</option>
+        </select>
+      </label>
+
+      <label class="chat-field">
+        <span class="chat-field-label"><span lang="en">model</span><span lang="es">modelo</span></span>
+        <input type="text" name="model" data-chat-field-model placeholder="auto · uses provider default" />
+      </label>
+
+      <label class="chat-field">
+        <span class="chat-field-label"><span lang="en">api key</span><span lang="es">api key</span></span>
+        <input type="password" name="api_key" data-chat-field-key placeholder="sk-…" autocomplete="off" required />
+      </label>
+
+      <label class="chat-field">
+        <span class="chat-field-label"><span lang="en">endpoint override (optional)</span><span lang="es">endpoint override (opcional)</span></span>
+        <input type="text" name="endpoint" data-chat-field-endpoint placeholder="leave empty for default" />
+      </label>
+
+      <p class="chat-settings-note">
+        <span lang="en">Stored in browser localStorage. Sent only to <code data-chat-settings-endpoint-display></code> on each request. Clear by leaving the key field empty + save.</span><span lang="es">Guardado en localStorage del browser. Se envía solo a <code data-chat-settings-endpoint-display></code> en cada request. Para borrarlo, dejá el campo de key vacío y guardá.</span>
+      </p>
+
+      <div class="chat-settings-actions">
+        <button type="button" class="chat-settings-cancel" data-chat-settings-cancel>
+          <span lang="en">CANCEL</span><span lang="es">CANCELAR</span>
+        </button>
+        <button type="submit" class="chat-settings-save">
+          <span lang="en">SAVE</span><span lang="es">GUARDAR</span>
+        </button>
+      </div>
+    </form>
+  </dialog>
 </section>
 
 <script>
@@ -96,24 +151,86 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
     name?: string;
   };
 
-  type State = 'probing' | 'not-enabled' | 'enabled';
+  type State = 'probing' | 'needs-config' | 'enabled';
+
+  type ChatSettings = {
+    provider: string;
+    api_key: string;
+    model: string;
+    endpoint: string;
+  };
 
   const TIMEOUT_MS = 60_000;
+  const SETTINGS_KEY = 'seele-chat-settings';
+
+  const DEFAULT_MODELS: Record<string, string> = {
+    minimax: 'MiniMax-M2',
+    openai: 'gpt-4o-mini',
+    openrouter: 'openai/gpt-4o-mini',
+    together: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo',
+    groq: 'llama-3.3-70b-versatile',
+    deepseek: 'deepseek-chat',
+    anthropic: 'claude-haiku-4-5-20251001',
+  };
 
   const root = document.querySelector<HTMLElement>('[data-chat]');
   if (root) initChat(root);
 
+  function loadSettings(): ChatSettings | null {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as Partial<ChatSettings>;
+      if (!parsed.provider || !parsed.api_key) return null;
+      return {
+        provider: parsed.provider,
+        api_key: parsed.api_key,
+        model: parsed.model || '',
+        endpoint: parsed.endpoint || '',
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  function saveSettings(s: ChatSettings) {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+  }
+
+  function clearSettings() {
+    localStorage.removeItem(SETTINGS_KEY);
+  }
+
   async function initChat(root: HTMLElement) {
     const endpoint = (root.dataset.endpoint || 'http://localhost:7777').replace(/\/$/, '');
+
+    // Reflect endpoint in the settings dialog note
+    root
+      .querySelectorAll<HTMLElement>('[data-chat-settings-endpoint-display]')
+      .forEach((el) => (el.textContent = endpoint));
+
+    bindGear(root);
+    bindSettingsDialog(root, endpoint);
+
     setState(root, 'probing');
     const info = await probeChatInfo(endpoint);
-    if (!info || !info.enabled) {
-      setState(root, 'not-enabled');
+    const localSettings = loadSettings();
+
+    // Enabled if either the server has chat config OR the browser has saved
+    // settings. Browser settings take precedence at request time.
+    if ((info && info.enabled) || localSettings) {
+      setState(root, 'enabled');
+      const provider = localSettings?.provider || info?.provider || '?';
+      const model =
+        localSettings?.model ||
+        DEFAULT_MODELS[provider] ||
+        info?.model ||
+        '?';
+      setMeta(root, `${provider} · ${model}`);
+      bindForm(root, endpoint);
       return;
     }
-    setState(root, 'enabled');
-    setMeta(root, `${info.provider} · ${info.model}`);
-    bindForm(root, endpoint);
+    setState(root, 'needs-config');
   }
 
   function setState(root: HTMLElement, status: State) {
@@ -139,6 +256,84 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
     } catch {
       return null;
     }
+  }
+
+  function bindGear(root: HTMLElement) {
+    const gear = root.querySelector<HTMLButtonElement>('[data-chat-gear]');
+    const openBtn = root.querySelector<HTMLButtonElement>('[data-chat-open-settings]');
+    const dialog = root.querySelector<HTMLDialogElement>('[data-chat-settings]');
+    if (!dialog) return;
+
+    const open = () => {
+      hydrateFormFromStorage(root);
+      if (typeof dialog.showModal === 'function') dialog.showModal();
+      else dialog.setAttribute('open', '');
+    };
+
+    gear?.addEventListener('click', open);
+    openBtn?.addEventListener('click', open);
+  }
+
+  function hydrateFormFromStorage(root: HTMLElement) {
+    const s = loadSettings();
+    const provider = root.querySelector<HTMLSelectElement>('[data-chat-field-provider]');
+    const model = root.querySelector<HTMLInputElement>('[data-chat-field-model]');
+    const key = root.querySelector<HTMLInputElement>('[data-chat-field-key]');
+    const ep = root.querySelector<HTMLInputElement>('[data-chat-field-endpoint]');
+    if (s) {
+      if (provider) provider.value = s.provider;
+      if (model) model.value = s.model;
+      if (key) key.value = s.api_key;
+      if (ep) ep.value = s.endpoint;
+    } else {
+      // sensible defaults for first open
+      if (provider && !provider.value) provider.value = 'minimax';
+      if (model) model.value = '';
+      if (key) key.value = '';
+      if (ep) ep.value = '';
+    }
+  }
+
+  function bindSettingsDialog(root: HTMLElement, endpoint: string) {
+    const dialog = root.querySelector<HTMLDialogElement>('[data-chat-settings]');
+    const form = root.querySelector<HTMLFormElement>('[data-chat-settings-form]');
+    const close = root.querySelector<HTMLButtonElement>('[data-chat-settings-close]');
+    const cancel = root.querySelector<HTMLButtonElement>('[data-chat-settings-cancel]');
+    if (!dialog || !form) return;
+
+    const closeDialog = () => {
+      if (typeof dialog.close === 'function') dialog.close();
+      else dialog.removeAttribute('open');
+    };
+
+    close?.addEventListener('click', closeDialog);
+    cancel?.addEventListener('click', closeDialog);
+
+    // Click outside dialog content closes it
+    dialog.addEventListener('click', (e) => {
+      if (e.target === dialog) closeDialog();
+    });
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      const provider = String(fd.get('provider') || '').trim();
+      const api_key = String(fd.get('api_key') || '').trim();
+      const model = String(fd.get('model') || '').trim();
+      const endpointOverride = String(fd.get('endpoint') || '').trim();
+
+      // Empty api_key → clear settings (deliberate UX to wipe credentials)
+      if (!api_key) {
+        clearSettings();
+        closeDialog();
+        location.reload();
+        return;
+      }
+
+      saveSettings({ provider, api_key, model, endpoint: endpointOverride });
+      closeDialog();
+      location.reload();
+    });
   }
 
   function bindForm(root: HTMLElement, endpoint: string) {
@@ -167,12 +362,20 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
 
       try {
         setStatus(status, 'thinking…', 'thinking');
+        const settings = loadSettings();
+        const body: Record<string, unknown> = { messages: history };
+        if (settings) {
+          body.provider = settings.provider;
+          body.api_key = settings.api_key;
+          if (settings.model) body.model = settings.model;
+          if (settings.endpoint) body.endpoint = settings.endpoint;
+        }
         const res = await fetch(`${endpoint}/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           cache: 'no-store',
           signal: AbortSignal.timeout(TIMEOUT_MS),
-          body: JSON.stringify({ messages: history }),
+          body: JSON.stringify(body),
         });
         if (!res.ok) {
           const text = await res.text();
@@ -199,9 +402,9 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
       }
     });
 
-    // Submit on Cmd/Ctrl+Enter
+    // Enter sends, Shift+Enter inserts a newline. Skip while IME composing.
     input.addEventListener('keydown', (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
         e.preventDefault();
         form.requestSubmit();
       }
@@ -222,12 +425,13 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
     if (m.role === 'user') {
       li.innerHTML = `
         <span class="turn-tag">// you</span>
-        <span class="turn-body">${escapeHtml(m.content ?? '')}</span>
+        <div class="turn-body">${escapeHtml(m.content ?? '')}</div>
       `;
     } else if (m.role === 'assistant') {
       const parts: string[] = [];
       parts.push(`<span class="turn-tag">// ai</span>`);
-      if (m.content) parts.push(`<span class="turn-body">${escapeHtml(m.content)}</span>`);
+      const cleaned = stripThinking(m.content ?? '');
+      if (cleaned) parts.push(`<div class="turn-body">${renderAssistantBody(cleaned)}</div>`);
       if (m.tool_calls && m.tool_calls.length > 0) {
         for (const tc of m.tool_calls) {
           let args = '';
@@ -242,6 +446,8 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
           );
         }
       }
+      // If everything got stripped and there are no tool calls, drop the turn entirely
+      if (parts.length === 1) return;
       li.innerHTML = parts.join('');
     } else if (m.role === 'tool') {
       // Compact tool result: just say how many results came back if it's a search
@@ -252,20 +458,36 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
           summary = `${parsed.count} results`;
         }
       } catch {
-        // not JSON; show first 80 chars
         summary = (m.content ?? '').slice(0, 80);
       }
       li.innerHTML = `
         <span class="turn-tag">// tool</span>
-        <span class="turn-body turn-tool-body">${escapeHtml(summary)}</span>
+        <div class="turn-body turn-tool-body">${escapeHtml(summary)}</div>
       `;
     } else {
-      li.innerHTML = `<span class="turn-tag">// ${escapeHtml(m.role)}</span><span class="turn-body">${escapeHtml(m.content ?? '')}</span>`;
+      li.innerHTML = `<span class="turn-tag">// ${escapeHtml(m.role)}</span><div class="turn-body">${escapeHtml(m.content ?? '')}</div>`;
     }
 
     log.appendChild(li);
-    log.parentElement?.scrollTo({ top: log.parentElement.scrollHeight });
-    li.scrollIntoView({ behavior: 'auto', block: 'end' });
+    // Scroll INSIDE the log container only — never let the page scroll.
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function stripThinking(s: string): string {
+    // Some models (Minimax M2 in particular) emit <think>…</think> blocks
+    // that should never reach the user. Drop them and trim.
+    return s.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+  }
+
+  function renderAssistantBody(text: string): string {
+    // 1. Escape first (defence in depth — no markdown can ever inject HTML).
+    let s = escapeHtml(text);
+    // 2. Light markdown on the escaped string.
+    //    Bold: **text** → <strong>text</strong>
+    s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+    //    Inline code: `text` → <code>text</code>
+    s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+    return s;
   }
 
   function escapeHtml(s: string): string {
@@ -371,11 +593,15 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
   }
 
   .turn {
-    display: grid;
-    grid-template-columns: 80px 1fr;
-    gap: var(--space-3);
-    padding-block: var(--space-2);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding-block: var(--space-3);
     border-bottom: var(--border-hair) solid var(--semantic-border-muted);
+  }
+
+  .turn:first-child {
+    padding-top: 0;
   }
 
   .turn:last-child {
@@ -383,12 +609,11 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
   }
 
   .turn-tag {
-    font-size: 12px;
+    font-size: var(--text-meta);
     font-weight: var(--weight-bold);
     letter-spacing: var(--tracking-caps);
     text-transform: uppercase;
     color: var(--accent);
-    padding-top: 2px;
   }
 
   .turn-user .turn-tag { color: var(--fg-muted); }
@@ -401,18 +626,37 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
     line-height: var(--leading-relaxed);
     overflow-wrap: anywhere;
     white-space: pre-wrap;
+    padding-left: var(--space-3);
+    border-left: var(--border-hair) solid var(--semantic-border-muted);
+  }
+
+  .turn-assistant .turn-body {
+    border-left-color: var(--accent);
+  }
+
+  .turn-body strong {
+    font-weight: var(--weight-bold);
+    color: var(--fg);
+  }
+
+  .turn-body code {
+    font-family: inherit;
+    color: var(--fg);
+    padding: 0 4px;
+    border-bottom: var(--border-hair) solid var(--fg-faint);
   }
 
   .turn-tool-body {
     color: var(--fg-muted);
-    font-size: 13px;
+    font-size: var(--text-xs);
   }
 
   .tool-call {
     display: block;
-    font-size: 13px;
+    font-size: var(--text-xs);
     color: var(--fg-faint);
-    margin-top: var(--space-1);
+    padding-left: var(--space-3);
+    border-left: var(--border-hair) solid var(--fg-faint);
   }
 
   /* Form */
@@ -481,6 +725,203 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
   .chat-status[data-state='thinking'] { color: var(--accent); }
   .chat-status[data-state='error'] { color: var(--danger); }
 
+  /* Gear button in chat header */
+  .chat-gear {
+    background: transparent;
+    color: var(--fg-muted);
+    border: 0;
+    padding: 0 var(--space-2);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    cursor: pointer;
+    letter-spacing: var(--tracking-caps);
+  }
+
+  .chat-gear:hover,
+  .chat-gear:focus-visible {
+    color: var(--accent);
+    outline: none;
+  }
+
+  /* Inline gear hint in needs-config explainer */
+  .inline-gear {
+    color: var(--accent);
+    font-weight: var(--weight-bold);
+    white-space: nowrap;
+  }
+
+  /* Open-settings CTA on needs-config state */
+  .chat-open-settings {
+    margin-top: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    background: transparent;
+    color: var(--accent);
+    border: var(--border-base) solid var(--accent);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    cursor: pointer;
+  }
+
+  .chat-open-settings:hover,
+  .chat-open-settings:focus-visible {
+    background: var(--accent);
+    color: var(--bg);
+    outline: none;
+  }
+
+  /* Settings dialog */
+  .chat-settings {
+    border: var(--border-base) solid var(--semantic-border-base);
+    background: var(--bg);
+    color: var(--fg);
+    padding: 0;
+    max-width: 480px;
+    width: calc(100% - var(--space-6));
+    font-family: var(--font-mono);
+  }
+
+  .chat-settings::backdrop {
+    background: rgb(0 0 0 / 0.65);
+  }
+
+  .chat-settings-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-4);
+  }
+
+  .chat-settings-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding-bottom: var(--space-3);
+    border-bottom: var(--border-hair) solid var(--semantic-border-muted);
+    margin-bottom: var(--space-2);
+  }
+
+  .chat-settings-eyebrow {
+    font-size: var(--text-meta);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .chat-settings-close {
+    background: transparent;
+    color: var(--fg-muted);
+    border: 0;
+    padding: 0 var(--space-2);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    cursor: pointer;
+    letter-spacing: var(--tracking-caps);
+  }
+
+  .chat-settings-close:hover,
+  .chat-settings-close:focus-visible {
+    color: var(--accent);
+    outline: none;
+  }
+
+  .chat-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .chat-field-label {
+    font-size: var(--text-meta);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--fg-muted);
+  }
+
+  .chat-field input,
+  .chat-field select {
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    background: transparent;
+    color: var(--fg);
+    border: var(--border-hair) solid var(--semantic-border-muted);
+    font-family: inherit;
+    font-size: var(--text-sm);
+  }
+
+  .chat-field input:focus,
+  .chat-field select:focus {
+    outline: var(--border-hair) solid var(--accent);
+    outline-offset: 0;
+    border-color: var(--accent);
+  }
+
+  .chat-field input::placeholder {
+    color: var(--fg-faint);
+  }
+
+  .chat-settings-note {
+    font-size: var(--text-xs);
+    color: var(--fg-faint);
+    line-height: var(--leading-relaxed);
+    margin: var(--space-1) 0 0;
+  }
+
+  .chat-settings-note code {
+    color: var(--fg);
+    padding: 0 4px;
+    border-bottom: var(--border-hair) solid var(--fg-faint);
+    overflow-wrap: anywhere;
+  }
+
+  .chat-settings-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+    padding-top: var(--space-3);
+    border-top: var(--border-hair) solid var(--semantic-border-muted);
+  }
+
+  .chat-settings-cancel,
+  .chat-settings-save {
+    padding: var(--space-2) var(--space-4);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    cursor: pointer;
+  }
+
+  .chat-settings-cancel {
+    background: transparent;
+    color: var(--fg-muted);
+    border: var(--border-hair) solid var(--semantic-border-muted);
+  }
+
+  .chat-settings-cancel:hover,
+  .chat-settings-cancel:focus-visible {
+    color: var(--fg);
+    border-color: var(--fg);
+    outline: none;
+  }
+
+  .chat-settings-save {
+    background: var(--accent);
+    color: var(--bg);
+    border: var(--border-base) solid var(--accent);
+  }
+
+  .chat-settings-save:hover,
+  .chat-settings-save:focus-visible {
+    background: var(--fg);
+    border-color: var(--fg);
+    outline: none;
+  }
+
   @media (max-width: 540px) {
     .chat-form {
       grid-template-columns: 1fr;
@@ -488,6 +929,13 @@ const { endpoint = 'http://localhost:7777' } = Astro.props;
     .turn {
       grid-template-columns: 1fr;
       gap: var(--space-1);
+    }
+    .chat-settings-actions {
+      flex-direction: column-reverse;
+    }
+    .chat-settings-actions .chat-settings-cancel,
+    .chat-settings-actions .chat-settings-save {
+      width: 100%;
     }
   }
 </style>
