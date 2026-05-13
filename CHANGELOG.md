@@ -5,7 +5,102 @@ Todos los cambios notables a este proyecto se documentan acá. Formato basado en
 
 ## [Unreleased]
 
-(Nothing yet — v0.2 work lands here.)
+(Nothing yet.)
+
+## [0.2.0] — 2026-05-13
+
+First public release. Adds the web frontend (Astro static site at
+`https://orlando-vazquez-career.github.io/seele/`) and the chat-with-DB
+backend on top of the v0.1.0 backend foundations.
+
+### Added — Frontend (LUMEN sprints 01-04, applies LUMEN protocol v0.11.0)
+
+- **Landing site** at `web/` — Astro 6.3.1 static, deployed to GitHub Pages
+  via `.github/workflows/deploy-web.yml`. Bundle: 12.7 KB gzipped home,
+  9.5 KB gzipped observability page.
+- **Brutalist dev-craft visual identity** (Variation 2 chosen from 4 parallel
+  sub-agent proposals at LUMEN-02 Gate 1, see
+  `docs/design/plans/executed/material/02/`):
+  - 3-color OKLCH palette (bg `oklch(0.08 0 0)` / fg `oklch(0.94 0 0)` /
+    accent `oklch(0.65 0.18 50)`)
+  - JetBrains Mono single typeface family
+  - 2px solid borders + "incomplete borders" (3-sided) as visual syntax
+  - `transition: none` global (motion zero except detection pulses)
+  - No gradients, no shadows, no border-radius (except status pill)
+- **Five ADRs documenting the audacious decisions**: monospace-only,
+  asymmetric-brutal, 3-color palette, incomplete borders, motion zero.
+- **Donate widget** with real wallet integrations (no SDK, no
+  WalletConnect, no tracking):
+  - EVM (Ethereum, Base, Syscoin NEVM) via EIP-6963 multi-provider
+    discovery + EIP-1193 popup. Chain switching with
+    `wallet_addEthereumChain` fallback for Base + Syscoin.
+  - Bitcoin via browser-extension detection (UniSat, Xverse, Leather)
+    with BIP-21 URI scheme fallback for desktop wallets (Sparrow,
+    Electrum, Trezor Suite). Install-page CTA if neither found.
+  - Solana via solana: URI (Phantom desktop extension parses natively).
+- **Live observability page** at `/observability` reading the local SEELE
+  HTTP server:
+  - Stats card, by-type and by-project bar charts, recent saves list,
+    full-text search input with detail expand, 14-day saves sparkline.
+  - Three states: probing / offline / cors-blocked / online with sample
+    preview data in the first three so the panel never looks broken.
+- **Light + dark mode** with `prefers-color-scheme` auto-detection plus
+  manual `[ ◐ ]` toggle in header. Persisted to `localStorage.seele-theme`.
+  Inline anti-FOUC script prevents flash on load.
+- **Bilingual (EN/ES) UI** with `[ EN ]` / `[ ES ]` toggle. Resolution
+  order: `localStorage.seele-lang` → `navigator.language` → `en`. Latin
+  motto in footer stays untranslated (lang="la").
+- **Responsive shell**: asymmetric brutalist layout (left-edge commit)
+  at viewports ≤1400px, centered max-width 1300px above that. Mobile
+  (320px) verified via Playwright multi-resolution matrix.
+- **Playwright visual critique tooling** (`web/scripts/visual-critique.mjs`).
+  Captures matrix of pages × viewports × themes × langs = 40 screenshots.
+  Used as the artifact input for the LUMEN v0.11.0 Visual Critique
+  Multi-Resolution phase.
+- **Footer connect column** with 6 socials (LinkedIn, WhatsApp, YouTube,
+  Instagram, TikTok, Facebook).
+
+### Added — Chat-with-DB (Sprint LUMEN-04)
+
+- **New crate `seele-chat`** with `ChatProvider` trait + two implementations:
+  - `OpenAICompatibleProvider` — wire-compatible with `/v1/chat/completions`
+    for Minimax, OpenAI, OpenRouter, Together, Groq, DeepSeek, etc.
+  - `AnthropicProvider` — Anthropic's `/v1/messages` schema (separate
+    path: `x-api-key` header, content blocks, distinct tool_use shape).
+- **Tool-use loop** orchestrated server-side via `run_chat`. Model returns
+  `tool_calls` → server invokes the registered handler → result fed back
+  → loop until model returns text or hits max iterations (default 5).
+- **`seele_search` tool** wired into the existing hybrid FTS+vec search
+  engine. Args: `query`, optional `limit` (default 5, max 20), optional
+  `project` filter.
+- **HTTP endpoints**: `POST /chat` runs the tool-use loop and returns the
+  full message history. `GET /chat/info` returns
+  `{enabled, provider, model}` so the frontend can render the right state.
+- **CLI flags on `seele serve`**: `--chat-provider`, `--chat-key`
+  (supports `$ENVVAR` reference), `--chat-model`, `--chat-endpoint`.
+  Default models: Minimax → `MiniMax-M2`, OpenAI → `gpt-4o-mini`,
+  Anthropic → `claude-haiku-4-5-20251001`, Groq → `llama-3.3-70b-versatile`,
+  etc.
+- **API key never touches the browser**. It stays on the box running
+  `seele serve`. The frontend only sees assistant/tool messages in the
+  response.
+- **Chat panel** on the `/observability` page with three states. When chat
+  is not configured, shows the exact `seele serve` command to enable it.
+  Bilingual labels and placeholders.
+
+### Added — Backend extensions
+
+- **`seele serve --cors-allow <ORIGIN>`** flag (repeatable). Empty =
+  CORS disabled (default, safe for local-only). Non-empty = permissive
+  `Access-Control-Allow-Origin: *`. Per-origin allowlist refinement
+  remains on the backlog.
+- **`AppState` refactored** from `Arc<SeeleService>` type alias to a struct
+  with `FromRef` impls. Existing handlers keep their
+  `State<Arc<SeeleService>>` extraction unchanged.
+
+### Changed
+
+- Workspace version `0.1.0` → `0.2.0`.
 
 ## [0.1.0] — 2026-05-11
 

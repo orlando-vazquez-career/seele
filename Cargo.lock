@@ -2502,7 +2502,7 @@ dependencies = [
 
 [[package]]
 name = "seele-chat"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "reqwest",
@@ -2515,7 +2515,7 @@ dependencies = [
 
 [[package]]
 name = "seele-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2544,7 +2544,7 @@ dependencies = [
 
 [[package]]
 name = "seele-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "proptest",
@@ -2556,7 +2556,7 @@ dependencies = [
 
 [[package]]
 name = "seele-embedder"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "dirs",
  "hex",
@@ -2576,7 +2576,7 @@ dependencies = [
 
 [[package]]
 name = "seele-engram-import"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "r2d2",
@@ -2593,7 +2593,7 @@ dependencies = [
 
 [[package]]
 name = "seele-http"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "axum",
@@ -2619,7 +2619,7 @@ dependencies = [
 
 [[package]]
 name = "seele-mcp"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "seele-core",
@@ -2637,7 +2637,7 @@ dependencies = [
 
 [[package]]
 name = "seele-project"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "seele-core",
  "serde",
@@ -2649,7 +2649,7 @@ dependencies = [
 
 [[package]]
 name = "seele-search"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "proptest",
@@ -2666,7 +2666,7 @@ dependencies = [
 
 [[package]]
 name = "seele-setup"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "dirs",
@@ -2680,7 +2680,7 @@ dependencies = [
 
 [[package]]
 name = "seele-storage"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "dirs",
@@ -2704,7 +2704,7 @@ dependencies = [
 
 [[package]]
 name = "seele-sync"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "flate2",
@@ -2724,7 +2724,7 @@ dependencies = [
 
 [[package]]
 name = "seele-tui"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "crossterm",
