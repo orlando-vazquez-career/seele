@@ -209,6 +209,15 @@ pub struct ChatRequest {
     pub messages: Vec<ChatMessage>,
     /// Optional override for the system prompt (default is provider-baked).
     pub system_prompt: Option<String>,
+    /// Per-request provider override. Takes precedence over the CLI config.
+    pub provider: Option<String>,
+    /// Per-request API key. Takes precedence over the CLI config. The server
+    /// uses it once and discards it — never persisted.
+    pub api_key: Option<String>,
+    /// Per-request model name. Defaults to the provider's standard.
+    pub model: Option<String>,
+    /// Per-request endpoint override (OpenAI-compatible providers).
+    pub endpoint: Option<String>,
 }
 
 #[derive(serde::Serialize)]
@@ -247,12 +256,36 @@ pub async fn chat(
     State(chat): State<Option<Arc<ChatProviderConfig>>>,
     Json(req): Json<ChatRequest>,
 ) -> Result<Json<ChatResponse>> {
-    let cfg = chat.ok_or_else(|| {
-        crate::ApiError::BadRequest(
-            "chat is not configured; start seele serve with --chat-provider + --chat-key"
-                .to_string(),
-        )
-    })?;
+    // Resolve provider config in priority order: per-request fields > CLI
+    // config. If neither is complete, fail with a clear message.
+    let provider_name = req
+        .provider
+        .clone()
+        .or_else(|| chat.as_ref().map(|c| c.provider.clone()))
+        .ok_or_else(|| {
+            crate::ApiError::BadRequest(
+                "chat: missing `provider` (configure in the panel or pass --chat-provider)"
+                    .to_string(),
+            )
+        })?;
+    let api_key = req
+        .api_key
+        .clone()
+        .or_else(|| chat.as_ref().map(|c| c.api_key.clone()))
+        .ok_or_else(|| {
+            crate::ApiError::BadRequest(
+                "chat: missing `api_key` (configure in the panel or pass --chat-key)".to_string(),
+            )
+        })?;
+    let model = req
+        .model
+        .clone()
+        .or_else(|| chat.as_ref().map(|c| c.model.clone()))
+        .unwrap_or_else(|| default_model_for(&provider_name));
+    let endpoint_override = req
+        .endpoint
+        .clone()
+        .or_else(|| chat.as_ref().and_then(|c| c.endpoint.clone()));
 
     let tools = vec![ToolSpec {
         name: "seele_search".to_string(),
@@ -268,22 +301,15 @@ pub async fn chat(
         }),
     }];
 
-    let provider: Box<dyn ChatProvider> = if cfg.provider.eq_ignore_ascii_case("anthropic") {
-        Box::new(AnthropicProvider::new(
-            cfg.api_key.clone(),
-            cfg.model.clone(),
-            tools,
-        ))
+    let provider: Box<dyn ChatProvider> = if provider_name.eq_ignore_ascii_case("anthropic") {
+        Box::new(AnthropicProvider::new(api_key, model.clone(), tools))
     } else {
-        let endpoint = cfg
-            .endpoint
-            .clone()
-            .unwrap_or_else(|| default_endpoint_for(&cfg.provider));
+        let endpoint = endpoint_override.unwrap_or_else(|| default_endpoint_for(&provider_name));
         Box::new(OpenAICompatibleProvider::new(
-            cfg.provider.clone(),
+            provider_name.clone(),
             endpoint,
-            cfg.api_key.clone(),
-            cfg.model.clone(),
+            api_key,
+            model.clone(),
             tools,
         ))
     };
@@ -344,14 +370,27 @@ pub async fn chat(
 
     Ok(Json(ChatResponse {
         messages: history,
-        provider: cfg.provider.clone(),
-        model: cfg.model.clone(),
+        provider: provider_name,
+        model,
     }))
+}
+
+fn default_model_for(provider: &str) -> String {
+    match provider.to_ascii_lowercase().as_str() {
+        "minimax" => "MiniMax-M2".to_string(),
+        "openai" => "gpt-4o-mini".to_string(),
+        "openrouter" => "openai/gpt-4o-mini".to_string(),
+        "together" => "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo".to_string(),
+        "groq" => "llama-3.3-70b-versatile".to_string(),
+        "deepseek" => "deepseek-chat".to_string(),
+        "anthropic" => "claude-haiku-4-5-20251001".to_string(),
+        _ => "gpt-4o-mini".to_string(),
+    }
 }
 
 fn default_endpoint_for(provider: &str) -> String {
     match provider.to_ascii_lowercase().as_str() {
-        "minimax" => "https://api.minimax.io/v1/text/chatcompletion_v2".to_string(),
+        "minimax" => "https://api.minimax.io/v1/chat/completions".to_string(),
         "openai" => "https://api.openai.com/v1/chat/completions".to_string(),
         "openrouter" => "https://openrouter.ai/api/v1/chat/completions".to_string(),
         "together" => "https://api.together.xyz/v1/chat/completions".to_string(),

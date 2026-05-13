@@ -106,8 +106,14 @@ impl Server {
             CorsLayer::new()
         } else {
             // Block D refines per-origin allowlist; today we open up
-            // permissively when any origin is requested.
-            CorsLayer::new().allow_origin(Any)
+            // permissively when any origin is requested. Methods/headers
+            // need to be explicit (or Any) so POST + Content-Type clears
+            // preflight — without this, JSON POST from a browser fails
+            // with "failed to fetch".
+            CorsLayer::new()
+                .allow_origin(Any)
+                .allow_methods(Any)
+                .allow_headers(Any)
         };
 
         // Routes that require auth (when enabled). Built first so the
