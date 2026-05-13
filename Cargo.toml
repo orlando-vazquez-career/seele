@@ -4,6 +4,7 @@ members = [
     "crates/seele-storage",
     "crates/seele-embedder",
     "crates/seele-search",
+    "crates/seele-chat",
     "crates/seele-mcp",
     "crates/seele-http",
     "crates/seele-tui",

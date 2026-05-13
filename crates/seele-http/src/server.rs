@@ -7,6 +7,7 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+use axum::extract::FromRef;
 use axum::middleware;
 use axum::routing::{delete, get, post, put};
 use axum::{Json, Router};
@@ -21,7 +22,25 @@ use crate::openapi;
 use crate::service::SeeleService;
 
 /// Shared state every handler sees via `axum::extract::State<AppState>`.
-pub type AppState = Arc<SeeleService>;
+/// Existing handlers use `State<Arc<SeeleService>>` (via the FromRef impl
+/// below); the chat handler pulls the whole `AppState`.
+#[derive(Clone)]
+pub struct AppState {
+    pub service: Arc<SeeleService>,
+    pub chat: Option<Arc<ChatProviderConfig>>,
+}
+
+impl FromRef<AppState> for Arc<SeeleService> {
+    fn from_ref(input: &AppState) -> Self {
+        input.service.clone()
+    }
+}
+
+impl FromRef<AppState> for Option<Arc<ChatProviderConfig>> {
+    fn from_ref(input: &AppState) -> Self {
+        input.chat.clone()
+    }
+}
 
 #[derive(Clone)]
 pub struct ServerConfig {
@@ -33,6 +52,24 @@ pub struct ServerConfig {
     /// Expose ENGRAM-compatible aliases (`POST /save`, `GET /show/{id}`)
     /// alongside the canonical SEELE routes. See ADR-13.
     pub legacy_engram_paths: bool,
+    /// AI chat provider config (POST /chat). None = endpoint disabled.
+    pub chat: Option<ChatProviderConfig>,
+}
+
+/// Chat-with-DB provider config. None of these fields ever leave the
+/// machine — the API key stays on the box running `seele serve`.
+#[derive(Clone, Debug)]
+pub struct ChatProviderConfig {
+    /// Provider family. Supported: `"minimax"`, `"openai"`, `"openrouter"`,
+    /// `"together"`, `"groq"`, `"deepseek"`, `"anthropic"`, or any other
+    /// label — anything that's not `"anthropic"` is treated as
+    /// OpenAI-compatible and uses `endpoint` as `/v1/chat/completions`.
+    pub provider: String,
+    pub api_key: String,
+    pub model: String,
+    /// OpenAI-compatible providers: the full `/v1/chat/completions` URL.
+    /// Ignored for `"anthropic"`.
+    pub endpoint: Option<String>,
 }
 
 impl ServerConfig {
@@ -42,6 +79,7 @@ impl ServerConfig {
             cors_origins: Vec::new(),
             auth_bearer: None,
             legacy_engram_paths: false,
+            chat: None,
         }
     }
 }
@@ -59,7 +97,10 @@ impl Server {
     /// Build the `axum::Router`. Public so tests can mount it against an
     /// in-process listener.
     pub fn router(&self) -> Router {
-        let state: AppState = Arc::new(self.service.clone());
+        let state = AppState {
+            service: Arc::new(self.service.clone()),
+            chat: self.config.chat.clone().map(Arc::new),
+        };
 
         let cors = if self.config.cors_origins.is_empty() {
             CorsLayer::new()
@@ -100,7 +141,9 @@ impl Server {
             .route("/relations/{id}/judge", put(handlers::judge_relation))
             .route("/conflicts", get(handlers::list_pending_conflicts))
             .route("/stats", get(handlers::get_stats))
-            .route("/embedder", get(handlers::get_embedder_info));
+            .route("/embedder", get(handlers::get_embedder_info))
+            .route("/chat", post(handlers::chat))
+            .route("/chat/info", get(handlers::chat_info));
 
         if self.config.legacy_engram_paths {
             // ADR-13: ENGRAM-compatible aliases. Same handlers, alternate

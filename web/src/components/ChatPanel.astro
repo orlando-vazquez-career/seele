@@ -1,0 +1,493 @@
+---
+/**
+ * ChatPanel — chat-with-DB widget for the /observability page.
+ *
+ * Talks to SEELE's local `POST /chat` endpoint, which runs a tool-use loop
+ * server-side: the model decides when to call `seele_search`, the server
+ * executes the search, feeds results back to the model, and only the final
+ * assistant text returns to the browser. The user's AI API key never
+ * leaves the box running `seele serve`.
+ *
+ * Three states:
+ *
+ *   1. probing      — checking /chat/info
+ *   2. not-enabled  — server is up but chat is not configured
+ *   3. enabled      — chat works; provider + model are shown
+ *
+ * In state 2 we show the exact CLI command the user needs to restart
+ * seele serve with, for the most common provider (Minimax).
+ */
+
+interface Props {
+  endpoint?: string;
+}
+
+const { endpoint = 'http://localhost:7777' } = Astro.props;
+---
+
+<section class="chat" data-chat data-endpoint={endpoint} data-state="probing">
+  <header class="chat-header">
+    <span class="chat-eyebrow"><span lang="en">// CHAT</span><span lang="es">// CHAT</span></span>
+    <span class="chat-meta" data-chat-meta></span>
+  </header>
+
+  <!-- probing -->
+  <div class="chat-state" data-show-when="probing">
+    <p class="chat-msg"><span lang="en">probing /chat…</span><span lang="es">sondeando /chat…</span></p>
+  </div>
+
+  <!-- not enabled -->
+  <div class="chat-state" data-show-when="not-enabled">
+    <p class="chat-msg">
+      <span class="msg-strong"><span lang="en">chat is not enabled on this server</span><span lang="es">chat no está habilitado en este servidor</span></span>
+    </p>
+    <p class="chat-detail">
+      <span lang="en">Restart <code>seele serve</code> with a provider + API key. Minimax example:</span><span lang="es">Reiniciá <code>seele serve</code> con un provider + API key. Ejemplo Minimax:</span>
+    </p>
+    <pre class="chat-cmd"><code>$ MINIMAX_API_KEY=sk-... seele serve \
+    --cors-allow {endpoint.replace(/\/$/, '')} \
+    --chat-provider minimax \
+    --chat-key $MINIMAX_API_KEY</code></pre>
+    <p class="chat-detail-small">
+      <span lang="en">Other supported providers: <code>openai</code>, <code>openrouter</code>, <code>together</code>, <code>groq</code>, <code>deepseek</code>, <code>anthropic</code>. The API key stays on your machine — never sent to the browser.</span><span lang="es">Otros providers: <code>openai</code>, <code>openrouter</code>, <code>together</code>, <code>groq</code>, <code>deepseek</code>, <code>anthropic</code>. La API key queda en tu máquina — nunca se envía al browser.</span>
+    </p>
+  </div>
+
+  <!-- enabled -->
+  <div class="chat-state" data-show-when="enabled">
+    <ol class="chat-log" data-chat-log></ol>
+
+    <form class="chat-form" data-chat-form>
+      <textarea
+        class="chat-input"
+        data-chat-input
+        rows="2"
+        placeholder="ask your memories…"
+        data-placeholder-en="ask your memories…"
+        data-placeholder-es="preguntá a tus memorias…"
+        aria-label="chat input"
+      ></textarea>
+      <button class="chat-send" type="submit" data-chat-send>
+        <span lang="en">SEND</span><span lang="es">ENVIAR</span>
+      </button>
+    </form>
+
+    <p class="chat-status" data-chat-status></p>
+  </div>
+</section>
+
+<script>
+  type ChatInfo = {
+    enabled: boolean;
+    provider: string | null;
+    model: string | null;
+  };
+
+  type ToolCall = {
+    id: string;
+    function: { name: string; arguments: string };
+  };
+
+  type Message = {
+    role: string;
+    content: string | null;
+    tool_calls?: ToolCall[];
+    tool_call_id?: string;
+    name?: string;
+  };
+
+  type State = 'probing' | 'not-enabled' | 'enabled';
+
+  const TIMEOUT_MS = 60_000;
+
+  const root = document.querySelector<HTMLElement>('[data-chat]');
+  if (root) initChat(root);
+
+  async function initChat(root: HTMLElement) {
+    const endpoint = (root.dataset.endpoint || 'http://localhost:7777').replace(/\/$/, '');
+    setState(root, 'probing');
+    const info = await probeChatInfo(endpoint);
+    if (!info || !info.enabled) {
+      setState(root, 'not-enabled');
+      return;
+    }
+    setState(root, 'enabled');
+    setMeta(root, `${info.provider} · ${info.model}`);
+    bindForm(root, endpoint);
+  }
+
+  function setState(root: HTMLElement, status: State) {
+    root.dataset.state = status;
+    root.querySelectorAll<HTMLElement>('[data-show-when]').forEach((el) => {
+      el.hidden = el.dataset.showWhen !== status;
+    });
+  }
+
+  function setMeta(root: HTMLElement, text: string) {
+    const m = root.querySelector<HTMLElement>('[data-chat-meta]');
+    if (m) m.textContent = text;
+  }
+
+  async function probeChatInfo(endpoint: string): Promise<ChatInfo | null> {
+    try {
+      const res = await fetch(`${endpoint}/chat/info`, {
+        cache: 'no-store',
+        signal: AbortSignal.timeout(3_000),
+      });
+      if (!res.ok) return null;
+      return (await res.json()) as ChatInfo;
+    } catch {
+      return null;
+    }
+  }
+
+  function bindForm(root: HTMLElement, endpoint: string) {
+    const form = root.querySelector<HTMLFormElement>('[data-chat-form]');
+    const input = root.querySelector<HTMLTextAreaElement>('[data-chat-input]');
+    const log = root.querySelector<HTMLElement>('[data-chat-log]');
+    const send = root.querySelector<HTMLButtonElement>('[data-chat-send]');
+    const status = root.querySelector<HTMLElement>('[data-chat-status]');
+    if (!form || !input || !log || !send || !status) return;
+
+    const history: Message[] = [];
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const q = input.value.trim();
+      if (!q) return;
+      input.value = '';
+      input.disabled = true;
+      send.disabled = true;
+      status.textContent = '';
+      status.dataset.state = '';
+
+      const userMsg: Message = { role: 'user', content: q };
+      history.push(userMsg);
+      renderMessage(log, userMsg);
+
+      try {
+        setStatus(status, 'thinking…', 'thinking');
+        const res = await fetch(`${endpoint}/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          cache: 'no-store',
+          signal: AbortSignal.timeout(TIMEOUT_MS),
+          body: JSON.stringify({ messages: history }),
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          setStatus(status, `error: ${text.slice(0, 120)}`, 'error');
+          return;
+        }
+        const data = (await res.json()) as { messages: Message[]; provider: string; model: string };
+
+        // The server returns the FULL history including the system + tool
+        // messages. Diff against `history` and render new turns in order.
+        const newTurns = data.messages.slice(history.length + 1); // +1 skips the system prompt the server prepends
+        for (const m of newTurns) {
+          history.push(m);
+          renderMessage(log, m);
+        }
+        setStatus(status, '', '');
+      } catch (err) {
+        const msg = (err as { message?: string }).message ?? String(err);
+        setStatus(status, `error: ${msg}`, 'error');
+      } finally {
+        input.disabled = false;
+        send.disabled = false;
+        input.focus();
+      }
+    });
+
+    // Submit on Cmd/Ctrl+Enter
+    input.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        form.requestSubmit();
+      }
+    });
+  }
+
+  function setStatus(el: HTMLElement, text: string, state: string) {
+    el.textContent = text;
+    el.dataset.state = state;
+  }
+
+  function renderMessage(log: HTMLElement, m: Message) {
+    if (m.role === 'system') return; // never display
+
+    const li = document.createElement('li');
+    li.className = `turn turn-${m.role}`;
+
+    if (m.role === 'user') {
+      li.innerHTML = `
+        <span class="turn-tag">// you</span>
+        <span class="turn-body">${escapeHtml(m.content ?? '')}</span>
+      `;
+    } else if (m.role === 'assistant') {
+      const parts: string[] = [];
+      parts.push(`<span class="turn-tag">// ai</span>`);
+      if (m.content) parts.push(`<span class="turn-body">${escapeHtml(m.content)}</span>`);
+      if (m.tool_calls && m.tool_calls.length > 0) {
+        for (const tc of m.tool_calls) {
+          let args = '';
+          try {
+            const parsed = JSON.parse(tc.function.arguments);
+            args = parsed.query ? `"${parsed.query}"` : tc.function.arguments;
+          } catch {
+            args = tc.function.arguments;
+          }
+          parts.push(
+            `<span class="tool-call">→ ${escapeHtml(tc.function.name)}(${escapeHtml(args)})</span>`,
+          );
+        }
+      }
+      li.innerHTML = parts.join('');
+    } else if (m.role === 'tool') {
+      // Compact tool result: just say how many results came back if it's a search
+      let summary = '(result)';
+      try {
+        const parsed = JSON.parse(m.content ?? '{}');
+        if (typeof parsed.count === 'number') {
+          summary = `${parsed.count} results`;
+        }
+      } catch {
+        // not JSON; show first 80 chars
+        summary = (m.content ?? '').slice(0, 80);
+      }
+      li.innerHTML = `
+        <span class="turn-tag">// tool</span>
+        <span class="turn-body turn-tool-body">${escapeHtml(summary)}</span>
+      `;
+    } else {
+      li.innerHTML = `<span class="turn-tag">// ${escapeHtml(m.role)}</span><span class="turn-body">${escapeHtml(m.content ?? '')}</span>`;
+    }
+
+    log.appendChild(li);
+    log.parentElement?.scrollTo({ top: log.parentElement.scrollHeight });
+    li.scrollIntoView({ behavior: 'auto', block: 'end' });
+  }
+
+  function escapeHtml(s: string): string {
+    return s
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+</script>
+
+<style>
+  .chat {
+    font-family: var(--font-mono);
+    color: var(--fg);
+    border: var(--border-base) solid var(--semantic-border-base);
+    padding: var(--space-4);
+    background: var(--bg);
+    margin-top: var(--space-8);
+  }
+
+  .chat-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: var(--space-3);
+    padding-bottom: var(--space-3);
+    border-bottom: var(--border-hair) solid var(--semantic-border-muted);
+  }
+
+  .chat-eyebrow {
+    font-size: var(--text-meta);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .chat-meta {
+    font-size: 12px;
+    color: var(--fg-faint);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+  }
+
+  .chat-state[hidden] {
+    display: none !important;
+  }
+
+  .chat-msg {
+    font-size: var(--text-sm);
+    margin: 0 0 var(--space-2);
+    color: var(--fg-muted);
+  }
+
+  .msg-strong {
+    color: var(--fg);
+    font-weight: var(--weight-bold);
+  }
+
+  .chat-detail {
+    font-size: var(--text-xs);
+    color: var(--fg-faint);
+    line-height: var(--leading-relaxed);
+    margin: 0 0 var(--space-2);
+  }
+
+  .chat-detail-small {
+    font-size: 12px;
+    color: var(--fg-faint);
+    line-height: var(--leading-relaxed);
+    margin: var(--space-2) 0 0;
+  }
+
+  .chat-detail code,
+  .chat-detail-small code {
+    color: var(--fg);
+    padding: 0 4px;
+    border-bottom: var(--border-hair) solid var(--fg-faint);
+  }
+
+  .chat-cmd {
+    margin: var(--space-2) 0;
+    padding: var(--space-3);
+    border: var(--border-hair) solid var(--semantic-border-muted);
+    font-size: var(--text-xs);
+    color: var(--fg);
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+
+  /* Message log */
+  .chat-log {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 var(--space-3);
+    max-height: 480px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .turn {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: var(--space-3);
+    padding-block: var(--space-2);
+    border-bottom: var(--border-hair) solid var(--semantic-border-muted);
+  }
+
+  .turn:last-child {
+    border-bottom: 0;
+  }
+
+  .turn-tag {
+    font-size: 12px;
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--accent);
+    padding-top: 2px;
+  }
+
+  .turn-user .turn-tag { color: var(--fg-muted); }
+  .turn-assistant .turn-tag { color: var(--accent); }
+  .turn-tool .turn-tag { color: var(--fg-faint); }
+
+  .turn-body {
+    font-size: var(--text-sm);
+    color: var(--fg);
+    line-height: var(--leading-relaxed);
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+
+  .turn-tool-body {
+    color: var(--fg-muted);
+    font-size: 13px;
+  }
+
+  .tool-call {
+    display: block;
+    font-size: 13px;
+    color: var(--fg-faint);
+    margin-top: var(--space-1);
+  }
+
+  /* Form */
+  .chat-form {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--space-2);
+    align-items: stretch;
+  }
+
+  .chat-input {
+    width: 100%;
+    padding: var(--space-3);
+    background: transparent;
+    color: var(--fg);
+    border: var(--border-hair) solid var(--semantic-border-muted);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    resize: vertical;
+    min-height: 56px;
+  }
+
+  .chat-input:focus {
+    outline: var(--border-hair) solid var(--accent);
+    outline-offset: 0;
+    border-color: var(--accent);
+  }
+
+  .chat-input::placeholder {
+    color: var(--fg-faint);
+  }
+
+  .chat-send {
+    align-self: stretch;
+    padding: 0 var(--space-4);
+    background: var(--accent);
+    color: var(--bg);
+    border: var(--border-base) solid var(--accent);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps);
+    cursor: pointer;
+  }
+
+  .chat-send:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .chat-send:hover:not(:disabled) {
+    background: var(--fg);
+    border-color: var(--fg);
+    color: var(--bg);
+  }
+
+  .chat-status {
+    font-size: 12px;
+    color: var(--fg-faint);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    margin: var(--space-2) 0 0;
+    min-height: 1em;
+  }
+
+  .chat-status[data-state='thinking'] { color: var(--accent); }
+  .chat-status[data-state='error'] { color: var(--danger); }
+
+  @media (max-width: 540px) {
+    .chat-form {
+      grid-template-columns: 1fr;
+    }
+    .turn {
+      grid-template-columns: 1fr;
+      gap: var(--space-1);
+    }
+  }
+</style>

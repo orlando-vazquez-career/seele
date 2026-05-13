@@ -12,6 +12,7 @@ seele-core = { path = "../seele-core" }
 seele-storage = { path = "../seele-storage" }
 seele-search = { path = "../seele-search" }
 seele-embedder = { path = "../seele-embedder" }
+seele-chat = { path = "../seele-chat" }
 tokio.workspace = true
 axum.workspace = true
 tower.workspace = true
