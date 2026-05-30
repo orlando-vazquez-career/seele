@@ -46,6 +46,11 @@ Estrategia, arquitectura y táctica del Sprint 01 viven bajo `genesis/plans/`. E
 - [`genesis/plans/executed/tactica/sprint-04/00-INDEX.md`](../genesis/plans/executed/tactica/sprint-04/00-INDEX.md) — Sprint-04 Ops & UX, cerrado 2026-05-10. Devlog: [`docs/aegis/devlogs/2026-05-10-sprint-04-ops-ux.md`](aegis/devlogs/2026-05-10-sprint-04-ops-ux.md). Tag `sprint-04-ops-ux`.
 - [`genesis/plans/executed/tactica/sprint-05/00-INDEX.md`](../genesis/plans/executed/tactica/sprint-05/00-INDEX.md) — Sprint-05 Polish + CI/CD + Release, cerrado 2026-05-11. Devlog: [`docs/aegis/devlogs/2026-05-11-sprint-05-polish-release.md`](aegis/devlogs/2026-05-11-sprint-05-polish-release.md). Tag AEGIS `sprint-05-polish-release`; SemVer release tag `v0.1.0`.
 
+## Planes post-génesis (`docs/plans/`)
+
+- **Arquitectura**: [`14-evaluation-harness.md`](plans/arquitectura/14-evaluation-harness.md) — ADR-14 (harness eval-first + `embeddings_meta`); [`15-binary-size-footprint.md`](plans/arquitectura/15-binary-size-footprint.md) — ADR-15 (footprint del binario, feature-gating propuesto).
+- **v0.3-α «calidad de memoria»**: [`estrategia/00-overview.md`](plans/estrategia/v0.3-calidad-memoria/00-overview.md), [`tactica/00-bloques.md`](plans/executed/tactica/v0.3-calidad-memoria/00-bloques.md), [`baseline-v0.2.json`](plans/executed/tactica/v0.3-calidad-memoria/baseline-v0.2.json).
+
 ## Devlogs
 
 - [`docs/aegis/devlogs/2026-05-10-sprint-01-foundation.md`](aegis/devlogs/2026-05-10-sprint-01-foundation.md) — Sprint-01 BE Foundation cerrado. 99 tests verde, CI matrix verde, schema completo + CRUD funcional.
@@ -53,6 +58,8 @@ Estrategia, arquitectura y táctica del Sprint 01 viven bajo `genesis/plans/`. E
 - [`docs/aegis/devlogs/2026-05-10-sprint-03-interfaces.md`](aegis/devlogs/2026-05-10-sprint-03-interfaces.md) — Sprint-03 BE Interfaces cerrado. HTTP axum ~25 endpoints (auth bearer + OpenAPI + Swagger UI + legacy-engram-paths) + MCP stdio JSON-RPC 19 tools + binary `seele [mcp|serve|--version]`. Total 202 verde + 4 ignored.
 - [`docs/aegis/devlogs/2026-05-10-sprint-04-ops-ux.md`](aegis/devlogs/2026-05-10-sprint-04-ops-ux.md) — Sprint-04 Ops & UX cerrado. 5 nuevos crates (project, setup, sync, engram-import, tui) + binary `seele` con clap derive 17 subcomandos. ENGRAM migration tool desbloquea MNEMA → SEELE (ADR-13). Total 304 verde + 4 ignored.
 - [`docs/aegis/devlogs/2026-05-11-sprint-05-polish-release.md`](aegis/devlogs/2026-05-11-sprint-05-polish-release.md) — Sprint-05 Polish + CI/CD + Release cerrado. Property tests workspace-wide + ONNX default + release pipeline 5 targets + install scripts + docs polish (README + 3 guías) + smoke acceptance. Total 322 verde + 4 ignored. v0.1.0 cierra v0.1.
+- [`docs/aegis/devlogs/2026-05-20-patch-mcp-call-tool-result.md`](aegis/devlogs/2026-05-20-patch-mcp-call-tool-result.md) — patch del envelope `CallToolResult` (MCP `tools/call`) + test de regresión.
+- [`docs/aegis/devlogs/2026-05-29-sprint-v0.3-alpha-eval-harness.md`](aegis/devlogs/2026-05-29-sprint-v0.3-alpha-eval-harness.md) — Sprint v0.3-α eval-first: crate `seele-eval` (recall@k/MRR), baseline v0.2 (coding-memory r@5 0.83), fix silent-drop `int_id`, `embeddings_meta` (V002), ADR-15. (Pendiente clippy + merge a main.)
 
 ## Cost Ledger
 

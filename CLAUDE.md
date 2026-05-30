@@ -34,19 +34,21 @@ Reimplementación clean-room inspirada en [ENGRAM](https://github.com/Gentleman-
 - **Rust** 1.85+ (`rust-toolchain.toml`).
 - **Edición** 2021.
 - **MSRV bump 1.83 → 1.85** decidido para usar `clap_lex` con `edition2024`. Ver `CHANGELOG.md`.
-- **Workspace** con 12 crates en `crates/`:
+- **Workspace** con 14 crates en `crates/`:
   - `seele-core` — tipos canónicos, errores, IDs (ULID via `SeeleId`).
   - `seele-storage` — SQLite + FTS5 + vec0 + CRUD + migrations refinery. `save_raw_in_tx` para migration paths.
   - `seele-embedder` — ONNX runtime via `ort` + `tokenizers` + `hf-hub` + auto-download.
   - `seele-search` — FTS + vec híbrido con RRF combiner.
   - `seele-mcp` — MCP server stdio (sprint-03).
   - `seele-http` — REST API axum (sprint-03).
+  - `seele-chat` — `ChatProvider` (OpenAI-compatible + Anthropic) para chat-with-DB; tool-use loop sobre `seele_search` (v0.2, sprints LUMEN).
   - `seele-tui` — TUI ratatui 5 vistas (sprint-04).
   - `seele-sync` — git-friendly chunks gzip JSON (sprint-04).
   - `seele-setup` — wizard 3 implementados + 5 skeleton (sprint-04).
   - `seele-project` — 5-case project detection (sprint-04).
   - `seele-engram-import` — migration ENGRAM → SEELE ADR-13 (sprint-04).
-  - `seele-cli` — binary `seele` clap derive, 17 subcomandos (sprint-04).
+  - `seele-cli` — binary `seele` clap derive, 18 subcomandos (sprint-04; `eval` agregado en v0.3).
+  - `seele-eval` — harness de evaluación de calidad de memoria (recall@k/MRR por categoría); suites embebidas + subcomando `seele eval` (v0.3-α, ADR-14).
 - **DB**: SQLite con `rusqlite` (feature `bundled` + `load_extension`) + `sqlite-vec` v0.1.9 vendorizado para 5 targets.
 - **Async**: tokio 1.42 multi-thread.
 - **Errores**: `thiserror` para errores tipados; `anyhow` solo en CLI.
@@ -85,7 +87,7 @@ Reimplementación clean-room inspirada en [ENGRAM](https://github.com/Gentleman-
 
 ### IDs
 
-- `SeeleId(Ulid)` para todo. ULID textual en SQL. Bridge a vec0 INTEGER rowid via `SeeleId::as_i64()` (primeros 6 bytes) — esa es la implementación correcta. La virtual column SQL `int_id` es aproximada y solo sirve para queries de JOIN.
+- `SeeleId(Ulid)` para todo. ULID textual en SQL. Bridge a vec0 INTEGER rowid via `SeeleId::as_i64()` (tail aleatorio: bytes 9..16 del ULID, 56 bits, byte alto en cero) — esa es la implementación correcta. `int_id` es una columna INTEGER real `UNIQUE` poblada desde Rust en el INSERT (no una virtual column); la colisión del tail se maneja con retry en fresh-save (`ID_COLLISION_RETRIES`).
 
 ### Privacy
 

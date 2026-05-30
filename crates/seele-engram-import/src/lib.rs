@@ -160,6 +160,16 @@ impl<'a> EngramImporter<'a> {
                             // valid link target for this run.
                             id_map.insert(engram_id, dest_id);
                         }
+                        RawSaveOutcome::IntIdCollision => {
+                            // INSERT OR IGNORE dropped this row: a different
+                            // id already holds its int_id. NOT imported and
+                            // NOT a valid link target. Surface it so the
+                            // collision is not silent data loss.
+                            errors.push(format!(
+                                "int_id collision: observation {dest_id} not imported \
+                                 (preserved ULID's int_id clashed with an existing row)"
+                            ));
+                        }
                     }
                 }
             }

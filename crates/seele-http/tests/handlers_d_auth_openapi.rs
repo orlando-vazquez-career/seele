@@ -22,6 +22,7 @@ async fn spawn(auth_bearer: Option<&str>, legacy_engram_paths: bool) -> (TempDir
             cors_origins: vec![],
             auth_bearer: auth_bearer.map(str::to_string),
             legacy_engram_paths,
+            chat: None,
         },
     )
     .router();

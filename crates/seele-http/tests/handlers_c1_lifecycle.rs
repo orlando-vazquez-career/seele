@@ -25,6 +25,7 @@ async fn spawn_test_server() -> (TempDir, String) {
             cors_origins: vec![],
             auth_bearer: None,
             legacy_engram_paths: false,
+            chat: None,
         },
     )
     .router();

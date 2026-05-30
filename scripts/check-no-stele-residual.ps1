@@ -35,7 +35,17 @@ $allowlistFiles = @(
 $allowlistDirs = @(
     'docs/aegis/devlogs/',
     'genesis/plans/executed/tactica/',
-    'genesis/plans/tactica/'
+    'genesis/plans/tactica/',
+    # Post-v0.1 plans live under docs/plans/ per CLAUDE.md. Same allowance
+    # as genesis/plans: in-flight and executed táctica may mention the
+    # legacy name when documenting CI / static-check coverage.
+    'docs/plans/tactica/',
+    'docs/plans/executed/tactica/',
+    # v0.3: estrategia plans + the architecture compendium legitimately
+    # reference the legacy name (naming history + documenting the check itself).
+    'docs/plans/estrategia/',
+    'docs/plans/executed/estrategia/',
+    'docs/compendium/'
 )
 
 $includeExt = @('*.md', '*.rs', '*.toml', '*.yaml', '*.yml', '*.json', '*.sh', '*.ps1')

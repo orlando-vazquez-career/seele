@@ -103,6 +103,11 @@ pub struct ImportReport {
     /// `id` already present in the destination (raw `INSERT OR IGNORE`
     /// silently skipped them).
     pub observation_count_already_present: usize,
+    /// Per-row counter: rows dropped because the *preserved* ULID's
+    /// `int_id` mapping collided with an existing row's `int_id` UNIQUE
+    /// (`INSERT OR IGNORE` skip that is NOT an idempotent `id` match).
+    /// Surfaced so the collision is not silent data loss.
+    pub observation_count_int_id_collision: usize,
     /// Chunk-level counter: number of observations the chunk carried
     /// when the whole chunk was skipped because the
     /// `(target_key, chunk_id)` pair was already in the ledger. Zero
@@ -295,6 +300,7 @@ pub fn import_from_file(
             outcome: ImportOutcome::AlreadyImported,
             observation_count_saved: 0,
             observation_count_already_present: 0,
+            observation_count_int_id_collision: 0,
             observation_count_skipped_chunk_level: payload.observations.len(),
         });
     }
@@ -307,6 +313,7 @@ pub fn import_from_file(
 
     let mut saved = 0usize;
     let mut already_present = 0usize;
+    let mut int_id_collisions = 0usize;
     for obs in &payload.observations {
         let input = RawSaveInput {
             id: obs.id,
@@ -329,6 +336,7 @@ pub fn import_from_file(
         match ObservationStore::save_raw_in_tx(&tx, input)? {
             RawSaveOutcome::Inserted => saved += 1,
             RawSaveOutcome::AlreadyExisted => already_present += 1,
+            RawSaveOutcome::IntIdCollision => int_id_collisions += 1,
         }
     }
     ChunkStore::mark_imported_in_tx(&tx, target_key, &chunk_id)?;
@@ -340,6 +348,7 @@ pub fn import_from_file(
         outcome: ImportOutcome::Imported,
         observation_count_saved: saved,
         observation_count_already_present: already_present,
+        observation_count_int_id_collision: int_id_collisions,
         observation_count_skipped_chunk_level: 0,
     })
 }

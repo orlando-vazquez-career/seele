@@ -2525,6 +2525,7 @@ dependencies = [
  "seele-core",
  "seele-embedder",
  "seele-engram-import",
+ "seele-eval",
  "seele-http",
  "seele-mcp",
  "seele-project",
@@ -2589,6 +2590,22 @@ dependencies = [
  "thiserror 2.0.18",
  "tracing",
  "ulid",
+]
+
+[[package]]
+name = "seele-eval"
+version = "0.2.0"
+dependencies = [
+ "chrono",
+ "seele-core",
+ "seele-embedder",
+ "seele-search",
+ "seele-storage",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tracing",
 ]
 
 [[package]]

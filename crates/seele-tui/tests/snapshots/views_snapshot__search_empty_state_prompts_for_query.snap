@@ -2,7 +2,7 @@
 source: crates/seele-tui/tests/views_snapshot.rs
 expression: buffer_dump(&term)
 ---
-SEELE v0.1.0  [1] Home [2] Browse [3] Search [4] Detail [5] Stats                                                       
+SEELE v0.2.0  [1] Home [2] Browse [3] Search [4] Detail [5] Stats                                                       
 ┌query─────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │█                                                                                                                     │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
