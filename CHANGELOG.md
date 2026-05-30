@@ -90,6 +90,15 @@ SemVer marcado._
   compendium can reference the legacy name when documenting CI / static-check
   coverage and naming history.
 
+### Removed
+
+- **Crypto-donation widget** from the web landing (`DonateButtons.astro` +
+  the `// 04 — crypto donations` block in `Support.astro`) and the **Crypto
+  section** of the root `README.md` (BTC/ETH/Base/Syscoin/SOL wallet
+  addresses). Low traction; not worth the maintenance or the wallet-address
+  trust surface. Support copy reframed to star / issues / hire, and the
+  "spare hours / week of evenings" self-description dropped.
+
 
 ## [0.2.0] — 2026-05-13
 

@@ -22,15 +22,14 @@ Output lands in `web/dist/`. Deploy is automated via `.github/workflows/deploy-w
 
 ## Stack
 
-- **Astro 5.x** — static output, zero JS by default, islands for the donate widget.
+- **Astro 5.x** — static output, zero JS by default.
 - **Vanilla CSS** with tokens from `src/styles/tokens.css`. No Tailwind. No webfonts.
-- **Vanilla JS** for the donate island. No SDK. No tracking.
 
 ## Files
 
 - `src/pages/index.astro` — landing single page.
 - `src/layouts/Layout.astro` — html shell.
-- `src/components/` — Hero, Features, Install, Support, DonateButtons, Footer.
+- `src/components/` — Hero, Features, Install, Support, Footer.
 - `src/styles/tokens.css` — design tokens, semantic + primitive layers.
 
 ## Design system

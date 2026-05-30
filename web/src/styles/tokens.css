@@ -20,13 +20,6 @@
   --danger: oklch(0.60 0.20 25);
   --success: oklch(0.78 0.16 145);
 
-  /* Network brand colors (donate widget only) */
-  --network-btc: #f7931a;
-  --network-eth: #627eea;
-  --network-base: #0052ff;
-  --network-sys: #1f87ff;
-  --network-sol: #9945ff;
-
   /* ───────── Typography (single family) ───────── */
   --font-mono: ui-monospace, "JetBrains Mono", "Cascadia Code", Menlo, Monaco,
     Consolas, "Liberation Mono", "Courier New", monospace;
@@ -108,7 +101,6 @@
 
   --semantic-status-seele-detected: var(--success);
   --semantic-status-seele-not-detected: var(--fg-faint);
-  --semantic-status-wallet-detected: var(--accent);
 
   /* ───────── Z-index ───────── */
   --z-base: 0;

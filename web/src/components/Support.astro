@@ -1,5 +1,4 @@
 ---
-import DonateButtons from './DonateButtons.astro';
 ---
 
 <section id="support" class="support">
@@ -7,10 +6,10 @@ import DonateButtons from './DonateButtons.astro';
     <header class="support-header">
       <span class="support-eyebrow"><span lang="en">// SUPPORT</span><span lang="es">// APOYAR</span></span>
       <h2 class="support-heading">
-        <span lang="en">One developer.<br />Spare hours.</span><span lang="es">Un dev.<br />Horas libres.</span>
+        <span lang="en">One developer.<br />Open source.</span><span lang="es">Un dev.<br />Código abierto.</span>
       </h2>
       <p class="support-lead">
-        <span lang="en">SEELE is built by <a href="https://github.com/orlando-vazquez-career" rel="noopener" target="_blank">Orlando Nahuel Vazquez Gonzalez</a> under DevZen SpA. No funding, no team — only what a single person can ship in a week of evenings. If it saves you time, here are the ways to give some back.</span><span lang="es">SEELE lo construye <a href="https://github.com/orlando-vazquez-career" rel="noopener" target="_blank">Orlando Nahuel Vazquez Gonzalez</a> bajo DevZen SpA. Sin funding, sin equipo — solo lo que una persona puede sacar en una semana de noches. Si te ahorra tiempo, acá van formas de devolver algo.</span>
+        <span lang="en">SEELE is built and maintained by <a href="https://github.com/orlando-vazquez-career" rel="noopener" target="_blank">Orlando Nahuel Vazquez Gonzalez</a> under DevZen SpA. If it saves you time, here are the ways to give some back.</span><span lang="es">SEELE lo construye y mantiene <a href="https://github.com/orlando-vazquez-career" rel="noopener" target="_blank">Orlando Nahuel Vazquez Gonzalez</a> bajo DevZen SpA. Si te ahorra tiempo, acá van formas de devolver algo.</span>
       </p>
     </header>
 
@@ -41,17 +40,6 @@ import DonateButtons from './DonateButtons.astro';
         </div>
       </li>
     </ol>
-
-    <div class="donate-block">
-      <span class="donate-eyebrow"><span lang="en">// 04 — crypto donations</span><span lang="es">// 04 — donaciones cripto</span></span>
-      <h3 class="donate-heading">
-        <span lang="en">One click. <span class="accent">No SDK.</span></span><span lang="es">Un click. <span class="accent">Sin SDK.</span></span>
-      </h3>
-      <p class="donate-lead">
-        <span lang="en">EIP-1193 for EVM. BIP-21 for Bitcoin. Solana Pay for Phantom. No WalletConnect, no tracking.</span><span lang="es">EIP-1193 para EVM. BIP-21 para Bitcoin. Solana Pay para Phantom. Sin WalletConnect, sin tracking.</span>
-      </p>
-      <DonateButtons />
-    </div>
   </div>
 </section>
 
@@ -159,39 +147,6 @@ import DonateButtons from './DonateButtons.astro';
 
   .amp {
     color: var(--accent);
-  }
-
-  .donate-block {
-    border-top: var(--border-base) solid var(--semantic-border-base);
-    padding-top: var(--space-8);
-  }
-
-  .donate-eyebrow {
-    display: block;
-    font-size: var(--text-meta);
-    letter-spacing: var(--tracking-caps);
-    text-transform: uppercase;
-    color: var(--accent);
-    margin-bottom: var(--space-3);
-  }
-
-  .donate-heading {
-    font-size: var(--text-2xl);
-    font-weight: var(--weight-bold);
-    margin-bottom: var(--space-3);
-    color: var(--fg);
-  }
-
-  .donate-heading .accent {
-    color: var(--accent);
-  }
-
-  .donate-lead {
-    font-size: var(--text-sm);
-    color: var(--fg-muted);
-    line-height: var(--leading-relaxed);
-    max-width: 720px;
-    margin-bottom: var(--space-6);
   }
 
   @media (max-width: 640px) {
