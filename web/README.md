@@ -6,8 +6,8 @@ Landing page for SEELE — Astro 5.x static site, deployed to GitHub Pages.
 
 ```bash
 cd web
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 Open http://localhost:4321/seele/ — the `/seele` base path matches production.
@@ -15,7 +15,7 @@ Open http://localhost:4321/seele/ — the `/seele` base path matches production.
 ## Build
 
 ```bash
-npm run build
+pnpm build
 ```
 
 Output lands in `web/dist/`. Deploy is automated via `.github/workflows/deploy-web.yml` on push to `main`.

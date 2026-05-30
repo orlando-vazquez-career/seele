@@ -3,7 +3,7 @@
   "type": "module",
   "version": "0.1.0",
   "private": true,
-  "description": "SEELE landing page — Astro 5 static site",
+  "description": "SEELE landing page — Astro 6 static site",
   "license": "MIT",
   "scripts": {
     "dev": "astro dev",
@@ -14,12 +14,18 @@
     "visual:preview": "node scripts/visual-critique.mjs --url http://localhost:4321/seele"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.12.0"
   },
   "dependencies": {
     "astro": "^6.0.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp"
+    ]
   }
 }
