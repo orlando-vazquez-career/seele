@@ -1,0 +1,47 @@
+{
+  "_meta": {
+    "captured": "2026-05-29",
+    "version": "v0.2.0",
+    "model_id": "sentence-transformers/all-MiniLM-L6-v2",
+    "model_file": "onnx/model.onnx (full precision; repo has no quantized variant)",
+    "pipeline": "hybrid FTS5 bm25 + vec0 cosine, fused with RRF (k=60); no reranker, no meta-score boost",
+    "metric": "recall@k binary per query (hit if any expected_id in top-k), averaged; MRR = mean reciprocal rank of the first expected hit",
+    "command": "SEELE_EVAL_MODEL_DIR=<dir> cargo test -p seele-eval --test baseline -- --ignored --nocapture",
+    "note": "Eval-first baseline (ADR-14). Captured with a locally-provided model via OnnxEmbedder::from_local_dir because the hf-hub download path is unavailable in this environment (see T-B6). Reproducible on any box with the model files."
+  },
+  "coding-memory": {
+    "suite": "coding-memory",
+    "model_id": "sentence-transformers/all-MiniLM-L6-v2",
+    "totals": {
+      "queries": 18,
+      "recall_at_5": 0.8333333333333334,
+      "recall_at_10": 0.9444444444444444,
+      "mrr": 0.6731481481481482
+    },
+    "by_category": {
+      "knowledge-update": { "queries": 1, "recall_at_5": 1.0, "recall_at_10": 1.0, "mrr": 1.0 },
+      "multi-hop": { "queries": 3, "recall_at_5": 0.6666666666666666, "recall_at_10": 1.0, "mrr": 0.5 },
+      "paraphrase": { "queries": 6, "recall_at_5": 0.6666666666666666, "recall_at_10": 0.8333333333333334, "mrr": 0.6111111111111112 },
+      "single-fact": { "queries": 6, "recall_at_5": 1.0, "recall_at_10": 1.0, "mrr": 0.6583333333333333 },
+      "temporal": { "queries": 2, "recall_at_5": 1.0, "recall_at_10": 1.0, "mrr": 1.0 }
+    }
+  },
+  "longmemeval-subset": {
+    "suite": "longmemeval-subset",
+    "model_id": "sentence-transformers/all-MiniLM-L6-v2",
+    "totals": {
+      "queries": 12,
+      "recall_at_5": 1.0,
+      "recall_at_10": 1.0,
+      "mrr": 0.9444444444444443
+    },
+    "by_category": {
+      "knowledge-update": { "queries": 2, "recall_at_5": 1.0, "recall_at_10": 1.0, "mrr": 1.0 },
+      "multi-hop": { "queries": 1, "recall_at_5": 1.0, "recall_at_10": 1.0, "mrr": 1.0 },
+      "paraphrase": { "queries": 2, "recall_at_5": 1.0, "recall_at_10": 1.0, "mrr": 1.0 },
+      "preference": { "queries": 1, "recall_at_5": 1.0, "recall_at_10": 1.0, "mrr": 1.0 },
+      "single-session": { "queries": 4, "recall_at_5": 1.0, "recall_at_10": 1.0, "mrr": 0.8333333333333333 },
+      "temporal": { "queries": 2, "recall_at_5": 1.0, "recall_at_10": 1.0, "mrr": 1.0 }
+    }
+  }
+}

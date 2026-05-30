@@ -135,7 +135,23 @@ impl McpServer {
             }
         };
         match (tool.handler)(&self.service, arguments) {
-            Ok(v) => Response::ok(id, v),
+            Ok(v) => {
+                // MCP spec (protocolVersion 2024-11-05+) requires `tools/call`
+                // to return a `CallToolResult` shaped like
+                // `{ content: [{ type: "text", text: <...> }], isError: bool }`.
+                // Handlers produce arbitrary JSON; we stringify it into a
+                // single text block. Migration to `structuredContent`
+                // (2025-06-18) is deferred.
+                let text = serde_json::to_string(&v)
+                    .unwrap_or_else(|_| "<unserializable tool output>".into());
+                Response::ok(
+                    id,
+                    serde_json::json!({
+                        "content": [{ "type": "text", "text": text }],
+                        "isError": false,
+                    }),
+                )
+            }
             Err(e) => Response::err(id, e.to_jsonrpc()),
         }
     }

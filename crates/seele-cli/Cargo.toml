@@ -23,6 +23,7 @@ seele-sync = { path = "../seele-sync" }
 seele-setup = { path = "../seele-setup" }
 seele-project = { path = "../seele-project" }
 seele-engram-import = { path = "../seele-engram-import" }
+seele-eval = { path = "../seele-eval" }
 clap.workspace = true
 tokio.workspace = true
 tracing.workspace = true
@@ -31,6 +32,7 @@ anyhow.workspace = true
 dirs = "5"
 serde.workspace = true
 serde_json.workspace = true
+tempfile.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

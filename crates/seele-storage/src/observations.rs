@@ -67,6 +67,13 @@ pub enum RawSaveOutcome {
     Inserted,
     /// A row with this `id` already existed; nothing changed.
     AlreadyExisted,
+    /// `INSERT OR IGNORE` dropped the row because its `int_id` — the
+    /// random-tail mapping (`SeeleId::as_i64`) of the *preserved* ULID —
+    /// collided with an existing row's `int_id` UNIQUE. The preserved
+    /// ULID cannot be remapped, so the row was NOT imported. Surfaced
+    /// (not folded into `AlreadyExisted`) so callers don't mistake silent
+    /// data loss for an idempotent skip.
+    IntIdCollision,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -611,10 +618,22 @@ fn save_raw_in_tx(tx: &Transaction<'_>, input: RawSaveInput) -> Result<RawSaveOu
             metadata_json,
         ],
     )?;
-    Ok(if inserted == 1 {
-        RawSaveOutcome::Inserted
-    } else {
+    if inserted == 1 {
+        return Ok(RawSaveOutcome::Inserted);
+    }
+    // `INSERT OR IGNORE` swallowed the row. Distinguish a genuine
+    // idempotent re-import (the `id` PK is already present) from an
+    // `int_id` UNIQUE collision (a different `id` whose random-tail
+    // mapping clashed). The latter is silent data loss unless surfaced.
+    let id_present: i64 = tx.query_row(
+        "SELECT COUNT(*) FROM observations WHERE id = ?1",
+        params![input.id.to_string()],
+        |r| r.get(0),
+    )?;
+    Ok(if id_present > 0 {
         RawSaveOutcome::AlreadyExisted
+    } else {
+        RawSaveOutcome::IntIdCollision
     })
 }
 

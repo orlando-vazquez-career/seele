@@ -55,6 +55,11 @@ ALLOWLIST_DIRS=(
   # moves them to `executed/`. They legitimately mention the legacy
   # name when describing CI/static-check coverage.
   "genesis/plans/tactica/"
+  # Post-v0.1 plans live under docs/plans/ per CLAUDE.md. Same allowance
+  # as genesis/plans: in-flight and executed táctica may mention the
+  # legacy name when documenting CI / static-check coverage.
+  "docs/plans/tactica/"
+  "docs/plans/executed/tactica/"
 )
 
 is_allowlisted() {

@@ -13,6 +13,7 @@ members = [
     "crates/seele-project",
     "crates/seele-engram-import",
     "crates/seele-cli",
+    "crates/seele-eval",
 ]
 resolver = "2"
 

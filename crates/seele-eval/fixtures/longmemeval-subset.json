@@ -1,0 +1,33 @@
+{
+  "_comment": "Suite longmemeval-subset (CASERA, decision del usuario: no se baja el dataset real de LongMemEval). Memoria conversacional sintetica estilo LongMemEval: hechos/preferencias que un usuario ficticio ('Mara') le dijo a un asistente a lo largo de sesiones. Mide recall de memoria de usuario, complementaria al coding-memory. Persona 100% ficticia (sin PII real). expected_ids LAXO. Categorias: single-session, paraphrase, knowledge-update, temporal, preference, multi-hop.",
+  "corpus": [
+    { "id": "lm-01", "body": "The user said their name is Mara and they prefer to be called Mara, not Maria.", "metadata": { "title": "User name", "type": "memory", "scope": "personal", "topic_key": "user/identity" } },
+    { "id": "lm-02", "body": "The user works as a backend engineer, mostly in Go and Rust.", "metadata": { "title": "User job", "type": "memory", "scope": "personal", "topic_key": "user/work" } },
+    { "id": "lm-03", "body": "The user is based in Lisbon, in the UTC+0/+1 timezone.", "metadata": { "title": "User location", "type": "memory", "scope": "personal", "topic_key": "user/location" } },
+    { "id": "lm-04", "body": "The user said their favorite code editor was VS Code.", "metadata": { "title": "Editor (old)", "type": "memory", "scope": "personal", "topic_key": "user/editor" } },
+    { "id": "lm-05", "body": "The user later switched editors: they moved from VS Code to Neovim two weeks ago.", "metadata": { "title": "Editor (current)", "type": "memory", "scope": "personal", "topic_key": "user/editor" } },
+    { "id": "lm-06", "body": "The user is vegetarian and avoids dairy.", "metadata": { "title": "Dietary restrictions", "type": "memory", "scope": "personal", "topic_key": "user/diet" } },
+    { "id": "lm-07", "body": "The user prefers concise answers with code examples over long prose.", "metadata": { "title": "Answer style", "type": "memory", "scope": "personal", "topic_key": "user/style" } },
+    { "id": "lm-08", "body": "The user mentioned a project deadline: their API rewrite ships at the end of the quarter.", "metadata": { "title": "API rewrite deadline", "type": "memory", "scope": "personal", "topic_key": "user/deadline" } },
+    { "id": "lm-09", "body": "The user has two cats, named Tab and Escape.", "metadata": { "title": "User pets", "type": "memory", "scope": "personal", "topic_key": "user/pets" } },
+    { "id": "lm-10", "body": "The user prefers metric units and 24-hour time.", "metadata": { "title": "Units preference", "type": "memory", "scope": "personal", "topic_key": "user/units" } },
+    { "id": "lm-11", "body": "Before going freelance, the user spent four years at a logistics company.", "metadata": { "title": "Work history", "type": "memory", "scope": "personal", "topic_key": "user/history" } },
+    { "id": "lm-12", "body": "The user is learning to play the piano on weekends.", "metadata": { "title": "User hobby", "type": "memory", "scope": "personal", "topic_key": "user/hobby" } },
+    { "id": "lm-13", "body": "The user updated their stack preference: they now default to PostgreSQL instead of MySQL for new projects.", "metadata": { "title": "DB preference (current)", "type": "memory", "scope": "personal", "topic_key": "user/db" } },
+    { "id": "lm-14", "body": "The user said they commute by train and read during the ride.", "metadata": { "title": "Commute", "type": "memory", "scope": "personal", "topic_key": "user/commute" } }
+  ],
+  "queries": [
+    { "q": "What code editor does the user use now?", "expected_ids": ["lm-05", "lm-04"], "category": "knowledge-update" },
+    { "q": "What should I call the user?", "expected_ids": ["lm-01"], "category": "single-session" },
+    { "q": "Where does the user live?", "expected_ids": ["lm-03"], "category": "single-session" },
+    { "q": "Does the user have any dietary restrictions?", "expected_ids": ["lm-06"], "category": "paraphrase" },
+    { "q": "How does the user like their answers formatted?", "expected_ids": ["lm-07"], "category": "preference" },
+    { "q": "When does the user's API rewrite ship?", "expected_ids": ["lm-08"], "category": "temporal" },
+    { "q": "What pets does the user have?", "expected_ids": ["lm-09"], "category": "paraphrase" },
+    { "q": "What does the user do for a living?", "expected_ids": ["lm-02"], "category": "single-session" },
+    { "q": "What database does the user prefer for new projects now?", "expected_ids": ["lm-13"], "category": "knowledge-update" },
+    { "q": "What did the user do before going freelance?", "expected_ids": ["lm-11"], "category": "temporal" },
+    { "q": "What instrument is the user learning?", "expected_ids": ["lm-12"], "category": "single-session" },
+    { "q": "What are the user's formatting and units preferences?", "expected_ids": ["lm-10", "lm-07"], "category": "multi-hop" }
+  ]
+}

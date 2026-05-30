@@ -65,9 +65,7 @@ pub async fn run(args: Args, db: &Option<PathBuf>, fake_embedder: bool) -> anyho
         }
         (None, None) => None,
         _ => {
-            anyhow::bail!(
-                "--chat-provider and --chat-key must be set together (or both omitted)"
-            );
+            anyhow::bail!("--chat-provider and --chat-key must be set together (or both omitted)");
         }
     };
 

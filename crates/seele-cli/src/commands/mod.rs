@@ -4,6 +4,7 @@
 
 pub mod delete;
 pub mod doctor;
+pub mod eval;
 pub mod import;
 pub mod link;
 pub mod list;

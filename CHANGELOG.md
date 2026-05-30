@@ -5,7 +5,46 @@ Todos los cambios notables a este proyecto se documentan acá. Formato basado en
 
 ## [Unreleased]
 
-(Nothing yet.)
+_En curso: v0.3 «calidad de memoria» (evaluation-first) — crate `seele-eval`
+(harness recall@k/MRR por categoría), tabla `embeddings_meta` (provenance de
+embeddings), e higiene A6/A7 (drift de versión, robustez de `int_id`, footprint
+del binario). Ver `docs/plans/estrategia/v0.3-calidad-memoria/`. Sin release marcado._
+
+### Fixed
+
+- **MCP `tools/call` wire envelope** (`crates/seele-mcp/src/server.rs`). The
+  dispatcher returned each tool's raw JSON as the JSON-RPC `result`,
+  bypassing the `CallToolResult` envelope required by the MCP spec
+  (`{ content: [{ type: "text", text: ... }], isError }`). Clients
+  (Claude Code, Cursor, Windsurf) looked for `result.content[0].text`,
+  found nothing, and rendered every tool call as "completed with no
+  output" — even though the handlers ran and the DB was healthy. The
+  fix wraps the handler payload in a single `text` content block and
+  sets `isError: false`. JSON-RPC error paths (parse / unknown method /
+  invalid params / tool domain errors) are unchanged.
+- **`seele-http` test helpers**: six integration test files
+  (`handlers_basicos.rs`, `handlers_c1_lifecycle.rs`,
+  `handlers_c2_relations_stats.rs`, `handlers_d_auth_openapi.rs`,
+  `skeleton.rs`, `openapi_consistency.rs`) failed to compile because
+  `ServerConfig` gained the `chat` field in v0.2.0 LUMEN sprints but
+  the test fixtures were not updated. Added `chat: None`.
+
+### Added
+
+- **MCP envelope shape test** (`crates/seele-mcp/tests/call_tool_result_envelope.rs`).
+  Verifies that `tools/call` responses follow `CallToolResult` shape
+  per MCP spec 2024-11-05. Two cases: `seele_doctor` (full payload) and
+  `seele_version` (minimal payload). Prevents regression of the wire
+  envelope bug.
+
+### Changed
+
+- **STELE residual allowlist**: `scripts/check-no-stele-residual.{sh,ps1}`
+  gain `docs/plans/tactica/` and `docs/plans/executed/tactica/` prefixes
+  so post-v0.1 táctica plans can mention the legacy name when
+  documenting CI/static-check coverage, matching the existing
+  `genesis/plans/` carve-out.
+
 
 ## [0.2.0] — 2026-05-13
 

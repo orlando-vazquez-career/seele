@@ -12,10 +12,12 @@ A local-first memory engine for AI agents — Rust + SQLite + FTS5 +
 sqlite-vec + ONNX embeddings + hybrid search via Reciprocal Rank
 Fusion. One binary, three transports: CLI, MCP stdio, HTTP REST.
 
-**Status: v0.1.0** — first stable release, shipped under AEGIS over 5
-sprints. See [`CHANGELOG.md`](./CHANGELOG.md) for what's in this
-version and [`docs/aegis/devlogs/`](./docs/aegis/devlogs/) for the
-sprint-by-sprint trail.
+**Status: v0.2.0** — adds a static web frontend (Astro) and a
+chat-with-DB backend (`seele-chat`) on top of the v0.1.0 engine — built
+under AEGIS (backend) and LUMEN (frontend). See
+[`CHANGELOG.md`](./CHANGELOG.md) for what's in this version and
+[`docs/aegis/devlogs/`](./docs/aegis/devlogs/) for the sprint-by-sprint
+trail.
 
 ---
 

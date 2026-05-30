@@ -105,6 +105,31 @@ impl OnnxEmbedder {
         })
     }
 
+    /// Build from model files already present in `dir`, bypassing hf-hub
+    /// entirely. Expects `dir/onnx/model_quantized.onnx` (or
+    /// `dir/onnx/model.onnx` when `config.quantized` is false / the quantized
+    /// file is absent) plus `dir/tokenizer.json`. Useful for air-gapped /
+    /// offline environments and for capturing eval baselines where the hf-hub
+    /// download is unavailable.
+    pub fn from_local_dir(dir: impl AsRef<Path>, config: OnnxConfig) -> Result<Self> {
+        let dir = dir.as_ref();
+        let quant = dir.join(ONNX_PATH_QUANTIZED);
+        let (model_path, loaded_model_file) = if config.quantized && quant.exists() {
+            (quant, ONNX_PATH_QUANTIZED.to_string())
+        } else {
+            (dir.join(ONNX_PATH_FULL), ONNX_PATH_FULL.to_string())
+        };
+        let tokenizer_path = dir.join(TOKENIZER_PATH_IN_REPO);
+        let tokenizer = Tokenizer::from_file(&tokenizer_path)?;
+        let session = Session::builder()?.commit_from_file(&model_path)?;
+        Ok(Self {
+            session: Mutex::new(session),
+            tokenizer,
+            config,
+            loaded_model_file,
+        })
+    }
+
     /// Hex-encoded SHA256 expected for the loaded model file, if listed in
     /// [`TRUSTED_HASHES`]. `None` for unlisted models — used by the upstream
     /// CLI (`seele embedder reembed-all`) to detect model swaps.

@@ -63,6 +63,8 @@ pub enum Command {
     Doctor,
     /// List distinct project names.
     Projects,
+    /// Run a built-in memory-quality evaluation suite (recall@k / MRR).
+    Eval(commands::eval::Args),
     /// Multi-machine sync via gzipped JSON chunks.
     #[command(subcommand)]
     Sync(commands::sync::SyncCmd),
@@ -103,6 +105,7 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
         Command::Stats => commands::stats::run(&cli.db, cli.fake_embedder, &out).await,
         Command::Doctor => commands::doctor::run(&cli.db, cli.fake_embedder, &out).await,
         Command::Projects => commands::projects::run(&cli.db, cli.fake_embedder, &out).await,
+        Command::Eval(args) => commands::eval::run(args, cli.fake_embedder, &out).await,
         Command::Sync(cmd) => commands::sync::run(cmd, &cli.db, cli.fake_embedder, &out).await,
         Command::Import(cmd) => commands::import::run(cmd, &cli.db, cli.fake_embedder, &out).await,
         Command::Setup(args) => commands::setup::run(args, &out).await,

@@ -198,8 +198,8 @@ pub async fn get_embedder_info(State(svc): State<Arc<SeeleService>>) -> Json<Emb
 // -------- Chat (AI provider with tool-use against /search) --------
 
 use seele_chat::{
-    AnthropicProvider, ChatConfig, ChatProvider, Message as ChatMessage,
-    OpenAICompatibleProvider, ToolHandler, ToolSpec,
+    AnthropicProvider, ChatConfig, ChatProvider, Message as ChatMessage, OpenAICompatibleProvider,
+    ToolHandler, ToolSpec,
 };
 
 use crate::server::ChatProviderConfig;
@@ -326,8 +326,8 @@ pub async fn chat(
                 #[serde(default)]
                 project: Option<String>,
             }
-            let args: Args = serde_json::from_str(&args_json)
-                .map_err(|e| format!("invalid args: {e}"))?;
+            let args: Args =
+                serde_json::from_str(&args_json).map_err(|e| format!("invalid args: {e}"))?;
             let limit = args.limit.unwrap_or(5).min(20);
             let req = SearchRequest {
                 query: args.query.clone(),

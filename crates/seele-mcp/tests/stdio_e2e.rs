@@ -21,6 +21,18 @@ fn make_service() -> (TempDir, SeeleService) {
     (td, svc)
 }
 
+/// Extract and parse the JSON payload from a successful `tools/call`
+/// response. MCP spec wraps the handler output in `result.content[0].text`
+/// as a stringified JSON. This helper unwraps it so test assertions can
+/// keep looking at the handler-level shape without each test re-parsing
+/// the envelope.
+fn tool_result(r: &Value) -> Value {
+    let text = r["result"]["content"][0]["text"]
+        .as_str()
+        .expect("tools/call result missing content[0].text");
+    serde_json::from_str(text).expect("tools/call result text is not valid JSON")
+}
+
 /// Spawn the MCP server against a duplex pair, write one request, read
 /// one line of response, and return the parsed JSON.
 async fn round_trip(server: McpServer, req: Value) -> Value {
@@ -212,11 +224,12 @@ async fn tools_call_seele_save_then_search() {
 
     let saved: Value = serde_json::from_str(&a).unwrap();
     assert_eq!(saved["id"], 10);
-    assert!(saved["result"]["id"].is_string());
+    assert!(tool_result(&saved)["id"].is_string());
 
     let searched: Value = serde_json::from_str(&b).unwrap();
     assert_eq!(searched["id"], 11);
-    let hits = searched["result"]["hits"].as_array().unwrap();
+    let searched_payload = tool_result(&searched);
+    let hits = searched_payload["hits"].as_array().unwrap();
     assert!(!hits.is_empty(), "expected at least one hit");
 }
 
@@ -271,7 +284,7 @@ async fn tools_call_under_mnema_prefix_routes_to_canonical_handler() {
         }),
     )
     .await;
-    assert!(r["result"]["id"].is_string());
+    assert!(tool_result(&r)["id"].is_string());
 }
 
 #[tokio::test]
@@ -286,9 +299,10 @@ async fn tools_call_seele_doctor_returns_health_report() {
         }),
     )
     .await;
-    assert_eq!(r["result"]["status"], "ok");
-    assert!(r["result"]["embedder"]["model_id"].is_string());
-    assert_eq!(r["result"]["observations_active"], 0);
+    let payload = tool_result(&r);
+    assert_eq!(payload["status"], "ok");
+    assert!(payload["embedder"]["model_id"].is_string());
+    assert_eq!(payload["observations_active"], 0);
 }
 
 #[tokio::test]
@@ -307,8 +321,9 @@ async fn tools_call_seele_capture_passive_extracts_learnings() {
         }),
     )
     .await;
-    assert_eq!(r["result"]["count"], 2);
-    let saved = r["result"]["saved"].as_array().unwrap();
+    let payload = tool_result(&r);
+    assert_eq!(payload["count"], 2);
+    let saved = payload["saved"].as_array().unwrap();
     assert_eq!(saved.len(), 2);
     for v in saved {
         assert!(v.is_string());
