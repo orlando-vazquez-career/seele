@@ -34,7 +34,7 @@ Reimplementación clean-room inspirada en [ENGRAM](https://github.com/Gentleman-
 - **Rust** 1.85+ (`rust-toolchain.toml`).
 - **Edición** 2021.
 - **MSRV bump 1.83 → 1.85** decidido para usar `clap_lex` con `edition2024`. Ver `CHANGELOG.md`.
-- **Workspace** con 13 crates en `crates/`:
+- **Workspace** con 14 crates en `crates/`:
   - `seele-core` — tipos canónicos, errores, IDs (ULID via `SeeleId`).
   - `seele-storage` — SQLite + FTS5 + vec0 + CRUD + migrations refinery. `save_raw_in_tx` para migration paths.
   - `seele-embedder` — ONNX runtime via `ort` + `tokenizers` + `hf-hub` + auto-download.
@@ -47,7 +47,8 @@ Reimplementación clean-room inspirada en [ENGRAM](https://github.com/Gentleman-
   - `seele-setup` — wizard 3 implementados + 5 skeleton (sprint-04).
   - `seele-project` — 5-case project detection (sprint-04).
   - `seele-engram-import` — migration ENGRAM → SEELE ADR-13 (sprint-04).
-  - `seele-cli` — binary `seele` clap derive, 17 subcomandos (sprint-04).
+  - `seele-cli` — binary `seele` clap derive, 18 subcomandos (sprint-04; `eval` agregado en v0.3).
+  - `seele-eval` — harness de evaluación de calidad de memoria (recall@k/MRR por categoría); suites embebidas + subcomando `seele eval` (v0.3-α, ADR-14).
 - **DB**: SQLite con `rusqlite` (feature `bundled` + `load_extension`) + `sqlite-vec` v0.1.9 vendorizado para 5 targets.
 - **Async**: tokio 1.42 multi-thread.
 - **Errores**: `thiserror` para errores tipados; `anyhow` solo en CLI.

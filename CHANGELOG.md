@@ -5,13 +5,50 @@ Todos los cambios notables a este proyecto se documentan acá. Formato basado en
 
 ## [Unreleased]
 
-_En curso: v0.3 «calidad de memoria» (evaluation-first) — crate `seele-eval`
-(harness recall@k/MRR por categoría), tabla `embeddings_meta` (provenance de
-embeddings), e higiene A6/A7 (drift de versión, robustez de `int_id`, footprint
-del binario). Ver `docs/plans/estrategia/v0.3-calidad-memoria/`. Sin release marcado._
+_v0.3-α «calidad de memoria» (evaluation-first, ADR-14): harness `seele-eval`
+(recall@k/MRR por categoría), primer baseline auditable (v0.2), tabla
+`embeddings_meta`, e higiene A6/A7 (drift de versión, robustez de `int_id`,
+footprint del binario ADR-15). Devlog
+`docs/aegis/devlogs/2026-05-29-sprint-v0.3-alpha-eval-harness.md`. Sin release
+SemVer marcado._
+
+### Added
+
+- **New crate `seele-eval`** (#14) — evaluation-first memory-quality harness
+  (ADR-14). recall@5 / recall@10 (binary) + MRR per category against the live
+  hybrid FTS+vec+RRF pipeline. Fixture contract (`Suite`/`CorpusItem`/
+  `EvalQuery`), `load_suite`/`builtin_suite`, `ingest` (via `save_raw`, no
+  topic-key collapse), `run_suite` → `SuiteReport`. Two embedded suites:
+  `coding-memory` and `longmemeval-subset` (homemade). CLI subcommand
+  `seele eval --suite <name> [--json]` (ephemeral DB, never the real one).
+- **`embeddings_meta` table** (migration `V002__embeddings_meta.sql`) —
+  per-observation embedding provenance (`model_id`/`dim`/`contextualized`),
+  FK to `observations(id)`, backfilled `all-MiniLM-L6-v2`/384/0. Prerequisite
+  for the multilingual-embedder / reranking work; not consumed by search yet.
+- **`OnnxEmbedder::from_local_dir`** — load the ONNX model + tokenizer from a
+  directory, bypassing `hf-hub` (offline / air-gapped baselines).
+- **First auditable retrieval baseline**
+  (`docs/plans/executed/tactica/v0.3-calidad-memoria/baseline-v0.2.json`):
+  `coding-memory` recall@5 0.833 / recall@10 0.944 / MRR 0.673;
+  `longmemeval-subset` 1.0 / MRR 0.944. Flags paraphrase + multi-hop as the
+  weak spots of pure RRF.
+- **MCP envelope shape test** (`crates/seele-mcp/tests/call_tool_result_envelope.rs`).
+  Verifies that `tools/call` responses follow `CallToolResult` shape
+  per MCP spec 2024-11-05. Two cases: `seele_doctor` (full payload) and
+  `seele_version` (minimal payload). Prevents regression of the wire
+  envelope bug.
 
 ### Fixed
 
+- **`int_id` silent-drop on the raw import path**
+  (`crates/seele-storage/src/observations.rs`). `SeeleId::as_i64()` maps the
+  ULID's random tail (bytes 9..16, 56 bits); `save_raw_in_tx` used
+  `INSERT OR IGNORE`, so a preserved ULID whose `int_id` collided with an
+  existing row was dropped silently — data loss masked as an idempotent skip
+  in `import`/`sync`. New `RawSaveOutcome::IntIdCollision` detects the case
+  (0 rows affected + PK absent) and **reports** it instead of swallowing it;
+  surfaced by `engram-import` and `sync`. Regression test
+  `crates/seele-storage/tests/int_id_collision.rs`.
 - **MCP `tools/call` wire envelope** (`crates/seele-mcp/src/server.rs`). The
   dispatcher returned each tool's raw JSON as the JSON-RPC `result`,
   bypassing the `CallToolResult` envelope required by the MCP spec
@@ -28,22 +65,30 @@ del binario). Ver `docs/plans/estrategia/v0.3-calidad-memoria/`. Sin release mar
   `skeleton.rs`, `openapi_consistency.rs`) failed to compile because
   `ServerConfig` gained the `chat` field in v0.2.0 LUMEN sprints but
   the test fixtures were not updated. Added `chat: None`.
-
-### Added
-
-- **MCP envelope shape test** (`crates/seele-mcp/tests/call_tool_result_envelope.rs`).
-  Verifies that `tools/call` responses follow `CallToolResult` shape
-  per MCP spec 2024-11-05. Two cases: `seele_doctor` (full payload) and
-  `seele_version` (minimal payload). Prevents regression of the wire
-  envelope bug.
+- **OpenAPI spec missing `/chat` + `/chat/info`** (`crates/seele-http/src/openapi.rs`).
+  The chat endpoints (added in the v0.2.0 LUMEN sprint) were wired into the
+  router but never declared in the hand-authored OpenAPI paths, so the
+  `openapi_consistency` test (router ⊆ spec) had been red since then. Added
+  both path entries (POST `/chat`, GET `/chat/info`) with prose
+  request/response descriptions. Found running the full guardrails for the
+  first time post-v0.2.
+- **Stale `seele-tui` snapshot baselines** (`crates/seele-tui/tests/snapshots/*.snap`).
+  The TUI title bar renders `SEELE v{CARGO_PKG_VERSION}`; the 10 `views_snapshot`
+  baselines were captured at `v0.1.0` and never refreshed when the workspace
+  bumped to `v0.2.0`, leaving `views_snapshot` red since the bump. Baselines
+  refreshed to `v0.2.0` (the only changed line in each).
 
 ### Changed
 
+- **Doc drift (A6)**: `README` Status → v0.2; `as_i64()` doc corrected from
+  "first 6 bytes" to "random tail (bytes 9..16, 56 bits)" in `CLAUDE.md` /
+  ADR-14 / plan; workspace crate count 13 → 14.
 - **STELE residual allowlist**: `scripts/check-no-stele-residual.{sh,ps1}`
-  gain `docs/plans/tactica/` and `docs/plans/executed/tactica/` prefixes
-  so post-v0.1 táctica plans can mention the legacy name when
-  documenting CI/static-check coverage, matching the existing
-  `genesis/plans/` carve-out.
+  gain `docs/plans/tactica/`, `docs/plans/executed/tactica/`,
+  `docs/plans/estrategia/`, `docs/plans/executed/estrategia/` and
+  `docs/compendium/` prefixes so post-v0.1 plans and the architecture
+  compendium can reference the legacy name when documenting CI / static-check
+  coverage and naming history.
 
 
 ## [0.2.0] — 2026-05-13

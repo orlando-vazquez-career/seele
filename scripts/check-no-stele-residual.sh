@@ -60,6 +60,11 @@ ALLOWLIST_DIRS=(
   # legacy name when documenting CI / static-check coverage.
   "docs/plans/tactica/"
   "docs/plans/executed/tactica/"
+  # v0.3: estrategia plans + the architecture compendium legitimately
+  # reference the legacy name (naming history + documenting the check itself).
+  "docs/plans/estrategia/"
+  "docs/plans/executed/estrategia/"
+  "docs/compendium/"
 )
 
 is_allowlisted() {

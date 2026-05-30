@@ -342,6 +342,43 @@ fn build_paths() -> utoipa::openapi::Paths {
         ),
     );
 
+    // POST /chat — AI chat with server-side tool-use against /search
+    paths = paths.path(
+        "/chat",
+        PathItem::new(
+            HttpMethod::Post,
+            OperationBuilder::new()
+                .summary(Some("AI chat with tool-use over hybrid search"))
+                .description(Some(
+                    "Runs the server-side tool-use loop: the model may call \
+                     `seele_search` against the hybrid engine, results are fed \
+                     back, looping until it returns text. Request body \
+                     `{messages, system_prompt?, provider?, api_key?, model?, \
+                     endpoint?}` — per-request overrides beat the \
+                     `seele serve --chat-*` config; `api_key` is used once and \
+                     never persisted. Response `{messages, provider, model}`. \
+                     Returns 500 if chat is not configured.",
+                ))
+                .responses(json_ok("Full message history after the tool-use loop")),
+        ),
+    );
+
+    // GET /chat/info — chat availability
+    paths = paths.path(
+        "/chat/info",
+        PathItem::new(
+            HttpMethod::Get,
+            OperationBuilder::new()
+                .summary(Some("Chat availability + configured provider/model"))
+                .description(Some(
+                    "Returns `{enabled, provider, model}` so the frontend can \
+                     render the right state. `enabled=false` when the server was \
+                     started without `--chat-provider`.",
+                ))
+                .responses(json_ok("Chat info payload")),
+        ),
+    );
+
     paths.build()
 }
 

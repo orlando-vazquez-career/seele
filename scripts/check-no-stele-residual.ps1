@@ -40,7 +40,12 @@ $allowlistDirs = @(
     # as genesis/plans: in-flight and executed táctica may mention the
     # legacy name when documenting CI / static-check coverage.
     'docs/plans/tactica/',
-    'docs/plans/executed/tactica/'
+    'docs/plans/executed/tactica/',
+    # v0.3: estrategia plans + the architecture compendium legitimately
+    # reference the legacy name (naming history + documenting the check itself).
+    'docs/plans/estrategia/',
+    'docs/plans/executed/estrategia/',
+    'docs/compendium/'
 )
 
 $includeExt = @('*.md', '*.rs', '*.toml', '*.yaml', '*.yml', '*.json', '*.sh', '*.ps1')

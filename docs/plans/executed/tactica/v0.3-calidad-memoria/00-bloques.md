@@ -26,7 +26,7 @@
   - *Done*: `seele eval --suite coding-memory --json` produce salida válida; `--help` lo lista.
 - **T-B5** · Construir `coding-memory` (mini-corpus propio, ~20-40 Q&A con topic-keys reales) y `longmemeval-subset` (~50/500, categorías multi-session/knowledge-update/temporal). Si LongMemEval pesa, aplicar el fallback del ADR (harness casero) y dejar la pista académica como TODO con issue.
   - *Done*: ambas suites cargan; queda al menos una corrida completa.
-- **T-B6** · **Capturar el baseline v0.2** (all-MiniLM + RRF, sin reranker) sobre ambas suites; versionar el JSON en `docs/plans/tactica/v0.3-calidad-memoria/baseline-v0.2.json` y resumir en el devlog.
+- **T-B6** · **Capturar el baseline v0.2** (all-MiniLM + RRF, sin reranker) sobre ambas suites; versionar el JSON en `docs/plans/executed/tactica/v0.3-calidad-memoria/baseline-v0.2.json` y resumir en el devlog.
   - *Capturar con*: `cargo test -p seele-eval --test baseline -- --ignored --nocapture` (o `seele eval --suite <name> --json`) en una máquina con acceso a HuggingFace. La descarga del modelo ONNX no corre en el sandbox de CI (mismo motivo por el que los tests `#[ignore]` del embedder son "run locally") — el baseline se captura local.
   - *Done*: número por categoría registrado y reproducible.
 

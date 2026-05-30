@@ -4,7 +4,7 @@
 **Origen**: Auditoría externa "SEELE vs SOTA memory engines" corrida en Cowork con un Counsel MNEMA completo (5 advisors + 5 reviewers ciegos + veredicto, `claude-opus-4-8`).
 **Reporte fuente**: `C:/dev/sandbox/experiments/claude-cowork-dispatch/Reporte_SEELE_Auditoria-Memory-Engines_2026-05-29.md`
 **ADR asociado**: `docs/plans/arquitectura/14-evaluation-harness.md` (ADR-14).
-**Táctica**: `docs/plans/tactica/v0.3-calidad-memoria/00-bloques.md`.
+**Táctica**: `docs/plans/executed/tactica/v0.3-calidad-memoria/00-bloques.md`.
 
 > ⚠️ Este documento fue redactado fuera de Claude Code (en Cowork) como handoff. La ejecución se hace en Claude Code bajo AEGIS. **No mover a `executed/` ni commitear sin el Gate 1 + Gate 2** correspondientes.
 
