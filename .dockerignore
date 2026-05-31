@@ -1,0 +1,25 @@
+# Keep the build context small + reproducible.
+# Excludes the heaviest dirs and anything irrelevant to the Rust build.
+
+target/
+web/
+**/node_modules/
+.git/
+.github/
+
+# Local databases / caches must never leak into the image.
+*.db
+*.db-shm
+*.db-wal
+**/*.db
+.seele/
+
+# Docs + meta (not needed to compile the binary).
+docs/
+*.md
+LICENSE
+
+# Editor / OS noise.
+.vscode/
+.idea/
+.DS_Store
