@@ -1,0 +1,38 @@
+# SEELE — localhost test stack.
+#
+# Validates the hf-hub 0.5 embedder-download fix in a pristine container and
+# serves the HTTP REST API on http://localhost:7777.
+#
+#   docker compose build          # compile the image (slow first time)
+#   docker compose up             # start; watch the model download in logs
+#   curl http://localhost:7777/health
+#
+# Full procedure: docs/testing/guides/docker-localhost.md
+
+services:
+  seele:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: seele:hf-hub-test
+    container_name: seele-hfhub-test
+    ports:
+      - "7777:7777"
+    volumes:
+      # Named volume = DB + model cache persist across restarts. Remove it
+      # (`docker compose down -v`) to reproduce the cold first-run download.
+      - seele-data:/data
+    environment:
+      RUST_LOG: "info"
+    healthcheck:
+      # /health is public (no auth). start_period is generous because the
+      # FIRST boot downloads ~80 MB from Hugging Face before listening.
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:7777/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 180s
+    restart: "no"
+
+volumes:
+  seele-data:
