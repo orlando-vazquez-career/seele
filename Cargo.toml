@@ -70,7 +70,7 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 clap = { version = "4.5", features = ["derive", "env"] }
 
 # TUI
-ratatui = "0.29"
+ratatui = "0.30"
 crossterm = "0.28"
 tempfile = "3"
 
