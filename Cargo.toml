@@ -46,7 +46,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 rusqlite = { version = "0.32", features = ["bundled", "load_extension"] }
 r2d2 = "0.8"
 r2d2_sqlite = "0.25"
-refinery = { version = "0.8", features = ["rusqlite"] }
+refinery = { version = "0.9", features = ["rusqlite"] }
 
 # Embedder
 # ort 2.0 está en RC; pineamos a `=2.0.0-rc.10` porque no hay stable a 2026-05.
