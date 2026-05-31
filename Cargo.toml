@@ -54,7 +54,7 @@ refinery = { version = "0.8", features = ["rusqlite"] }
 # Despinear ahí; ver CHANGELOG entry "Pinned".
 ort = "=2.0.0-rc.10"
 ndarray = "0.16"
-tokenizers = "0.20"
+tokenizers = "0.23"
 hf-hub = "0.5"
 
 # HTTP
