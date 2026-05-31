@@ -55,7 +55,7 @@ refinery = { version = "0.8", features = ["rusqlite"] }
 ort = "=2.0.0-rc.10"
 ndarray = "0.16"
 tokenizers = "0.20"
-hf-hub = "0.3"
+hf-hub = "0.5"
 
 # HTTP
 axum = "0.8"

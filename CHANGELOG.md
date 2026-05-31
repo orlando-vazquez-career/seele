@@ -12,6 +12,18 @@ footprint del binario ADR-15). Devlog
 `docs/aegis/devlogs/2026-05-29-sprint-v0.3-alpha-eval-harness.md`. Sin release
 SemVer marcado._
 
+### Fixed
+
+- **Embedder first-run download (`hf-hub` 0.3 → 0.5)** — bump fixes the relative-`307`
+  redirect failure (`RelativeUrlWithoutBase`) that broke the first-run download of
+  `all-MiniLM-L6-v2` from Hugging Face on the `ureq` sync backend. hf-hub 0.5.0 uses
+  `ureq` 3+, which follows relative redirects. **No code changes** — the
+  `hf_hub::api::sync` surface (`ApiBuilder`/`with_cache_dir`/`build`/`model.get`/`ApiError`)
+  is API-compatible. Verified end-to-end with a real fresh-cache download
+  (`cargo test -p seele-embedder -- --ignored embed_returns_unit_vector_of_correct_dim`).
+  The seeded-cache workaround is no longer required; the offline
+  `OnnxEmbedder::from_local_dir` path remains for air-gapped baselines.
+
 ### Added
 
 - **New crate `seele-eval`** (#14) — evaluation-first memory-quality harness
