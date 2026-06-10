@@ -16,14 +16,15 @@ Reimplementación clean-room inspirada en [ENGRAM](https://github.com/Gentleman-
   - Sprint-03 BE Interfaces (`sprint-03-interfaces`, devlog `2026-05-10-sprint-03-interfaces.md`).
   - Sprint-04 Ops & UX (`sprint-04-ops-ux`, devlog `2026-05-10-sprint-04-ops-ux.md`).
   - Sprint-05 Polish + CI/CD + Release (`sprint-05-polish-release`, devlog `2026-05-11-sprint-05-polish-release.md`). SemVer release tag `v0.1.0` (precedido por `v0.1.0-rc.1` para validar `release.yml`).
-- 322 tests verde + 4 ignored (2 ONNX descarga + 2 perf smoke 1K/10K). Clippy + fmt + STELE residual checks pasando.
+- Sprint GRAIL-H1 (2026-06-10, branch `sprint/grail-h1-quickwins`): 11 quick wins del plan `docs/analysis/2026-06-09-plan-mejoras-grail-en-seele.md` — envelope JSON CLI, embeddings_meta cableada, tercer path RRF `fts_loose` (gate eval: paraphrase r@5 0.733→0.867), `--explain`, near_duplicates en save, find_similar + compare suggest, ChatProvider endurecido, topic-families.toml real, eval nDCG@10 + suite v2, COMPARISON.md + mermaid, release.yml reparado + RELEASING.md.
+- ~370 tests verde + 5 ignored (ONNX descarga + perf smoke). Clippy + fmt + STELE residual checks pasando.
 - v0.2 trabaja sobre `[Unreleased]` en `CHANGELOG.md`. Próximas features candidatas: 5 skeleton agents (`opencode`/`aider`/`cody`/`continue`/`zed`), sync chunk splitter (~1 MB cap), TUI editing in-place, `claude mcp add` delegación, Homebrew tap, project-detection wired in `seele save`.
 
 ### Lo que ya corre
 
 - `seele serve [--port 7777] [--bind 127.0.0.1] [--legacy-engram-paths] [--auth-bearer <token>] [--db <path>]` — HTTP REST API con Swagger UI en `/docs`, OpenAPI 3.1 en `/openapi.json`.
 - `seele mcp [--tool-prefix <p>] [--db <path>]` — MCP stdio JSON-RPC 2.0 con 19 tools. Conectable desde Claude Code, Cursor, OpenCode. Per ADR-13, `--tool-prefix mnema` expone `mnema_save`, `mnema_recall`, etc para drop-in compat con consumers ENGRAM.
-- `seele [save|search|show|list|delete|restore|link|stats|doctor|projects]` — clap CLI completa contra el service local (no HTTP). Flags globales `--db`/`--json`/`--fake-embedder`. ONNX es default en v0.1; `--fake-embedder` (o `SEELE_FAKE_EMBEDDER=1`) fuerza FakeEmbedder. Si ONNX init falla, fallback transparente a Fake con warn.
+- `seele [save|search|show|list|delete|restore|link|stats|doctor|projects]` — clap CLI completa contra el service local (no HTTP). Flags globales `--db`/`--json`/`--fake-embedder`. Con `--json` toda la CLI habla el envelope `{ok,data,warnings}` (errores `{ok:false,error,kind}` a stdout). `seele search --explain` vuelca el trace del pipeline (candidatos por path, distancias vec, params). `seele eval --suite <name>|--suite-file <path>` corre el harness con recall@k/MRR/nDCG@10. ONNX es default en v0.1; `--fake-embedder` (o `SEELE_FAKE_EMBEDDER=1`) fuerza FakeEmbedder. Si ONNX init falla, fallback transparente a Fake con warn.
 - `seele sync [export|import]` — git-friendly chunks JSON gzip. Re-imports idempotent por SHA-256.
 - `seele import from-engram <path> [--dry-run] [--re-embed]` — migración one-shot de ENGRAM SQLite (ADR-13). Preserva ULIDs, mapea `linked_to[]` a tabla `links`. Idempotente.
 - `seele setup [--agent <name>|--all|--list] [--dry-run] [--no-backup]` — wizard MCP install. 3 agentes implementados (claude-code/cursor/windsurf), 5 skeleton (opencode/aider/cody/continue/zed).
@@ -96,7 +97,7 @@ Reimplementación clean-room inspirada en [ENGRAM](https://github.com/Gentleman-
 ### Topic keys
 
 - Default heuristics: `architecture/*`, `bug/*`, `decision/*`, `pattern/*`, `config/*`, `discovery/*`, `learning/*` (heredadas de ENGRAM, válidas para coding agents).
-- **Configurabilidad por consumer**: SEELE expone API para que MNEMA u otro consumer registre sus propias families via `~/.seele/topic-families.toml`.
+- **Configurabilidad por consumer (implementado en GRAIL-H1)**: `seele_core::families` resuelve `$SEELE_TOPIC_FAMILIES` > `./.seele/topic-families.toml` > `~/.seele/topic-families.toml` > 7 builtin ENGRAM, una vez al boot del service. TOML inválido = warn + fallthrough, nunca panic. `seele_suggest_topic_key` además propone el topic_key del vecino vectorial más cercano (source `neighbor`) antes del fallback por familias.
 - Upsert: misma `(project, scope, topic_key)` activa → update + revision_count++.
 
 ## Comandos comunes

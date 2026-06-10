@@ -837,7 +837,11 @@ fn knn_by_vector_filters_excludes_and_orders_by_distance() {
     assert!(!ids.contains(&other), "project filter must hold");
     assert_eq!(ids[0], b, "closest neighbor first");
     // cos 0.98 → l2 = sqrt(2*(1-0.98)) = 0.2 — inside the 0.37 threshold.
-    assert!(pairs[0].1 < 0.37, "b distance {} should be near", pairs[0].1);
+    assert!(
+        pairs[0].1 < 0.37,
+        "b distance {} should be near",
+        pairs[0].1
+    );
     // c is orthogonal: l2 = sqrt(2) ≈ 1.414 — far outside.
     if let Some((_, dc)) = pairs.iter().find(|(id, _)| *id == c) {
         assert!(*dc > 1.0, "orthogonal distance {dc} should be far");

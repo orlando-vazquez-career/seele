@@ -12,18 +12,18 @@ name = "seele"
 path = "src/main.rs"
 
 [dependencies]
-seele-core = { path = "../seele-core" }
-seele-storage = { path = "../seele-storage" }
-seele-embedder = { path = "../seele-embedder" }
-seele-search = { path = "../seele-search" }
-seele-mcp = { path = "../seele-mcp" }
-seele-http = { path = "../seele-http" }
-seele-tui = { path = "../seele-tui" }
-seele-sync = { path = "../seele-sync" }
-seele-setup = { path = "../seele-setup" }
-seele-project = { path = "../seele-project" }
-seele-engram-import = { path = "../seele-engram-import" }
-seele-eval = { path = "../seele-eval" }
+seele-core.workspace = true
+seele-storage.workspace = true
+seele-embedder.workspace = true
+seele-search.workspace = true
+seele-mcp.workspace = true
+seele-http.workspace = true
+seele-tui.workspace = true
+seele-sync.workspace = true
+seele-setup.workspace = true
+seele-project.workspace = true
+seele-engram-import.workspace = true
+seele-eval.workspace = true
 clap.workspace = true
 tokio.workspace = true
 tracing.workspace = true

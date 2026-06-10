@@ -19,6 +19,19 @@
 - [`docs/ENGRAM-MIGRATION.md`](ENGRAM-MIGRATION.md) — pasar de
   ENGRAM/MNEMA a SEELE: `import from-engram`, compat layer
   `--tool-prefix mnema`, caveats.
+- [`docs/COMPARISON.md`](COMPARISON.md) — SEELE vs ENGRAM vs GRAIL,
+  fechada, con números reproducibles del harness (GRAIL-H1, Q11).
+- [`docs/RELEASING.md`](RELEASING.md) — runbook de release: antes /
+  tagear / después / fallos comunes (GRAIL-H1, Q1).
+
+## Análisis comparativos (`docs/analysis/`)
+
+- [`2026-06-09-analisis-grail-vs-seele.md`](analysis/2026-06-09-analisis-grail-vs-seele.md)
+  — análisis multi-agente de 10 dimensiones GRAIL→SEELE, verificado
+  adversarialmente claim por claim contra ambos repos.
+- [`2026-06-09-plan-mejoras-grail-en-seele.md`](analysis/2026-06-09-plan-mejoras-grail-en-seele.md)
+  — 37 propuestas consolidadas en 3 horizontes (H1 quick wins ejecutado
+  en sprint GRAIL-H1; H2 v0.3; H3 v0.4+) + sección "no adoptar".
 
 ## Genesis (planes históricos del diseño)
 
@@ -49,6 +62,7 @@ Estrategia, arquitectura y táctica del Sprint 01 viven bajo `genesis/plans/`. E
 ## Planes post-génesis (`docs/plans/`)
 
 - **Arquitectura**: [`14-evaluation-harness.md`](plans/arquitectura/14-evaluation-harness.md) — ADR-14 (harness eval-first + `embeddings_meta`); [`15-binary-size-footprint.md`](plans/arquitectura/15-binary-size-footprint.md) — ADR-15 (footprint del binario, feature-gating propuesto).
+- **Sprint GRAIL-H1 (ejecutado)**: [`executed/tactica/2026-06-10-h1-grail-quickwins.md`](plans/executed/tactica/2026-06-10-h1-grail-quickwins.md) — 11 quick wins GRAIL→SEELE, cerrado 2026-06-10. Devlog: [`2026-06-10-sprint-grail-h1-quickwins.md`](aegis/devlogs/2026-06-10-sprint-grail-h1-quickwins.md). Baselines del gate: `baseline-v2-{pre,post}-q3.json`.
 - **v0.3-α «calidad de memoria»**: [`estrategia/00-overview.md`](plans/estrategia/v0.3-calidad-memoria/00-overview.md), [`tactica/00-bloques.md`](plans/executed/tactica/v0.3-calidad-memoria/00-bloques.md), [`baseline-v0.2.json`](plans/executed/tactica/v0.3-calidad-memoria/baseline-v0.2.json).
 
 ## Devlogs
@@ -60,6 +74,7 @@ Estrategia, arquitectura y táctica del Sprint 01 viven bajo `genesis/plans/`. E
 - [`docs/aegis/devlogs/2026-05-11-sprint-05-polish-release.md`](aegis/devlogs/2026-05-11-sprint-05-polish-release.md) — Sprint-05 Polish + CI/CD + Release cerrado. Property tests workspace-wide + ONNX default + release pipeline 5 targets + install scripts + docs polish (README + 3 guías) + smoke acceptance. Total 322 verde + 4 ignored. v0.1.0 cierra v0.1.
 - [`docs/aegis/devlogs/2026-05-20-patch-mcp-call-tool-result.md`](aegis/devlogs/2026-05-20-patch-mcp-call-tool-result.md) — patch del envelope `CallToolResult` (MCP `tools/call`) + test de regresión.
 - [`docs/aegis/devlogs/2026-05-29-sprint-v0.3-alpha-eval-harness.md`](aegis/devlogs/2026-05-29-sprint-v0.3-alpha-eval-harness.md) — Sprint v0.3-α eval-first: crate `seele-eval` (recall@k/MRR), baseline v0.2 (coding-memory r@5 0.83), fix silent-drop `int_id`, `embeddings_meta` (V002), ADR-15. (Pendiente clippy + merge a main.)
+- [`docs/aegis/devlogs/2026-06-10-sprint-grail-h1-quickwins.md`](aegis/devlogs/2026-06-10-sprint-grail-h1-quickwins.md) — Sprint GRAIL-H1: los 11 quick wins del plan GRAIL→SEELE. Gate eval de `fts_loose`: paraphrase r@5 0.733→0.867, TOTAL MRR 0.657→0.788, cero degradación. Bug latente vec0 INSERT OR REPLACE cazado y arreglado. Release pipeline reparado.
 
 ## Cost Ledger
 

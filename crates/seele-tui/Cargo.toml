@@ -8,11 +8,11 @@ repository.workspace = true
 description = "Terminal UI for SEELE (ratatui + crossterm)."
 
 [dependencies]
-seele-core = { path = "../seele-core" }
-seele-storage = { path = "../seele-storage" }
-seele-search = { path = "../seele-search" }
-seele-http = { path = "../seele-http" }
-seele-embedder = { path = "../seele-embedder" }
+seele-core.workspace = true
+seele-storage.workspace = true
+seele-search.workspace = true
+seele-http.workspace = true
+seele-embedder.workspace = true
 ratatui.workspace = true
 crossterm = { version = "0.28", features = ["event-stream"] }
 tokio.workspace = true

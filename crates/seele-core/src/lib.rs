@@ -6,6 +6,7 @@
 //! See ADR-02 (schema-sqlite) and ADR-10 (mapping-mnema-seele) for rationale.
 
 pub mod error;
+pub mod families;
 pub mod filter;
 pub mod id;
 pub mod link;

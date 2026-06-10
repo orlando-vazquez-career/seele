@@ -8,7 +8,7 @@ repository.workspace = true
 description = "Setup wizard for AI agent integrations (Claude Code, Cursor, VS Code, OpenCode, Gemini CLI, Codex, Windsurf, Antigravity)."
 
 [dependencies]
-seele-core = { path = "../seele-core" }
+seele-core.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

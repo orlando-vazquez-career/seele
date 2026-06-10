@@ -145,11 +145,18 @@ pub fn build_service(
 /// [`build_service`]. Split out so unit tests can assert flag behavior
 /// without spinning up SQLite.
 fn pick_embedder(fake_flag: bool) -> Arc<dyn Embedder> {
+    Arc::from(pick_embedder_boxed(fake_flag))
+}
+
+/// Boxed variant — the single source of truth for embedder selection,
+/// shared with `seele eval` (which needs `Box<dyn Embedder>` for
+/// `run_suite`). Previously duplicated in `commands/eval.rs`.
+pub(crate) fn pick_embedder_boxed(fake_flag: bool) -> Box<dyn Embedder> {
     if fake_flag || fake_env_set() {
-        return Arc::new(FakeEmbedder);
+        return Box::new(FakeEmbedder);
     }
     match OnnxEmbedder::new() {
-        Ok(emb) => Arc::new(emb),
+        Ok(emb) => Box::new(emb),
         Err(e) => {
             eprintln!(
                 "seele: warning — ONNX embedder unavailable ({e}); falling back \
@@ -161,12 +168,12 @@ fn pick_embedder(fake_flag: bool) -> Arc<dyn Embedder> {
             // In-band signal for --json consumers: the stderr prose above is
             // invisible to agents; the envelope warning is not.
             crate::output::push_warning(crate::output::WARN_FAKE_EMBEDDER_FALLBACK);
-            Arc::new(FakeEmbedder)
+            Box::new(FakeEmbedder)
         }
     }
 }
 
-fn fake_env_set() -> bool {
+pub(crate) fn fake_env_set() -> bool {
     std::env::var(FAKE_EMBEDDER_ENV)
         .map(|v| !v.trim().is_empty())
         .unwrap_or(false)

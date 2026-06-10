@@ -168,3 +168,47 @@ fn serve_health_returns_200_over_real_tcp() {
     let _ = child.wait();
     assert!(ok, "server did not become healthy within 5s at {base}");
 }
+
+#[test]
+fn mcp_suggest_topic_key_honors_custom_families_file() {
+    let td = TempDir::new().unwrap();
+    let db_path = td.path().join("seele.db");
+    let families_path = td.path().join("topic-families.toml");
+    std::fs::write(
+        &families_path,
+        "[[family]]\nname = \"ritual\"\nkeywords = [\"ceremonia\", \"rito\"]\n",
+    )
+    .unwrap();
+
+    let mut child = seele()
+        .arg("mcp")
+        .arg("--db")
+        .arg(&db_path)
+        .env("SEELE_TOPIC_FAMILIES", &families_path)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn");
+    let mut stdin = child.stdin.take().unwrap();
+    stdin
+        .write_all(
+            b"{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"tools/call\",\
+              \"params\":{\"name\":\"seele_suggest_topic_key\",\
+              \"arguments\":{\"title\":\"ceremonia de cierre\"}}}\n",
+        )
+        .unwrap();
+    drop(stdin);
+    let line = BufReader::new(child.stdout.take().unwrap())
+        .lines()
+        .next()
+        .expect("line")
+        .expect("read");
+    let v: Value = serde_json::from_str(&line).unwrap();
+    // CallToolResult envelope: the tool's JSON travels in content[0].text.
+    let text = v["result"]["content"][0]["text"].as_str().expect("text");
+    let tool: Value = serde_json::from_str(text).expect("tool json");
+    assert_eq!(tool["family"], "ritual", "custom family must win: {tool}");
+    assert_eq!(tool["families_source"], "env");
+    child.wait().unwrap();
+}

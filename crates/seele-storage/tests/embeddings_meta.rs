@@ -197,7 +197,9 @@ fn get_embedding_roundtrips_stored_vector() {
     let mut v = vec![0.0f32; 384];
     v[0] = 0.6;
     v[1] = 0.8;
-    store.set_embedding(id, &v, &meta("all-MiniLM-L6-v2")).unwrap();
+    store
+        .set_embedding(id, &v, &meta("all-MiniLM-L6-v2"))
+        .unwrap();
 
     let back = store.get_embedding(id).unwrap().expect("vector stored");
     assert_eq!(back.len(), 384);

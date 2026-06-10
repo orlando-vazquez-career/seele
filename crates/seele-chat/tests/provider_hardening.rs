@@ -183,12 +183,20 @@ async fn run_chat_dispatches_by_name_and_strips_thinking() {
         })
     });
 
-    let history = run_chat(&provider, &handler, vec![user("hola")], &ChatConfig::default())
-        .await
-        .expect("loop completes");
+    let history = run_chat(
+        &provider,
+        &handler,
+        vec![user("hola")],
+        &ChatConfig::default(),
+    )
+    .await
+    .expect("loop completes");
 
     // Hallucinated tool name → in-band tool error, not a misparse.
-    let tool_msg = history.iter().find(|m| m.role == "tool").expect("tool turn");
+    let tool_msg = history
+        .iter()
+        .find(|m| m.role == "tool")
+        .expect("tool turn");
     assert!(
         tool_msg
             .content

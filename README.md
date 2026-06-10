@@ -41,6 +41,40 @@ seele setup --agent claude-code
 seele mcp
 ```
 
+## Architecture at a glance
+
+```mermaid
+flowchart LR
+    subgraph Surfaces["4 surfaces, one core"]
+        CLI["CLI --json<br/>envelope ok/data/warnings"]
+        MCP["MCP stdio<br/>19 seele_* tools"]
+        HTTP["HTTP REST<br/>OpenAPI 3.1"]
+        TUI["TUI ratatui"]
+    end
+    SVC["SeeleService<br/>(zero LLM in the core)"]
+    CLI --> SVC
+    MCP --> SVC
+    HTTP --> SVC
+    TUI --> SVC
+
+    subgraph Write["save"]
+        direction LR
+        S1["strip &lt;private&gt;"] --> S2["normalized<br/>hash"] --> S3["topic-key upsert /<br/>24h dedup / insert"] --> S4["FTS5 triggers +<br/>vec0 + embeddings_meta"]
+    end
+    subgraph Read["search"]
+        direction LR
+        F1["FTS5 strict phrase"] --> RRF["RRF k=60"]
+        F2["FTS5 bag-of-words<br/>(paraphrase rescue)"] --> RRF
+        F3["vec0 KNN<br/>(local ONNX)"] --> RRF
+        RRF --> H["hits + near-dups<br/>+ --explain trace"]
+    end
+    SVC --> Write
+    SVC --> Read
+```
+
+How SEELE compares to ENGRAM and GRAIL — honestly, with reproducible
+numbers: [`docs/COMPARISON.md`](./docs/COMPARISON.md).
+
 ## What you get
 
 - **`seele save / search / show / list / delete / restore / link /

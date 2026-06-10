@@ -25,7 +25,32 @@ authors = ["DevZen SpA"]
 license = "MIT"
 repository = "https://github.com/orlando-vazquez-career/seele"
 
+# Dev/test builds keep line tables (useful backtraces, working
+# #[track_caller]) but drop full variable-level debuginfo: the workspace's
+# debug target/ shrinks dramatically (full debuginfo across 14 crates +
+# ort/tokenizers regularly exceeded 18 GB and filled small disks). Use a
+# debugger profile override locally if you need full DWARF.
+[profile.dev]
+debug = "line-tables-only"
+
 [workspace.dependencies]
+
+# Intra-workspace crates: centralized here with an explicit `version`
+# so `cargo publish` works (crates.io rejects version-less path deps).
+# Bump these together with workspace.package.version on release.
+seele-core = { path = "crates/seele-core", version = "0.2.0" }
+seele-storage = { path = "crates/seele-storage", version = "0.2.0" }
+seele-embedder = { path = "crates/seele-embedder", version = "0.2.0" }
+seele-search = { path = "crates/seele-search", version = "0.2.0" }
+seele-chat = { path = "crates/seele-chat", version = "0.2.0" }
+seele-mcp = { path = "crates/seele-mcp", version = "0.2.0" }
+seele-http = { path = "crates/seele-http", version = "0.2.0" }
+seele-tui = { path = "crates/seele-tui", version = "0.2.0" }
+seele-sync = { path = "crates/seele-sync", version = "0.2.0" }
+seele-setup = { path = "crates/seele-setup", version = "0.2.0" }
+seele-project = { path = "crates/seele-project", version = "0.2.0" }
+seele-engram-import = { path = "crates/seele-engram-import", version = "0.2.0" }
+seele-eval = { path = "crates/seele-eval", version = "0.2.0" }
 # Async runtime
 tokio = { version = "1.42", features = ["full"] }
 futures = "0.3"
@@ -50,6 +75,9 @@ refinery = { version = "0.8", features = ["rusqlite"] }
 
 # Similarity (Q6: title signal for find_similar / compare suggest)
 strsim = "0.11"
+
+# Config-as-data (Q10: topic-families.toml)
+toml = "0.8"
 
 # Embedder
 # ort 2.0 está en RC; pineamos a `=2.0.0-rc.10` porque no hay stable a 2026-05.

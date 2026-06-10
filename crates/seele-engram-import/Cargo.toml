@@ -8,8 +8,8 @@ repository.workspace = true
 description = "ENGRAM-to-SEELE migration tool (ADR-13)."
 
 [dependencies]
-seele-core = { path = "../seele-core" }
-seele-storage = { path = "../seele-storage" }
+seele-core.workspace = true
+seele-storage.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

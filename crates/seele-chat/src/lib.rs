@@ -72,7 +72,12 @@ async fn send_with_retry(
                     .and_then(|s| s.trim().parse::<u64>().ok())
                     .map(Duration::from_secs)
                     .unwrap_or(policy.pause);
-                warn!(status = status.as_u16(), attempt, wait_s = wait.as_secs_f32(), "retryable provider status");
+                warn!(
+                    status = status.as_u16(),
+                    attempt,
+                    wait_s = wait.as_secs_f32(),
+                    "retryable provider status"
+                );
                 tokio::time::sleep(wait).await;
             }
             Err(e) if (e.is_timeout() || e.is_connect()) && attempt < policy.max_attempts => {
@@ -603,10 +608,7 @@ mod tests {
             strip_thinking("<think>uno\ndos</think>respuesta"),
             "respuesta"
         );
-        assert_eq!(
-            strip_thinking("<THINKING>x</THINKING>  hola"),
-            "hola"
-        );
+        assert_eq!(strip_thinking("<THINKING>x</THINKING>  hola"), "hola");
         assert_eq!(
             strip_thinking("antes <think>a</think>medio<thinking>b</thinking> fin"),
             "antes medio fin"

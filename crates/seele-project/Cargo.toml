@@ -8,7 +8,7 @@ repository.workspace = true
 description = "5-case project detection algorithm (config / git remote / git root / child scan / dir basename)."
 
 [dependencies]
-seele-core = { path = "../seele-core" }
+seele-core.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

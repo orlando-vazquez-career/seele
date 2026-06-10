@@ -46,6 +46,8 @@ ALLOWLIST_FILES=(
   "docs/INDEX.md"
   # Local Claude Code settings: permission entries name this script.
   ".claude/settings.local.json"
+  # Release runbook: lists the gate commands, including this script.
+  "docs/RELEASING.md"
 )
 
 # Directory prefixes (any file under these is allowlisted). Must mirror

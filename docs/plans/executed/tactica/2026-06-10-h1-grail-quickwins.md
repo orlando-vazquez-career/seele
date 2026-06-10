@@ -46,12 +46,28 @@ Los 11 quick wins del plan de mejoras, en orden de ejecución por dependencias:
 - [x] Bloque 6 — Q8 (entregado junto al bloque 4: search_traced + --explain CLI)
 - [x] Bloque 7 — Q6 (find_similar 2 señales + compare suggest/confirm con confidence real; umbrales en seele_core::similarity; get_embedding nuevo; 5 tests)
 - [x] Bloque 8 — Q9 (timeouts + retry/429 + strip_thinking server-side + dispatch por nombre; primera suite de seele-chat: 7 tests)
-- [ ] Bloque 9 — Q10
-- [ ] Bloque 10 — Q11
-- [ ] Bloque 11 — Q1
-- [ ] Ronda 2 — optimizables
-- [ ] Cierre AEGIS
+- [x] Bloque 9 — Q10 (seele_core::families + resolución en capas + E2E hermético por env var; suggest reporta families_source)
+- [x] Bloque 10 — Q11 (COMPARISON.md fechada con números del harness + primer mermaid del README)
+- [x] Bloque 11 — Q1 (release.yml: timeouts + tag-check + 14 crates; workspace.dependencies con version; RELEASING.md; CHANGELOG refs + doble Fixed consolidado; CLAUDE.md estado)
+- [x] Ronda 2 — optimizables (pick_embedder dedup −28 LOC; status() removida; path-deps centralizados −12 líneas; profile.dev line-tables-only)
+- [x] Cierre AEGIS (devlog 2026-06-10 + INDEX + cost-ledger + plan → executed/)
 
 ## Optimizables encontrados en el camino
 
-(se anotan acá durante la ejecución; se aplican en Ronda 2)
+Aplicados en Ronda 2:
+
+1. **Dup `pick_embedder`/`build_embedder`** (app.rs vs commands/eval.rs) —
+   unificado en `app::pick_embedder_boxed`; eval mantiene su warning de
+   baseline sobre la fuente única.
+2. **`output::status()` huérfana** tras el envelope Q2 — removida.
+3. **Path-deps sin `version`** (bloqueante crates.io) — centralizados en
+   `workspace.dependencies` (13 entradas), members con `.workspace = true`.
+4. **Footprint del target debug** (>18 GB, llenó el disco 2×) —
+   `[profile.dev] debug = "line-tables-only"`.
+
+Anotados para H2/H3 (no aplicados acá):
+
+- Doctor duplicado CLI/MCP — la consolidación natural llega con `seele
+  probe` (T5).
+- `default_model_for` triplicado en chat (handlers/serve/ChatPanel) — lo
+  resuelve el registry de providers (E6).

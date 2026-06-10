@@ -127,8 +127,14 @@ fn find_similar_combines_title_and_vector_signals() {
         .find_similar(base.id.parse().unwrap(), 5)
         .expect("find_similar");
     let ids: Vec<&str> = candidates.iter().map(|c| c.id.as_str()).collect();
-    assert!(ids.contains(&by_vector.id.as_str()), "vector signal candidate");
-    assert!(ids.contains(&by_title.id.as_str()), "title signal candidate");
+    assert!(
+        ids.contains(&by_vector.id.as_str()),
+        "vector signal candidate"
+    );
+    assert!(
+        ids.contains(&by_title.id.as_str()),
+        "title signal candidate"
+    );
 
     let vec_cand = candidates.iter().find(|c| c.id == by_vector.id).unwrap();
     assert_eq!(vec_cand.signal, "vector");

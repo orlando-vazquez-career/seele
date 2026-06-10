@@ -31,8 +31,104 @@ SemVer marcado._
   The seeded-cache workaround is no longer required; the offline
   `OnnxEmbedder::from_local_dir` path remains for air-gapped baselines.
 
+- **`int_id` silent-drop on the raw import path**
+  (`crates/seele-storage/src/observations.rs`). `SeeleId::as_i64()` maps the
+  ULID's random tail (bytes 9..16, 56 bits); `save_raw_in_tx` used
+  `INSERT OR IGNORE`, so a preserved ULID whose `int_id` collided with an
+  existing row was dropped silently — data loss masked as an idempotent skip
+  in `import`/`sync`. New `RawSaveOutcome::IntIdCollision` detects the case
+  (0 rows affected + PK absent) and **reports** it instead of swallowing it;
+  surfaced by `engram-import` and `sync`. Regression test
+  `crates/seele-storage/tests/int_id_collision.rs`.
+- **MCP `tools/call` wire envelope** (`crates/seele-mcp/src/server.rs`). The
+  dispatcher returned each tool's raw JSON as the JSON-RPC `result`,
+  bypassing the `CallToolResult` envelope required by the MCP spec
+  (`{ content: [{ type: "text", text: ... }], isError }`). Clients
+  (Claude Code, Cursor, Windsurf) looked for `result.content[0].text`,
+  found nothing, and rendered every tool call as "completed with no
+  output" — even though the handlers ran and the DB was healthy. The
+  fix wraps the handler payload in a single `text` content block and
+  sets `isError: false`. JSON-RPC error paths (parse / unknown method /
+  invalid params / tool domain errors) are unchanged.
+- **`seele-http` test helpers**: six integration test files
+  (`handlers_basicos.rs`, `handlers_c1_lifecycle.rs`,
+  `handlers_c2_relations_stats.rs`, `handlers_d_auth_openapi.rs`,
+  `skeleton.rs`, `openapi_consistency.rs`) failed to compile because
+  `ServerConfig` gained the `chat` field in v0.2.0 LUMEN sprints but
+  the test fixtures were not updated. Added `chat: None`.
+- **OpenAPI spec missing `/chat` + `/chat/info`** (`crates/seele-http/src/openapi.rs`).
+  The chat endpoints (added in the v0.2.0 LUMEN sprint) were wired into the
+  router but never declared in the hand-authored OpenAPI paths, so the
+  `openapi_consistency` test (router ⊆ spec) had been red since then. Added
+  both path entries (POST `/chat`, GET `/chat/info`) with prose
+  request/response descriptions. Found running the full guardrails for the
+  first time post-v0.2.
+- **Stale `seele-tui` snapshot baselines** (`crates/seele-tui/tests/snapshots/*.snap`).
+  The TUI title bar renders `SEELE v{CARGO_PKG_VERSION}`; the 10 `views_snapshot`
+  baselines were captured at `v0.1.0` and never refreshed when the workspace
+  bumped to `v0.2.0`, leaving `views_snapshot` red since the bump. Baselines
+  refreshed to `v0.2.0` (the only changed line in each).
+
+### Changed
+
+- **`[profile.dev] debug = "line-tables-only"`** (ronda 2, sprint
+  GRAIL-H1) — el target/ debug del workspace (full debuginfo × 14 crates
+  + ort + tokenizers) superaba los 18 GB y llenó el disco de desarrollo
+  dos veces en una sesión. Line tables mantienen backtraces útiles;
+  override local de profile si se necesita DWARF completo.
+- **Dedup selección de embedder** (ronda 2, sprint GRAIL-H1) — la lógica
+  ONNX-default→Fake-fallback vivía duplicada en `app.rs` y
+  `commands/eval.rs`; ahora `app::pick_embedder_boxed` es la única fuente
+  y eval conserva su warning de "baseline no real" sobre ella. También
+  removida `output::status()` (huérfana tras el envelope Q2).
+- **Doc drift (A6)**: `README` Status → v0.2; `as_i64()` doc corrected from
+  "first 6 bytes" to "random tail (bytes 9..16, 56 bits)" in `CLAUDE.md` /
+  ADR-14 / plan; workspace crate count 13 → 14.
+- **STELE residual allowlist**: `scripts/check-no-stele-residual.{sh,ps1}`
+  gain `docs/plans/tactica/`, `docs/plans/executed/tactica/`,
+  `docs/plans/estrategia/`, `docs/plans/executed/estrategia/` and
+  `docs/compendium/` prefixes so post-v0.1 plans and the architecture
+  compendium can reference the legacy name when documenting CI / static-check
+  coverage and naming history.
+
+### Removed
+
+- **Crypto-donation widget** from the web landing (`DonateButtons.astro` +
+  the `// 04 — crypto donations` block in `Support.astro`) and the **Crypto
+  section** of the root `README.md` (BTC/ETH/Base/Syscoin/SOL wallet
+  addresses). Low traction; not worth the maintenance or the wallet-address
+  trust surface. Support copy reframed to star / issues / hire, and the
+  "spare hours / week of evenings" self-description dropped.
+
 ### Added
 
+- **`topic-families.toml` real (Q10, sprint GRAIL-H1)** — cierra el
+  vaporware de CLAUDE.md: `seele_core::families` con `TopicFamily`,
+  validación al parsear y resolución en capas
+  `$SEELE_TOPIC_FAMILIES` > `./.seele/topic-families.toml` >
+  `~/.seele/topic-families.toml` > 7 familias builtin ENGRAM, resuelta UNA
+  vez al boot del service. TOML inválido = warn + fallthrough, nunca
+  panic. `seele_suggest_topic_key` consume el set activo y reporta
+  `families_source`; E2E hermético vía env var sobre el proceso `seele
+  mcp` hijo. MNEMA ya puede registrar `verdict/*`, `axiomatica/*`, etc.
+  sin forkear.
+- **`docs/COMPARISON.md` + mermaid de arquitectura en README (Q11, sprint
+  GRAIL-H1)** — comparación honesta y fechada SEELE vs ENGRAM vs GRAIL
+  (cada número de SEELE sale del harness, comando de reproducción
+  incluido; lo no verificable se marca). README gana su primer diagrama:
+  las 4 superficies sobre un SeeleService, write path y los 3 paths RRF.
+- **Release pipeline reparado + runbook (Q1, sprint GRAIL-H1)** —
+  `release.yml`: `timeout-minutes` en los 3 jobs (un runner macOS quedó
+  colgado 24h en el run rc.1), step de verificación tag-vs-versión del
+  manifest (lección del publish.yml de GRAIL), lista crates.io 12→14
+  (faltaban `seele-chat` y `seele-eval`) en orden topológico. Path-deps
+  intra-workspace centralizados en `workspace.dependencies` con `version`
+  explícita — requisito duro de `cargo publish`. Nuevo
+  `docs/RELEASING.md` (antes / tagear / después / fallos comunes — incl.
+  el bloqueo por billing de Actions, causa probable de los 0/2 runs).
+  Esta entrada documenta también la limpieza de deriva: CHANGELOG
+  link-refs (`[Unreleased]` → compare v0.2.0, `[0.2.0]` agregado) y el
+  doble heading `### Fixed` de `[Unreleased]` consolidado.
 - **ChatProvider endurecido + primera suite de tests de seele-chat (Q9,
   sprint GRAIL-H1)** — (1) timeouts reales en ambos providers (120s
   request / 10s connect; antes `Client::new()` sin timeout: un provider
@@ -137,68 +233,6 @@ SemVer marcado._
   per MCP spec 2024-11-05. Two cases: `seele_doctor` (full payload) and
   `seele_version` (minimal payload). Prevents regression of the wire
   envelope bug.
-
-### Fixed
-
-- **`int_id` silent-drop on the raw import path**
-  (`crates/seele-storage/src/observations.rs`). `SeeleId::as_i64()` maps the
-  ULID's random tail (bytes 9..16, 56 bits); `save_raw_in_tx` used
-  `INSERT OR IGNORE`, so a preserved ULID whose `int_id` collided with an
-  existing row was dropped silently — data loss masked as an idempotent skip
-  in `import`/`sync`. New `RawSaveOutcome::IntIdCollision` detects the case
-  (0 rows affected + PK absent) and **reports** it instead of swallowing it;
-  surfaced by `engram-import` and `sync`. Regression test
-  `crates/seele-storage/tests/int_id_collision.rs`.
-- **MCP `tools/call` wire envelope** (`crates/seele-mcp/src/server.rs`). The
-  dispatcher returned each tool's raw JSON as the JSON-RPC `result`,
-  bypassing the `CallToolResult` envelope required by the MCP spec
-  (`{ content: [{ type: "text", text: ... }], isError }`). Clients
-  (Claude Code, Cursor, Windsurf) looked for `result.content[0].text`,
-  found nothing, and rendered every tool call as "completed with no
-  output" — even though the handlers ran and the DB was healthy. The
-  fix wraps the handler payload in a single `text` content block and
-  sets `isError: false`. JSON-RPC error paths (parse / unknown method /
-  invalid params / tool domain errors) are unchanged.
-- **`seele-http` test helpers**: six integration test files
-  (`handlers_basicos.rs`, `handlers_c1_lifecycle.rs`,
-  `handlers_c2_relations_stats.rs`, `handlers_d_auth_openapi.rs`,
-  `skeleton.rs`, `openapi_consistency.rs`) failed to compile because
-  `ServerConfig` gained the `chat` field in v0.2.0 LUMEN sprints but
-  the test fixtures were not updated. Added `chat: None`.
-- **OpenAPI spec missing `/chat` + `/chat/info`** (`crates/seele-http/src/openapi.rs`).
-  The chat endpoints (added in the v0.2.0 LUMEN sprint) were wired into the
-  router but never declared in the hand-authored OpenAPI paths, so the
-  `openapi_consistency` test (router ⊆ spec) had been red since then. Added
-  both path entries (POST `/chat`, GET `/chat/info`) with prose
-  request/response descriptions. Found running the full guardrails for the
-  first time post-v0.2.
-- **Stale `seele-tui` snapshot baselines** (`crates/seele-tui/tests/snapshots/*.snap`).
-  The TUI title bar renders `SEELE v{CARGO_PKG_VERSION}`; the 10 `views_snapshot`
-  baselines were captured at `v0.1.0` and never refreshed when the workspace
-  bumped to `v0.2.0`, leaving `views_snapshot` red since the bump. Baselines
-  refreshed to `v0.2.0` (the only changed line in each).
-
-### Changed
-
-- **Doc drift (A6)**: `README` Status → v0.2; `as_i64()` doc corrected from
-  "first 6 bytes" to "random tail (bytes 9..16, 56 bits)" in `CLAUDE.md` /
-  ADR-14 / plan; workspace crate count 13 → 14.
-- **STELE residual allowlist**: `scripts/check-no-stele-residual.{sh,ps1}`
-  gain `docs/plans/tactica/`, `docs/plans/executed/tactica/`,
-  `docs/plans/estrategia/`, `docs/plans/executed/estrategia/` and
-  `docs/compendium/` prefixes so post-v0.1 plans and the architecture
-  compendium can reference the legacy name when documenting CI / static-check
-  coverage and naming history.
-
-### Removed
-
-- **Crypto-donation widget** from the web landing (`DonateButtons.astro` +
-  the `// 04 — crypto donations` block in `Support.astro`) and the **Crypto
-  section** of the root `README.md` (BTC/ETH/Base/Syscoin/SOL wallet
-  addresses). Low traction; not worth the maintenance or the wallet-address
-  trust surface. Support copy reframed to star / issues / hire, and the
-  "spare hours / week of evenings" self-description dropped.
-
 
 ## [0.2.0] — 2026-05-13
 
@@ -522,5 +556,6 @@ Interfaces, Ops&UX, Polish+Release). Built across 2026-05-10 → 2026-05-11.
 
 ---
 
-[Unreleased]: https://github.com/orlando-vazquez-career/seele/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/orlando-vazquez-career/seele/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/orlando-vazquez-career/seele/releases/tag/v0.2.0
 [0.1.0]: https://github.com/orlando-vazquez-career/seele/releases/tag/v0.1.0

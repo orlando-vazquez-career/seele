@@ -8,11 +8,11 @@ repository.workspace = true
 description = "MCP (Model Context Protocol) server over stdio."
 
 [dependencies]
-seele-core = { path = "../seele-core" }
-seele-storage = { path = "../seele-storage" }
-seele-search = { path = "../seele-search" }
-seele-embedder = { path = "../seele-embedder" }
-seele-http = { path = "../seele-http" }
+seele-core.workspace = true
+seele-storage.workspace = true
+seele-search.workspace = true
+seele-embedder.workspace = true
+seele-http.workspace = true
 tokio.workspace = true
 serde.workspace = true
 serde_json.workspace = true

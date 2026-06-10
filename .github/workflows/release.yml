@@ -50,8 +50,24 @@ jobs:
             cross: false
             archive: zip
     runs-on: ${{ matrix.os }}
+    # A wedged runner once sat for 24h on macOS; release builds that take
+    # longer than an hour are broken, not slow.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+
+      # Tag must match the workspace version (GRAIL publish.yml lesson):
+      # a v0.3.0 tag over a 0.2.0 manifest ships mislabeled binaries.
+      - name: Verify tag matches workspace version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          manifest=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
+          if [ "${tag%%-*}" != "$manifest" ]; then
+            echo "::error::tag v$tag != workspace version $manifest"
+            exit 1
+          fi
 
       - name: Install rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -117,6 +133,7 @@ jobs:
     name: github release
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     # Only create the GH Release on real tag pushes — workflow_dispatch
     # runs are dry exercises of the build matrix.
     if: startsWith(github.ref, 'refs/tags/v')
@@ -158,6 +175,7 @@ jobs:
     name: crates.io
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -168,9 +186,7 @@ jobs:
           # (rust-lang/cargo#10948). Loop over the publishable crates
           # in dependency order. seele-cli is last because everything
           # else depends-on it transitively.
-          for c in seele-core seele-storage seele-embedder seele-search \
-                   seele-sync seele-engram-import seele-project \
-                   seele-setup seele-http seele-mcp seele-tui seele-cli; do
+          for c in seele-core seele-storage seele-embedder seele-search                    seele-chat seele-sync seele-engram-import seele-project                    seele-setup seele-eval seele-http seele-mcp seele-tui                    seele-cli; do
             echo "== dry-run $c =="
             cargo publish -p "$c" --dry-run --allow-dirty
           done
@@ -182,8 +198,6 @@ jobs:
           # Same dependency order as the dry-run. A second publish of
           # an already-published version is a hard error from crates.io,
           # which is the intended idempotency guard for re-runs.
-          for c in seele-core seele-storage seele-embedder seele-search \
-                   seele-sync seele-engram-import seele-project \
-                   seele-setup seele-http seele-mcp seele-tui seele-cli; do
+          for c in seele-core seele-storage seele-embedder seele-search                    seele-chat seele-sync seele-engram-import seele-project                    seele-setup seele-eval seele-http seele-mcp seele-tui                    seele-cli; do
             cargo publish -p "$c"
           done

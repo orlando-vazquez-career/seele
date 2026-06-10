@@ -12,7 +12,6 @@ use std::path::PathBuf;
 
 use clap::Args as ClapArgs;
 
-use seele_embedder::{Embedder, FakeEmbedder, OnnxEmbedder};
 use seele_eval::{builtin_suite, load_suite, run_suite, SuiteReport, BUILTIN_SUITES};
 use seele_storage::{init_db, ObservationStore};
 
@@ -59,34 +58,18 @@ pub async fn run(args: Args, fake_embedder: bool, out: &OutputOpts) -> anyhow::R
     let pool = init_db(tmp.path().join("eval.db"))?;
     let store = ObservationStore::new(pool);
 
-    let embedder = build_embedder(fake_embedder);
+    // Single source of truth for embedder selection (crate::app). Real
+    // ONNX by default — when it degrades to Fake WITHOUT the user asking,
+    // the resulting numbers are NOT a real baseline; say so loudly.
+    let embedder = crate::app::pick_embedder_boxed(fake_embedder);
+    if embedder.model_id().contains("fake") && !fake_embedder && !crate::app::fake_env_set() {
+        eprintln!("seele eval: corriendo con FakeEmbedder — los números NO son un baseline real.");
+    }
     let model_id = embedder.model_id().to_string();
 
     let report = run_suite(&suite, &label, &store, embedder, &model_id)?;
 
     output::emit_split(&report, || render(&report), out.json)
-}
-
-/// Real ONNX by default (meaningful baseline); `FakeEmbedder` on
-/// `--fake-embedder` / `SEELE_FAKE_EMBEDDER`, or as a loud fallback if ONNX
-/// init fails — fake numbers are NOT a real baseline.
-fn build_embedder(fake_flag: bool) -> Box<dyn Embedder> {
-    let fake_env = std::env::var("SEELE_FAKE_EMBEDDER")
-        .map(|v| !v.trim().is_empty())
-        .unwrap_or(false);
-    if fake_flag || fake_env {
-        return Box::new(FakeEmbedder::new());
-    }
-    match OnnxEmbedder::new() {
-        Ok(e) => Box::new(e),
-        Err(e) => {
-            eprintln!(
-                "seele eval: ONNX embedder unavailable ({e}); falling back to \
-                 FakeEmbedder — the resulting numbers are NOT a real baseline."
-            );
-            Box::new(FakeEmbedder::new())
-        }
-    }
 }
 
 fn render(r: &SuiteReport) -> String {

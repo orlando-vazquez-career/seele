@@ -82,50 +82,37 @@ pub fn suggest_topic_key(svc: &SeeleService, params: Value) -> Result<Value, Too
     let content = content_raw.to_lowercase();
     let combined = format!("{title} {content}");
 
-    let families: &[(&str, &[&str])] = &[
-        (
-            "architecture",
-            &["architecture", "design", "system", "diagram", "boundary"],
-        ),
-        (
-            "bug",
-            &["bug", "fix", "regression", "broken", "fails", "crash"],
-        ),
-        (
-            "decision",
-            &["decided", "decision", "we chose", "we picked", "adr"],
-        ),
-        ("pattern", &["pattern", "convention", "idiom", "approach"]),
-        ("config", &["config", "setting", "flag", "env var"]),
-        (
-            "discovery",
-            &["found", "discovered", "noticed", "turns out"],
-        ),
-        ("learning", &["learning", "lesson", "insight", "takeaway"]),
-    ];
+    // Signal 2 — keyword families, resolved at boot (Q10): env > project
+    // > user > builtin, configurable via topic-families.toml. The match
+    // itself stays naive substring voting — this configures the
+    // VOCABULARY, not the algorithm.
+    let family_set = svc.topic_families();
     let mut best: Option<(&str, usize)> = None;
-    for (family, kws) in families {
+    for family in &family_set.families {
         let mut score = 0usize;
-        for kw in *kws {
-            if combined.contains(kw) {
+        for kw in &family.keywords {
+            if combined.contains(&kw.to_lowercase()) {
                 score += 1;
             }
         }
         if score > 0 && best.map(|(_, s)| score > s).unwrap_or(true) {
-            best = Some((family, score));
+            best = Some((family.name.as_str(), score));
         }
     }
+    let families_source = family_set.source.as_str();
     Ok(match best {
         Some((family, score)) => serde_json::json!({
             "family": family,
             "score": score,
             "suggestion": format!("{family}/auto"),
-            "source": "builtin-families",
+            "source": "families",
+            "families_source": families_source,
         }),
         None => serde_json::json!({
             "family": Value::Null,
             "suggestion": Value::Null,
-            "source": "builtin-families",
+            "source": "families",
+            "families_source": families_source,
         }),
     })
 }
@@ -149,7 +136,11 @@ mod tests {
         let r =
             suggest_topic_key(&dummy_svc(), serde_json::json!({"title": "random stuff"})).unwrap();
         assert!(r["family"].is_null());
-        assert_eq!(r["source"], "builtin-families");
+        assert_eq!(r["source"], "families");
+        // families_source depends on the host (a user-level
+        // topic-families.toml is legitimate); the env-pinned E2E in
+        // seele-cli covers the custom-file path deterministically.
+        assert!(r["families_source"].is_string());
     }
 
     #[test]

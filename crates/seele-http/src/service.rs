@@ -41,6 +41,10 @@ pub struct SeeleService {
     pub search: Arc<SearchEngine>,
     pub embedder: Arc<dyn Embedder>,
     pub pool: Pool,
+    /// Topic-key families (Q10), resolved ONCE at boot:
+    /// env > project > user > builtin. Arc'd: the set is immutable for
+    /// the process lifetime and the service is Clone.
+    families: Arc<seele_core::families::FamilySet>,
 }
 
 impl SeeleService {
@@ -53,6 +57,10 @@ impl SeeleService {
         let chunks = ChunkStore::new(pool.clone());
         let search_embedder: Box<dyn Embedder> = Box::new(ArcEmbedder(embedder.clone()));
         let search = Arc::new(SearchEngine::new(pool.clone(), search_embedder));
+        let (families, family_warnings) = seele_core::families::load_default();
+        for w in family_warnings {
+            tracing::warn!(warning = %w, "topic-families file ignored (falling through)");
+        }
         Self {
             observations,
             sessions,
@@ -63,7 +71,13 @@ impl SeeleService {
             search,
             embedder,
             pool,
+            families: Arc::new(families),
         }
+    }
+
+    /// The topic-key family set active for this process (Q10).
+    pub fn topic_families(&self) -> &seele_core::families::FamilySet {
+        &self.families
     }
 
     /// Save an observation + compute & store its embedding atomically (best

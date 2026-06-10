@@ -8,10 +8,10 @@ repository.workspace = true
 description = "Memory-quality evaluation harness for SEELE (recall@k / MRR over labelled suites). See ADR-14."
 
 [dependencies]
-seele-core = { path = "../seele-core" }
-seele-storage = { path = "../seele-storage" }
-seele-search = { path = "../seele-search" }
-seele-embedder = { path = "../seele-embedder" }
+seele-core.workspace = true
+seele-storage.workspace = true
+seele-search.workspace = true
+seele-embedder.workspace = true
 serde.workspace = true
 chrono.workspace = true
 serde_json.workspace = true

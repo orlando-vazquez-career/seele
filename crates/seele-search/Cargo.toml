@@ -8,9 +8,9 @@ repository.workspace = true
 description = "Hybrid FTS + vector search with Reciprocal Rank Fusion."
 
 [dependencies]
-seele-core = { path = "../seele-core" }
-seele-storage = { path = "../seele-storage" }
-seele-embedder = { path = "../seele-embedder" }
+seele-core.workspace = true
+seele-storage.workspace = true
+seele-embedder.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
