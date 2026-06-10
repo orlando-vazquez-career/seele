@@ -139,26 +139,22 @@ impl SeeleService {
     /// Run the search engine. Caller is responsible for the anti-empty-query
     /// gate at the transport layer (HTTP handler / MCP tool both apply it).
     pub fn search_observations(&self, req: SearchRequest) -> Result<SearchResponse> {
-        let scope = match req.scope.as_deref() {
-            None => None,
-            Some(s) => Some(parse_scope(Some(s))?),
-        };
-        let q = SearchQuery {
-            text: req.query,
-            project: req.project,
-            scope,
-            kind: req.r#type,
-            per_method_limit: None,
-            limit: req.limit,
-            include_purist: req.include_purist,
-            score_boost_multiplier: req.score_boost_multiplier,
-            max_vec_distance: req.max_vec_distance,
-            include_annotations: req.include_annotations,
-        };
+        let q = build_search_query(req)?;
         let hits = self.search.search(q)?;
-        let dtos: Vec<SearchHitDto> = hits.iter().map(SearchHitDto::from).collect();
-        let count = dtos.len();
-        Ok(SearchResponse { hits: dtos, count })
+        Ok(to_search_response(&hits))
+    }
+
+    /// `search_observations` + the engine's execution trace (Q8,
+    /// `seele search --explain`). CLI-only surface for now: HTTP/MCP keep
+    /// the plain variant until the trace shape settles (struct is
+    /// versioned for that reason).
+    pub fn search_observations_explain(
+        &self,
+        req: SearchRequest,
+    ) -> Result<(SearchResponse, seele_search::SearchTrace)> {
+        let q = build_search_query(req)?;
+        let (hits, trace) = self.search.search_traced(q)?;
+        Ok((to_search_response(&hits), trace))
     }
 
     pub fn get_observation(&self, id: SeeleId) -> Result<Option<ObservationDto>> {
@@ -445,6 +441,33 @@ impl SeeleService {
     pub fn embedding_provenance(&self) -> Result<seele_storage::EmbeddingProvenance> {
         Ok(self.observations.embedding_provenance()?)
     }
+}
+
+/// Map a wire-level [`SearchRequest`] onto the engine's [`SearchQuery`].
+/// Shared by the plain and `--explain` search paths.
+fn build_search_query(req: SearchRequest) -> Result<SearchQuery> {
+    let scope = match req.scope.as_deref() {
+        None => None,
+        Some(s) => Some(parse_scope(Some(s))?),
+    };
+    Ok(SearchQuery {
+        text: req.query,
+        project: req.project,
+        scope,
+        kind: req.r#type,
+        per_method_limit: None,
+        limit: req.limit,
+        include_purist: req.include_purist,
+        score_boost_multiplier: req.score_boost_multiplier,
+        max_vec_distance: req.max_vec_distance,
+        include_annotations: req.include_annotations,
+    })
+}
+
+fn to_search_response(hits: &[seele_search::SearchHit]) -> SearchResponse {
+    let dtos: Vec<SearchHitDto> = hits.iter().map(SearchHitDto::from).collect();
+    let count = dtos.len();
+    SearchResponse { hits: dtos, count }
 }
 
 /// Anti-empty-query gate shared by HTTP `/search` and MCP `seele_search`.

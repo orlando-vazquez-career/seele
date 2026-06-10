@@ -40,8 +40,8 @@ Los 11 quick wins del plan de mejoras, en orden de ejecución por dependencias:
 - [x] Bloque 0 — baseline gates verde en branch (limpieza: 20,8 GiB de target/ viejos; root cause de los fallos de build era pagefile/disk-full)
 - [x] Bloque 1 — Q2 (envelope `ok/data/warnings` + errores JSON a stdout + kind tipado; E2E migrados + 3 tests nuevos de contrato)
 - [x] Bloque 2 — Q5 (set_embedding atómico vector+meta; `embedding_provenance()` + `mix_warning()` compartido; doctor CLI+MCP; **bonus: bug latente vec0 INSERT OR REPLACE descubierto y arreglado**)
-- [ ] Bloque 3 — Q7
-- [ ] Bloque 4 — Q3 (gate eval)
+- [x] Bloque 3 — Q7 (nDCG@10 + --suite-file + suite v2: paraphrase 15, multi-hop 10; baseline PRE capturado con ONNX real — primer first-run download exitoso del fix hf-hub 0.5)
+- [x] Bloque 4 — Q3+Q8 (**GATE APROBADO**: paraphrase r@5 +0.133 / MRR +0.161, multi-hop r@5 1.000, cero degradación; --explain expone fts_candidates=0 en paráfrasis; artefactos baseline-v2-pre/post-q3.json)
 - [ ] Bloque 5 — Q4
 - [ ] Bloque 6 — Q8
 - [ ] Bloque 7 — Q6

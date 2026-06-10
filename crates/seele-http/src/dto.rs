@@ -93,6 +93,9 @@ pub struct SearchHitDto {
     pub fts_rank: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub vec_rank: Option<usize>,
+    /// Rank in the bag-of-words FTS rescue path (Q3), when it fired.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fts_loose_rank: Option<usize>,
     pub created_at: i64,
     pub metadata: Value,
     pub annotations: Vec<AnnotationDto>,
@@ -136,6 +139,7 @@ impl From<&SearchHit> for SearchHitDto {
             score: h.score,
             fts_rank: h.fts_rank,
             vec_rank: h.vec_rank,
+            fts_loose_rank: h.fts_loose_rank,
             created_at: o.created_at.timestamp_millis(),
             metadata: o.metadata.0.clone(),
             annotations,

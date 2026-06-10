@@ -679,3 +679,106 @@ fn annotations_judged_conflict_yields_contested_by() {
         .iter()
         .any(|x| x.kind == AnnotationKind::ContestedBy));
 }
+
+// -------- Q3: fts_loose bag-of-words rescue --------
+
+#[test]
+fn loose_path_rescues_paraphrase_when_phrase_match_fails() {
+    let (_td, store, engine) = fresh_engine();
+    let embedder = FakeEmbedder;
+    let target = save_with_embedding(
+        &store,
+        &embedder,
+        "deploy dns",
+        "El deploy de produccion fallo por un problema de DNS en el balanceador",
+        "p",
+        Metadata::new(),
+    );
+    // Decoy so the rescue has to rank, not just return the only row.
+    save_with_embedding(
+        &store,
+        &embedder,
+        "indices parciales",
+        "Un indice parcial WHERE deleted_at IS NULL acelera las queries vivas",
+        "p",
+        Metadata::new(),
+    );
+
+    // Natural-language paraphrase: the exact phrase does NOT appear in the
+    // content, so the strict quoted-phrase FTS path yields nothing. The
+    // OR-of-tokens rescue must surface the target via shared tokens.
+    let hits = engine
+        .search(SearchQuery {
+            text: "por que fallo el deploy en produccion?".into(),
+            ..Default::default()
+        })
+        .unwrap();
+    let hit = hits
+        .iter()
+        .find(|h| h.observation.id == target)
+        .expect("loose path must rescue the paraphrase");
+    assert!(
+        hit.fts_rank.is_none(),
+        "strict phrase must have missed it (got {:?})",
+        hit.fts_rank
+    );
+    assert!(
+        hit.fts_loose_rank.is_some(),
+        "loose path must have found it"
+    );
+}
+
+#[test]
+fn trace_exposes_zero_strict_fts_candidates_on_paraphrase() {
+    let (_td, store, engine) = fresh_engine();
+    let embedder = FakeEmbedder;
+    save_with_embedding(
+        &store,
+        &embedder,
+        "deploy dns",
+        "El deploy de produccion fallo por un problema de DNS en el balanceador",
+        "p",
+        Metadata::new(),
+    );
+
+    let (hits, trace) = engine
+        .search_traced(SearchQuery {
+            text: "por que fallo el deploy en produccion?".into(),
+            ..Default::default()
+        })
+        .unwrap();
+
+    // The exact symptom --explain exists to expose: strict phrase = 0.
+    assert_eq!(trace.version, 1);
+    assert_eq!(trace.fts_candidates, 0, "phrase-quoting kills paraphrase");
+    assert!(trace.fts_loose_candidates.unwrap_or(0) >= 1, "rescue fired");
+    assert_eq!(trace.vec_candidates, trace.vec_distances.len());
+    assert!(!hits.is_empty());
+    assert!(trace.fts_match.starts_with('"'));
+    assert!(trace.fts_loose_match.as_deref().unwrap().contains(" OR "));
+}
+
+#[test]
+fn single_token_query_skips_loose_path() {
+    let (_td, store, engine) = fresh_engine();
+    let embedder = FakeEmbedder;
+    save_with_embedding(
+        &store,
+        &embedder,
+        "wal",
+        "Postgres usa WAL para crash recovery",
+        "p",
+        Metadata::new(),
+    );
+    let (_, trace) = engine
+        .search_traced(SearchQuery {
+            text: "WAL".into(),
+            ..Default::default()
+        })
+        .unwrap();
+    assert!(
+        trace.fts_loose_match.is_none(),
+        "single token: no loose pass"
+    );
+    assert!(trace.fts_loose_candidates.is_none());
+}

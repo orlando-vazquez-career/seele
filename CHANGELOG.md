@@ -33,6 +33,28 @@ SemVer marcado._
 
 ### Added
 
+- **Tercer path RRF: rescate FTS bag-of-words (Q3, sprint GRAIL-H1)** — el
+  híbrido suma una tercera señal: la query tokenizada y unida con OR
+  (`"tok1" OR "tok2"`), que rescata paráfrasis donde el phrase-quoting
+  estricto de `escape_fts` devolvía 0 candidatos. `rrf::combine` ya era
+  genérico sobre N listas; `SearchHit`/`SearchHitDto` ganan
+  `fts_loose_rank`. **Gate eval-first aprobado** (suite v2, ONNX real):
+  paraphrase r@5 0.733→0.867 / MRR 0.546→0.707; multi-hop r@5 0.900→1.000;
+  single-fact y temporal sin degradación; TOTAL MRR 0.657→0.788. Artefactos:
+  `baseline-v2-{pre,post}-q3.json` junto al plan táctico.
+- **`seele search --explain` (Q8, sprint GRAIL-H1)** — SearchTrace v1
+  (CLI-only): MATCH estricto y loose visibles, candidatos por path,
+  distancias vec (antes se descartaban — drift conocido vs ADR-03),
+  parámetros efectivos y modelo/dim del embedder. Hace visible el síntoma
+  exacto del bug de paraphrase (`fts_candidates: 0`). Struct versionado;
+  HTTP/MCP la exponen cuando el shape asiente.
+- **seele-eval: nDCG@10 + `--suite-file` + suite v2 (Q7, sprint GRAIL-H1)**
+  — nDCG@10 binario (prometido en ADR-14, ausente); `seele eval
+  --suite-file <path.json>` da caller CLI al `load_suite` existente
+  (corpora de terceros sin recompilar); `coding-memory` v2: paraphrase
+  6→15 y multi-hop 3→10 queries (autoradas a ciegas contra el corpus, con
+  `rationale` documental). El gate A1/A2 ahora decide sobre n≥10 en las
+  categorías débiles. Invalida comparación directa con `baseline-v0.2.json`.
 - **CLI JSON envelope (Q2, sprint GRAIL-H1)** — with `--json`, every one-shot
   subcommand now emits a uniform envelope: success
   `{"ok":true,"data":<payload>,"warnings":[..]}`, error

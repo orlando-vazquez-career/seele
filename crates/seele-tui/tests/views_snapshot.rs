@@ -142,6 +142,7 @@ fn search_renders_query_and_results() {
         score: 0.95,
         fts_rank: Some(1),
         vec_rank: None,
+        fts_loose_rank: None,
         created_at: 1_700_000_000_000,
         metadata: serde_json::Value::Null,
         annotations: vec![],

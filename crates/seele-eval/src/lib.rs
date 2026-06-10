@@ -70,6 +70,10 @@ pub struct EvalQuery {
     /// Category for per-category aggregation (e.g. `single-fact`,
     /// `paraphrase`, `multi-hop`, `knowledge-update`, `temporal`).
     pub category: String,
+    /// Documentation of WHY this query tests what it tests (GRAIL-style).
+    /// Ignored by the runner; for suite authors and reviewers.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rationale: Option<String>,
 }
 
 /// Aggregated metrics for one suite run. Serialised to JSON to version a
@@ -85,13 +89,17 @@ pub struct SuiteReport {
 }
 
 /// Retrieval-quality metrics. `recall@k` is binary per query (hit if any
-/// `expected_id` is in the top-k), averaged; `mrr` is mean reciprocal rank.
+/// `expected_id` is in the top-k), averaged; `mrr` is mean reciprocal rank;
+/// `ndcg@10` uses binary relevance (promised in ADR-14): DCG over the top-10
+/// positions holding an expected id, normalized by the ideal DCG for that
+/// query's expected-set size. Secondary metric until graded labels exist.
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
 pub struct Metrics {
     pub queries: usize,
     pub recall_at_5: f64,
     pub recall_at_10: f64,
     pub mrr: f64,
+    pub ndcg_at_10: f64,
 }
 
 /// Parse a suite fixture from a JSON file.
@@ -251,6 +259,7 @@ pub fn run_suite(
             .position(|id| expected.contains(id))
             .map(|p| 1.0 / (p as f64 + 1.0))
             .unwrap_or(0.0);
+        let ndcg = ndcg_at_10(&ranked, &expected);
 
         let cat_acc = by_cat.entry(query.category.clone()).or_default();
         for acc in [&mut totals, cat_acc] {
@@ -258,6 +267,7 @@ pub fn run_suite(
             acc.r5 += h5;
             acc.r10 += h10;
             acc.rr_sum += rr;
+            acc.ndcg_sum += ndcg;
         }
     }
 
@@ -276,6 +286,7 @@ struct Acc {
     r5: usize,
     r10: usize,
     rr_sum: f64,
+    ndcg_sum: f64,
 }
 
 impl Acc {
@@ -286,6 +297,66 @@ impl Acc {
             recall_at_5: self.r5 as f64 / n,
             recall_at_10: self.r10 as f64 / n,
             mrr: self.rr_sum / n,
+            ndcg_at_10: self.ndcg_sum / n,
         }
+    }
+}
+
+/// nDCG@10 with binary relevance. DCG sums `1/log2(pos+1)` over the first
+/// 10 ranked positions that hold an expected id (positions 1-indexed);
+/// IDCG is the DCG of the ideal ranking — all expected ids first, capped
+/// at 10. Empty expected-set yields 0.0 (no query should ship one).
+fn ndcg_at_10(ranked: &[&str], expected: &HashSet<&str>) -> f64 {
+    let dcg: f64 = ranked
+        .iter()
+        .take(10)
+        .enumerate()
+        .filter(|(_, id)| expected.contains(*id))
+        .map(|(i, _)| 1.0 / ((i as f64 + 2.0).log2()))
+        .sum();
+    let ideal_hits = expected.len().min(10);
+    let idcg: f64 = (0..ideal_hits)
+        .map(|i| 1.0 / ((i as f64 + 2.0).log2()))
+        .sum();
+    if idcg > 0.0 {
+        dcg / idcg
+    } else {
+        0.0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn set<'a>(ids: &[&'a str]) -> HashSet<&'a str> {
+        ids.iter().copied().collect()
+    }
+
+    #[test]
+    fn ndcg_perfect_ranking_is_one() {
+        let ranked = vec!["a", "b", "x", "y"];
+        assert!((ndcg_at_10(&ranked, &set(&["a", "b"])) - 1.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn ndcg_single_expected_at_position_two() {
+        let ranked = vec!["x", "a"];
+        // DCG = 1/log2(3); IDCG = 1/log2(2) = 1.
+        let want = 1.0 / 3f64.log2();
+        assert!((ndcg_at_10(&ranked, &set(&["a"])) - want).abs() < 1e-12);
+    }
+
+    #[test]
+    fn ndcg_miss_is_zero_and_beyond_ten_does_not_count() {
+        assert_eq!(ndcg_at_10(&["x", "y"], &set(&["a"])), 0.0);
+        let mut ranked = vec!["x"; 10];
+        ranked.push("a"); // position 11 — outside the @10 window
+        assert_eq!(ndcg_at_10(&ranked, &set(&["a"])), 0.0);
+    }
+
+    #[test]
+    fn ndcg_empty_expected_is_zero_not_nan() {
+        assert_eq!(ndcg_at_10(&["x"], &set(&[])), 0.0);
     }
 }

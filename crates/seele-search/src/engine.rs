@@ -70,7 +70,40 @@ pub struct SearchHit {
     pub score: f64,
     pub fts_rank: Option<usize>,
     pub vec_rank: Option<usize>,
+    /// Rank in the bag-of-words FTS rescue path (Q3). `Some` means the
+    /// loose OR-of-tokens query found this hit; the strict phrase path
+    /// may have missed it entirely (the paraphrase failure mode).
+    pub fts_loose_rank: Option<usize>,
     pub annotations: Vec<RelationAnnotation>,
+}
+
+/// Auditable snapshot of one hybrid-search execution (Q8, GRAIL
+/// QueryTracer lesson, deterministic flavor). Carries counts, effective
+/// parameters and vec distances — never candidate contents (privacy).
+/// `version` guards downstream parsers against shape changes.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct SearchTrace {
+    pub version: u32,
+    pub query_text: String,
+    /// What the strict path actually sent to FTS5 MATCH — makes the
+    /// phrase-quoting visible (`"entire query as one phrase"`).
+    pub fts_match: String,
+    /// OR-of-tokens form, `None` when the query has < 2 tokens (the loose
+    /// path is skipped as identical to the strict one).
+    pub fts_loose_match: Option<String>,
+    pub fts_candidates: usize,
+    pub fts_loose_candidates: Option<usize>,
+    pub vec_candidates: usize,
+    /// Distances of the vec candidates, in rank order. Previously
+    /// SELECTed and discarded (drift vs ADR-03) — now surfaced.
+    pub vec_distances: Vec<f64>,
+    pub rrf_k: usize,
+    pub per_method_limit: u32,
+    pub final_limit: usize,
+    pub score_boost_multiplier: f64,
+    pub max_vec_distance: Option<f64>,
+    pub embedder_model_id: String,
+    pub embedder_dim: usize,
 }
 
 pub struct SearchEngine {
@@ -94,20 +127,60 @@ impl SearchEngine {
     }
 
     pub fn search(&self, query: SearchQuery) -> Result<Vec<SearchHit>> {
-        if query.text.trim().is_empty() {
-            return self.list_by_filters(&query);
-        }
+        Ok(self.search_traced(query)?.0)
+    }
 
+    /// Like [`search`](Self::search), but also returns the execution trace
+    /// (`seele search --explain`). Same work either way — the trace is
+    /// assembled from values the pipeline already computes.
+    pub fn search_traced(&self, query: SearchQuery) -> Result<(Vec<SearchHit>, SearchTrace)> {
         let per_method = query.per_method_limit.unwrap_or(DEFAULT_PER_METHOD_LIMIT);
         let final_limit = query.limit.unwrap_or(DEFAULT_FINAL_LIMIT) as usize;
 
-        let fts_rank = self.fts_query(&query, per_method)?;
-        let vec_rank = self.vec_query(&query, per_method)?;
+        if query.text.trim().is_empty() {
+            let hits = self.list_by_filters(&query)?;
+            let trace = SearchTrace {
+                version: 1,
+                query_text: query.text.clone(),
+                fts_match: String::new(),
+                fts_loose_match: None,
+                fts_candidates: 0,
+                fts_loose_candidates: None,
+                vec_candidates: 0,
+                vec_distances: Vec::new(),
+                rrf_k: self.rrf_k,
+                per_method_limit: per_method,
+                final_limit,
+                score_boost_multiplier: query.score_boost_multiplier,
+                max_vec_distance: query.max_vec_distance,
+                embedder_model_id: self.embedder.model_id().to_string(),
+                embedder_dim: self.embedder.dim(),
+            };
+            return Ok((hits, trace));
+        }
 
-        let combined = rrf::combine(
-            &[("fts", fts_rank.clone()), ("vec", vec_rank.clone())],
-            self.rrf_k,
-        );
+        let fts_match = escape_fts(&query.text);
+        let fts_loose_match = loose_fts_match(&query.text);
+
+        let fts_rank = self.fts_query_with(&fts_match, &query, per_method)?;
+        let vec_pairs = self.vec_query(&query, per_method)?;
+        let vec_rank: Vec<SeeleId> = vec_pairs.iter().map(|(id, _)| *id).collect();
+        let fts_loose_rank = match &fts_loose_match {
+            Some(m) => Some(self.fts_query_with(m, &query, per_method)?),
+            None => None,
+        };
+
+        // Third RRF path (Q3): the strict phrase query misses natural-
+        // language paraphrases entirely (0 candidates); the OR-of-tokens
+        // rescue feeds RRF a textual signal in exactly those cases.
+        // `rrf::combine` is generic over N sources, so the extra path is
+        // one more entry, not a redesign.
+        let mut sources: Vec<(&'static str, Vec<SeeleId>)> =
+            vec![("fts", fts_rank.clone()), ("vec", vec_rank.clone())];
+        if let Some(loose) = &fts_loose_rank {
+            sources.push(("fts_loose", loose.clone()));
+        }
+        let combined = rrf::combine(&sources, self.rrf_k);
 
         // Apply meta_score boost if enabled, then re-sort and truncate.
         let boosted = self.apply_score_boost(combined, query.score_boost_multiplier)?;
@@ -121,12 +194,13 @@ impl SearchEngine {
             .into_iter()
             .filter_map(|hit| {
                 let obs = by_id.get(&hit.id).cloned()?;
-                let (fts_r, vec_r) = unpack_per_source(&hit);
+                let (fts_r, vec_r, loose_r) = unpack_per_source(&hit);
                 Some(SearchHit {
                     observation: obs,
                     score: hit.score,
                     fts_rank: fts_r,
                     vec_rank: vec_r,
+                    fts_loose_rank: loose_r,
                     annotations: Vec::new(),
                 })
             })
@@ -135,7 +209,25 @@ impl SearchEngine {
         if query.include_annotations && !hits.is_empty() {
             self.attach_annotations(&mut hits)?;
         }
-        Ok(hits)
+
+        let trace = SearchTrace {
+            version: 1,
+            query_text: query.text.clone(),
+            fts_match,
+            fts_candidates: fts_rank.len(),
+            fts_loose_candidates: fts_loose_rank.as_ref().map(Vec::len),
+            fts_loose_match,
+            vec_candidates: vec_pairs.len(),
+            vec_distances: vec_pairs.iter().map(|(_, d)| *d).collect(),
+            rrf_k: self.rrf_k,
+            per_method_limit: per_method,
+            final_limit,
+            score_boost_multiplier: query.score_boost_multiplier,
+            max_vec_distance: query.max_vec_distance,
+            embedder_model_id: self.embedder.model_id().to_string(),
+            embedder_dim: self.embedder.dim(),
+        };
+        Ok((hits, trace))
     }
 
     /// Empty-query path: list observations matching the filters, ordered by
@@ -178,6 +270,7 @@ impl SearchEngine {
                 score: 0.0,
                 fts_rank: None,
                 vec_rank: None,
+                fts_loose_rank: None,
                 annotations: Vec::new(),
             });
         }
@@ -188,14 +281,22 @@ impl SearchEngine {
         Ok(hits)
     }
 
-    fn fts_query(&self, query: &SearchQuery, limit: u32) -> Result<Vec<SeeleId>> {
+    /// One FTS5 pass with an explicit MATCH expression. Shared by the
+    /// strict phrase path (`escape_fts`) and the loose bag-of-words path
+    /// (`loose_fts_match`); both apply identical row filters.
+    fn fts_query_with(
+        &self,
+        match_expr: &str,
+        query: &SearchQuery,
+        limit: u32,
+    ) -> Result<Vec<SeeleId>> {
         let mut sql = String::from(
             "SELECT o.id FROM observations_fts fts \
              JOIN observations o ON o.int_id = fts.rowid \
              WHERE observations_fts MATCH ?1 \
                 AND o.deleted_at IS NULL",
         );
-        let mut bound: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(escape_fts(&query.text))];
+        let mut bound: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(match_expr.to_string())];
         if let Some(p) = &query.project {
             sql.push_str(" AND o.project = ?");
             bound.push(Box::new(p.clone()));
@@ -229,7 +330,10 @@ impl SearchEngine {
         Ok(out)
     }
 
-    fn vec_query(&self, query: &SearchQuery, limit: u32) -> Result<Vec<SeeleId>> {
+    /// KNN over vec0. Returns `(id, distance)` pairs in rank order — the
+    /// distance feeds the trace (Q8) and future consumers (near-dup
+    /// detection); it was previously SELECTed and discarded.
+    fn vec_query(&self, query: &SearchQuery, limit: u32) -> Result<Vec<(SeeleId, f64)>> {
         let embedding = self.embedder.embed(&query.text)?;
         if embedding.len() != self.embedder.dim() {
             return Err(SearchError::DimensionMismatch {
@@ -275,11 +379,11 @@ impl SearchEngine {
         let mut out = Vec::new();
         while let Some(row) = rows.next()? {
             let id_str: String = row.get(0)?;
-            out.push(
-                id_str
-                    .parse::<SeeleId>()
-                    .map_err(|e| SearchError::InvalidInput(format!("bad ULID '{id_str}': {e}")))?,
-            );
+            let distance: f64 = row.get(1)?;
+            let id = id_str
+                .parse::<SeeleId>()
+                .map_err(|e| SearchError::InvalidInput(format!("bad ULID '{id_str}': {e}")))?;
+            out.push((id, distance));
         }
         Ok(out)
     }
@@ -455,17 +559,19 @@ impl SearchEngine {
     }
 }
 
-fn unpack_per_source(hit: &RrfHit<SeeleId>) -> (Option<usize>, Option<usize>) {
+fn unpack_per_source(hit: &RrfHit<SeeleId>) -> (Option<usize>, Option<usize>, Option<usize>) {
     let mut fts = None;
     let mut vec = None;
+    let mut loose = None;
     for (src, rank) in &hit.per_source {
         match *src {
             "fts" => fts = Some(*rank),
             "vec" => vec = Some(*rank),
+            "fts_loose" => loose = Some(*rank),
             _ => {}
         }
     }
-    (fts, vec)
+    (fts, vec, loose)
 }
 
 /// Map a relation row to an [`AnnotationKind`] from the **source** side's
@@ -501,6 +607,24 @@ fn annotation_for_target(relation: &str, status: &str) -> Option<AnnotationKind>
 fn escape_fts(s: &str) -> String {
     // Escape internal double-quotes by doubling, then wrap in double-quotes.
     format!("\"{}\"", s.replace('"', "\"\""))
+}
+
+/// Bag-of-words MATCH expression (Q3): tokenize on non-alphanumerics,
+/// quote each token, OR-join. `None` when fewer than 2 tokens survive —
+/// the loose form would be identical to the strict phrase, so the extra
+/// FTS pass is skipped. Each token is individually quoted, so no FTS5
+/// metacharacter survives un-escaped (same conservative posture as
+/// [`escape_fts`]).
+fn loose_fts_match(s: &str) -> Option<String> {
+    let tokens: Vec<String> = s
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|t| !t.is_empty())
+        .map(|t| format!("\"{t}\""))
+        .collect();
+    if tokens.len() < 2 {
+        return None;
+    }
+    Some(tokens.join(" OR "))
 }
 
 fn parse_observation(row: &Row<'_>) -> Result<Observation> {
@@ -578,6 +702,26 @@ mod tests {
     fn escape_fts_wraps_in_quotes_and_escapes_internal_quotes() {
         assert_eq!(escape_fts("hello world"), "\"hello world\"");
         assert_eq!(escape_fts(r#"a "b" c"#), r#""a ""b"" c""#);
+    }
+
+    #[test]
+    fn loose_fts_match_or_joins_quoted_tokens() {
+        assert_eq!(
+            loose_fts_match("como fallo el deploy").as_deref(),
+            Some(r#""como" OR "fallo" OR "el" OR "deploy""#)
+        );
+        // Punctuation splits tokens; nothing survives un-quoted.
+        assert_eq!(
+            loose_fts_match("auth-flow (v2)?").as_deref(),
+            Some(r#""auth" OR "flow" OR "v2""#)
+        );
+    }
+
+    #[test]
+    fn loose_fts_match_skips_single_token_and_empty() {
+        assert_eq!(loose_fts_match("deploy"), None);
+        assert_eq!(loose_fts_match("  ?!  "), None);
+        assert_eq!(loose_fts_match("\"deploy\""), None);
     }
 
     #[test]

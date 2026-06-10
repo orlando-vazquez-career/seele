@@ -1,0 +1,52 @@
+{
+  "ok": true,
+  "data": {
+    "suite": "coding-memory",
+    "model_id": "sentence-transformers/all-MiniLM-L6-v2",
+    "totals": {
+      "queries": 34,
+      "recall_at_5": 0.9411764705882353,
+      "recall_at_10": 0.9705882352941176,
+      "mrr": 0.7875816993464052,
+      "ndcg_at_10": 0.8013554636124055
+    },
+    "by_category": {
+      "knowledge-update": {
+        "queries": 1,
+        "recall_at_5": 1.0,
+        "recall_at_10": 1.0,
+        "mrr": 1.0,
+        "ndcg_at_10": 0.9197207891481876
+      },
+      "multi-hop": {
+        "queries": 10,
+        "recall_at_5": 1.0,
+        "recall_at_10": 1.0,
+        "mrr": 0.8333333333333333,
+        "ndcg_at_10": 0.7763475470866703
+      },
+      "paraphrase": {
+        "queries": 15,
+        "recall_at_5": 0.8666666666666667,
+        "recall_at_10": 0.9333333333333333,
+        "mrr": 0.7074074074074074,
+        "ndcg_at_10": 0.7621306499490292
+      },
+      "single-fact": {
+        "queries": 6,
+        "recall_at_5": 1.0,
+        "recall_at_10": 1.0,
+        "mrr": 0.8055555555555555,
+        "ndcg_at_10": 0.8551549589285763
+      },
+      "temporal": {
+        "queries": 2,
+        "recall_at_5": 1.0,
+        "recall_at_10": 1.0,
+        "mrr": 1.0,
+        "ndcg_at_10": 1.0
+      }
+    }
+  },
+  "warnings": []
+}

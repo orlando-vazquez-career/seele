@@ -11,7 +11,8 @@ fn loads_and_ingests_coding_memory_fixture() {
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/fixtures/coding-memory.json");
     let suite = load_suite(path).unwrap();
     assert_eq!(suite.corpus.len(), 22, "fixture corpus size");
-    assert_eq!(suite.queries.len(), 18, "fixture query count");
+    // Suite v2 (Q7): 18 originales + 9 paraphrase + 7 multi-hop nuevas.
+    assert_eq!(suite.queries.len(), 34, "fixture query count (v2)");
 
     let td = TempDir::new().unwrap();
     let pool = init_db(td.path().join("eval.db")).unwrap();

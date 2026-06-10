@@ -30,7 +30,8 @@ fn run_suite_smoke_produces_wellformed_report() {
     .unwrap();
 
     assert_eq!(report.suite, "coding-memory");
-    assert_eq!(report.totals.queries, 18, "all queries scored");
+    // Suite v2 (Q7): 34 queries (18 originales + 16 nuevas).
+    assert_eq!(report.totals.queries, 34, "all queries scored");
 
     // Categories from the fixture are present.
     for cat in [
@@ -48,7 +49,7 @@ fn run_suite_smoke_produces_wellformed_report() {
 
     // Metrics are valid fractions.
     let m = &report.totals;
-    for v in [m.recall_at_5, m.recall_at_10, m.mrr] {
+    for v in [m.recall_at_5, m.recall_at_10, m.mrr, m.ndcg_at_10] {
         assert!((0.0..=1.0).contains(&v), "metric out of range: {v}");
     }
     // recall@10 >= recall@5 by construction.
