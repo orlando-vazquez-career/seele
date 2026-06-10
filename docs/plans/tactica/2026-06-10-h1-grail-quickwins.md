@@ -42,7 +42,7 @@ Los 11 quick wins del plan de mejoras, en orden de ejecución por dependencias:
 - [x] Bloque 2 — Q5 (set_embedding atómico vector+meta; `embedding_provenance()` + `mix_warning()` compartido; doctor CLI+MCP; **bonus: bug latente vec0 INSERT OR REPLACE descubierto y arreglado**)
 - [x] Bloque 3 — Q7 (nDCG@10 + --suite-file + suite v2: paraphrase 15, multi-hop 10; baseline PRE capturado con ONNX real — primer first-run download exitoso del fix hf-hub 0.5)
 - [x] Bloque 4 — Q3+Q8 (**GATE APROBADO**: paraphrase r@5 +0.133 / MRR +0.161, multi-hop r@5 1.000, cero degradación; --explain expone fts_candidates=0 en paráfrasis; artefactos baseline-v2-pre/post-q3.json)
-- [ ] Bloque 5 — Q4
+- [x] Bloque 5 — Q4 (knn_by_vector + near_duplicates en SaveResponse + hint MCP + suggest_topic_key por vecino; umbral L2 0.37 ≈ cos 0.93; 5 tests nuevos con StubEmbedder)
 - [ ] Bloque 6 — Q8
 - [ ] Bloque 7 — Q6
 - [ ] Bloque 8 — Q9

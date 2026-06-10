@@ -86,7 +86,7 @@ impl SeeleService {
             title: req.title.clone(),
             content: req.content.clone(),
             tool_name: req.tool_name,
-            project: req.project,
+            project: req.project.clone(),
             scope,
             topic_key: req.topic_key,
             metadata,
@@ -95,6 +95,9 @@ impl SeeleService {
 
         // Best-effort embedding write. Failure logs but does not surface
         // as a 5xx — the row is persisted and a reindex pass can fix it.
+        // The same fresh vector feeds the near-duplicate scan (Q4): purely
+        // informational, never changes the save outcome.
+        let mut near_duplicates = Vec::new();
         match self.embedder.embed(&req.content) {
             Ok(v) => {
                 let meta = seele_storage::EmbeddingMeta {
@@ -105,24 +108,37 @@ impl SeeleService {
                 if let Err(e) = self.observations.set_embedding(outcome.id(), &v, &meta) {
                     tracing::warn!(error=%e, id=%outcome.id(), "embedding write failed post-save");
                 }
+                match self.near_duplicates_for_vector(
+                    &v,
+                    req.project.as_deref(),
+                    Some(scope),
+                    Some(outcome.id()),
+                ) {
+                    Ok(nd) => near_duplicates = nd,
+                    Err(e) => {
+                        tracing::warn!(error=%e, id=%outcome.id(), "near-duplicate scan failed post-save");
+                    }
+                }
             }
             Err(e) => {
                 tracing::warn!(error=%e, id=%outcome.id(), "embedder failed post-save");
             }
         }
 
-        Ok(match outcome {
+        let mut response = match outcome {
             SaveOutcome::Created(id) => SaveResponse {
                 id: id.to_string(),
                 outcome: "created",
                 revision_count: None,
                 duplicate_count: None,
+                near_duplicates: Vec::new(),
             },
             SaveOutcome::UpsertedTopic { id, revision_count } => SaveResponse {
                 id: id.to_string(),
                 outcome: "upserted_topic",
                 revision_count: Some(revision_count),
                 duplicate_count: None,
+                near_duplicates: Vec::new(),
             },
             SaveOutcome::DuplicateMerged {
                 id,
@@ -132,8 +148,45 @@ impl SeeleService {
                 outcome: "duplicate_merged",
                 revision_count: None,
                 duplicate_count: Some(duplicate_count),
+                near_duplicates: Vec::new(),
             },
-        })
+        };
+        response.near_duplicates = near_duplicates;
+        Ok(response)
+    }
+
+    /// KNN scan for near-duplicates of a fresh embedding (Q4). Distances
+    /// are vec0's default **L2** over unit-norm vectors; the threshold
+    /// 0.37 ≈ cosine 0.93 (`sqrt(2·(1−0.93))`) — the conservative end of
+    /// GRAIL's alias-detection band, calibrated against false merges
+    /// being worse than missed merges. Also consumed by
+    /// `seele_suggest_topic_key` to propose the nearest neighbor's key.
+    pub fn near_duplicates_for_vector(
+        &self,
+        embedding: &[f32],
+        project: Option<&str>,
+        scope: Option<seele_core::memory::Scope>,
+        exclude: Option<SeeleId>,
+    ) -> Result<Vec<crate::dto::NearDuplicateDto>> {
+        const NEAR_DUP_K: u32 = 3;
+        let pairs = self
+            .search
+            .knn_by_vector(embedding, project, scope, exclude, NEAR_DUP_K)?;
+        let mut out = Vec::new();
+        for (id, distance) in pairs {
+            if distance > NEAR_DUP_MAX_L2 {
+                continue;
+            }
+            if let Some(obs) = self.observations.get(id)? {
+                out.push(crate::dto::NearDuplicateDto {
+                    id: id.to_string(),
+                    title: obs.title,
+                    topic_key: obs.topic_key,
+                    distance,
+                });
+            }
+        }
+        Ok(out)
     }
 
     /// Run the search engine. Caller is responsible for the anti-empty-query
@@ -442,6 +495,11 @@ impl SeeleService {
         Ok(self.observations.embedding_provenance()?)
     }
 }
+
+/// Q4: max L2 distance for a stored vector to count as near-duplicate of
+/// a fresh save. vec0's default metric is L2; on unit-normalized
+/// embeddings `l2 = sqrt(2·(1−cos))`, so 0.37 ≈ cosine 0.93.
+pub const NEAR_DUP_MAX_L2: f64 = 0.37;
 
 /// Map a wire-level [`SearchRequest`] onto the engine's [`SearchQuery`].
 /// Shared by the plain and `--explain` search paths.

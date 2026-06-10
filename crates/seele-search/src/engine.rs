@@ -388,6 +388,62 @@ impl SearchEngine {
         Ok(out)
     }
 
+    /// KNN over `observations_vec` for a caller-supplied vector (Q4:
+    /// near-duplicate detection on the save path; future consolidate).
+    /// Optional project/scope narrowing and an excluded id (the row just
+    /// written). Returns `(id, L2 distance)` pairs in rank order.
+    pub fn knn_by_vector(
+        &self,
+        embedding: &[f32],
+        project: Option<&str>,
+        scope: Option<Scope>,
+        exclude: Option<SeeleId>,
+        k: u32,
+    ) -> Result<Vec<(SeeleId, f64)>> {
+        if embedding.len() != self.embedder.dim() {
+            return Err(SearchError::DimensionMismatch {
+                query: embedding.len(),
+                db: self.embedder.dim(),
+            });
+        }
+        let bytes: Vec<u8> = embedding.iter().flat_map(|f| f.to_le_bytes()).collect();
+        let mut sql = String::from(
+            "SELECT o.id, vec.distance FROM observations_vec vec \
+             JOIN observations o ON o.int_id = vec.rowid \
+             WHERE vec.embedding MATCH ?1 \
+                AND vec.k = ?2 \
+                AND o.deleted_at IS NULL",
+        );
+        let mut bound: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(bytes), Box::new(k as i64)];
+        if let Some(p) = project {
+            sql.push_str(" AND o.project = ?");
+            bound.push(Box::new(p.to_string()));
+        }
+        if let Some(s) = scope {
+            sql.push_str(" AND o.scope = ?");
+            bound.push(Box::new(s.as_str().to_string()));
+        }
+        if let Some(x) = exclude {
+            sql.push_str(" AND o.id != ?");
+            bound.push(Box::new(x.to_string()));
+        }
+        sql.push_str(" ORDER BY vec.distance");
+
+        let conn = self.pool.get().map_err(seele_storage::StorageError::Pool)?;
+        let mut stmt = conn.prepare(&sql)?;
+        let mut rows = stmt.query(rusqlite::params_from_iter(bound.iter().map(|b| b.as_ref())))?;
+        let mut out = Vec::new();
+        while let Some(row) = rows.next()? {
+            let id_str: String = row.get(0)?;
+            let distance: f64 = row.get(1)?;
+            let id = id_str
+                .parse::<SeeleId>()
+                .map_err(|e| SearchError::InvalidInput(format!("bad ULID '{id_str}': {e}")))?;
+            out.push((id, distance));
+        }
+        Ok(out)
+    }
+
     /// Multiply each RRF score by `(1 + multiplier * meta_score)` and re-sort.
     /// No-op when multiplier is 0.0 (default). `meta_score` is read from the
     /// virtual column on `observations`; null is treated as 1.0 per ADR-03.

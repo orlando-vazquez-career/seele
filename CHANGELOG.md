@@ -33,6 +33,19 @@ SemVer marcado._
 
 ### Added
 
+- **`near_duplicates` informacional en el save path (Q4, sprint GRAIL-H1)** —
+  cada save con embedding corre un KNN top-3 (mismo project+scope, excluye
+  la fila recién guardada) y reporta vecinos bajo el umbral L2 0.37
+  (≈ coseno 0.93 en vectores unit-norm — corrección de unidades del
+  verificador: vec0 usa L2 por default). Nuevo campo
+  `SaveResponse.near_duplicates [{id,title,topic_key,distance}]` en HTTP +
+  OpenAPI; `seele_save` MCP suma un `hint` accionable estilo GRAIL.
+  `SearchEngine::knn_by_vector()` nuevo (también lo consumirá consolidate
+  v0.4). Bonus: `seele_suggest_topic_key` ahora propone el topic_key del
+  vecino más cercano (`source:"neighbor"`) antes del fallback por familias
+  (`source:"builtin-families"`) — re-guardar el mismo tema converge a la
+  misma key en vez de acuñar `<family>/auto`. Informacional puro: el
+  outcome del save nunca cambia.
 - **Tercer path RRF: rescate FTS bag-of-words (Q3, sprint GRAIL-H1)** — el
   híbrido suma una tercera señal: la query tokenizada y unida con OR
   (`"tok1" OR "tok2"`), que rescata paráfrasis donde el phrase-quoting

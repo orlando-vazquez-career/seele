@@ -45,20 +45,41 @@ pub fn version(_svc: &SeeleService, _params: Value) -> Result<Value, ToolError> 
     }))
 }
 
-/// Match `title + content` against a small set of ENGRAM-inherited topic
-/// families. Returns the highest-scoring family name, or `null` if no
-/// signal beats the noise floor.
-pub fn suggest_topic_key(_svc: &SeeleService, params: Value) -> Result<Value, ToolError> {
-    let title = params
+/// Suggest a topic key for `title + content`. Two signals, in order:
+///
+/// 1. **Nearest stored neighbor** (Q4): embed the text and KNN against
+///    `observations_vec`; if the closest active row sits inside the
+///    near-duplicate threshold AND has a topic_key, suggest that key —
+///    re-saving the same topic should converge on the same key (that's
+///    what makes the upsert fire) instead of minting `<family>/auto`.
+/// 2. **Keyword families** (ENGRAM-inherited heuristics) as fallback.
+pub fn suggest_topic_key(svc: &SeeleService, params: Value) -> Result<Value, ToolError> {
+    let title_raw = params
         .get("title")
         .and_then(|v| v.as_str())
-        .ok_or_else(|| ToolError::BadParams("title required".into()))?
-        .to_lowercase();
-    let content = params
-        .get("content")
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .to_lowercase();
+        .ok_or_else(|| ToolError::BadParams("title required".into()))?;
+    let content_raw = params.get("content").and_then(|v| v.as_str()).unwrap_or("");
+    let project = params.get("project").and_then(|v| v.as_str());
+
+    // Signal 1 — nearest neighbor. Strictly best-effort: any failure
+    // (embedder down, empty DB) falls through to the families heuristic.
+    if let Ok(vector) = svc.embedder.embed(&format!("{title_raw} {content_raw}")) {
+        if let Ok(neighbors) = svc.near_duplicates_for_vector(&vector, project, None, None) {
+            if let Some(n) = neighbors.iter().find(|n| n.topic_key.is_some()) {
+                return Ok(serde_json::json!({
+                    "family": Value::Null,
+                    "suggestion": n.topic_key,
+                    "source": "neighbor",
+                    "neighbor_id": n.id,
+                    "neighbor_title": n.title,
+                    "distance": n.distance,
+                }));
+            }
+        }
+    }
+
+    let title = title_raw.to_lowercase();
+    let content = content_raw.to_lowercase();
     let combined = format!("{title} {content}");
 
     let families: &[(&str, &[&str])] = &[
@@ -99,8 +120,13 @@ pub fn suggest_topic_key(_svc: &SeeleService, params: Value) -> Result<Value, To
             "family": family,
             "score": score,
             "suggestion": format!("{family}/auto"),
+            "source": "builtin-families",
         }),
-        None => serde_json::json!({ "family": Value::Null, "suggestion": Value::Null }),
+        None => serde_json::json!({
+            "family": Value::Null,
+            "suggestion": Value::Null,
+            "source": "builtin-families",
+        }),
     })
 }
 
@@ -123,6 +149,35 @@ mod tests {
         let r =
             suggest_topic_key(&dummy_svc(), serde_json::json!({"title": "random stuff"})).unwrap();
         assert!(r["family"].is_null());
+        assert_eq!(r["source"], "builtin-families");
+    }
+
+    #[test]
+    fn suggests_neighbor_topic_key_when_vector_is_close() {
+        let svc = dummy_svc();
+        // FakeEmbedder is content-deterministic: store content equal to the
+        // exact "{title} {content}" string the tool embeds → distance 0.
+        svc.save_observation(seele_http::dto::SaveRequest {
+            title: "registro previo".into(),
+            content: "login bug detalle".into(),
+            r#type: "memory".into(),
+            project: Some("p".into()),
+            scope: None,
+            topic_key: Some("bug/login".into()),
+            session_id: None,
+            tool_name: None,
+            metadata: serde_json::Value::Null,
+        })
+        .unwrap();
+
+        let r = suggest_topic_key(
+            &svc,
+            serde_json::json!({"title": "login bug", "content": "detalle", "project": "p"}),
+        )
+        .unwrap();
+        assert_eq!(r["source"], "neighbor");
+        assert_eq!(r["suggestion"], "bug/login");
+        assert!(r["distance"].as_f64().unwrap() < 1e-6);
     }
 
     fn dummy_svc() -> SeeleService {

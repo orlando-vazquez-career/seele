@@ -50,6 +50,25 @@ pub struct SaveResponse {
     pub revision_count: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub duplicate_count: Option<u32>,
+    /// Pre-existing observations whose stored vector sits within the
+    /// near-duplicate threshold of the row just saved (Q4). Purely
+    /// informational — the save outcome is never altered. Empty when the
+    /// embedder failed, the row has no close neighbors, or the write came
+    /// through a path that doesn't embed (sync/engram import).
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub near_duplicates: Vec<NearDuplicateDto>,
+}
+
+/// One near-duplicate candidate reported by the save path (Q4). The
+/// distance is vec0's default metric: **L2** over unit-normalized
+/// embeddings (0.37 L2 ≈ 0.93 cosine).
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct NearDuplicateDto {
+    pub id: String,
+    pub title: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub topic_key: Option<String>,
+    pub distance: f64,
 }
 
 #[derive(Debug, Deserialize, Default, ToSchema)]

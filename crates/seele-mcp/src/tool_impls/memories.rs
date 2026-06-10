@@ -20,7 +20,19 @@ fn parse_id(v: &Value) -> Result<SeeleId, ToolError> {
 pub fn save(svc: &SeeleService, params: Value) -> Result<Value, ToolError> {
     let req: SaveRequest = serde_json::from_value(params)?;
     let resp = svc.save_observation(req)?;
-    Ok(serde_json::to_value(resp)?)
+    let has_near_dups = !resp.near_duplicates.is_empty();
+    let mut value = serde_json::to_value(resp)?;
+    // GRAIL-style next-step hint: agents act on directives, not on fields
+    // they'd have to interpret.
+    if has_near_dups {
+        value["hint"] = Value::String(
+            "near-duplicates detected: review them and either update the \
+             existing memory, or link this one (seele_link supersedes/\
+             related) instead of letting paraphrased copies accumulate."
+                .to_string(),
+        );
+    }
+    Ok(value)
 }
 
 pub fn search(svc: &SeeleService, params: Value) -> Result<Value, ToolError> {

@@ -782,3 +782,64 @@ fn single_token_query_skips_loose_path() {
     );
     assert!(trace.fts_loose_candidates.is_none());
 }
+
+// -------- Q4: knn_by_vector --------
+
+#[test]
+fn knn_by_vector_filters_excludes_and_orders_by_distance() {
+    let (_td, store, engine) = fresh_engine();
+
+    // Three rows with synthetic unit vectors: a and b close, c orthogonal.
+    let mut va = vec![0.0f32; 384];
+    va[0] = 1.0;
+    let mut vb = vec![0.0f32; 384];
+    vb[0] = 0.98;
+    vb[1] = (1.0f32 - 0.98 * 0.98).sqrt(); // unit norm, cos≈0.98 vs a
+    let mut vc = vec![0.0f32; 384];
+    vc[2] = 1.0; // orthogonal
+
+    let save_plain = |title: &str, content: &str, project: &str| {
+        store
+            .save(SaveInput {
+                session_id: None,
+                kind: ObservationType::Decision,
+                title: title.into(),
+                content: content.into(),
+                tool_name: None,
+                project: Some(project.into()),
+                scope: Scope::Project,
+                topic_key: None,
+                metadata: Metadata::new(),
+            })
+            .unwrap()
+            .id()
+    };
+    let meta = seele_storage::EmbeddingMeta {
+        model_id: "stub".into(),
+        dim: 384,
+        contextualized: false,
+    };
+    let a = save_plain("a", "contenido a", "p");
+    let b = save_plain("b", "contenido b", "p");
+    let c = save_plain("c", "contenido c", "p");
+    let other = save_plain("d", "contenido d", "otro-proyecto");
+    store.set_embedding(a, &va, &meta).unwrap();
+    store.set_embedding(b, &vb, &meta).unwrap();
+    store.set_embedding(c, &vc, &meta).unwrap();
+    store.set_embedding(other, &va, &meta).unwrap(); // identical to a, other project
+
+    // Query with a's vector, excluding a itself, scoped to project p.
+    let pairs = engine
+        .knn_by_vector(&va, Some("p"), Some(Scope::Project), Some(a), 3)
+        .unwrap();
+    let ids: Vec<_> = pairs.iter().map(|(id, _)| *id).collect();
+    assert!(!ids.contains(&a), "excluded id must not appear");
+    assert!(!ids.contains(&other), "project filter must hold");
+    assert_eq!(ids[0], b, "closest neighbor first");
+    // cos 0.98 → l2 = sqrt(2*(1-0.98)) = 0.2 — inside the 0.37 threshold.
+    assert!(pairs[0].1 < 0.37, "b distance {} should be near", pairs[0].1);
+    // c is orthogonal: l2 = sqrt(2) ≈ 1.414 — far outside.
+    if let Some((_, dc)) = pairs.iter().find(|(id, _)| *id == c) {
+        assert!(*dc > 1.0, "orthogonal distance {dc} should be far");
+    }
+}
