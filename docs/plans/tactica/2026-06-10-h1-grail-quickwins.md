@@ -43,8 +43,8 @@ Los 11 quick wins del plan de mejoras, en orden de ejecución por dependencias:
 - [x] Bloque 3 — Q7 (nDCG@10 + --suite-file + suite v2: paraphrase 15, multi-hop 10; baseline PRE capturado con ONNX real — primer first-run download exitoso del fix hf-hub 0.5)
 - [x] Bloque 4 — Q3+Q8 (**GATE APROBADO**: paraphrase r@5 +0.133 / MRR +0.161, multi-hop r@5 1.000, cero degradación; --explain expone fts_candidates=0 en paráfrasis; artefactos baseline-v2-pre/post-q3.json)
 - [x] Bloque 5 — Q4 (knn_by_vector + near_duplicates en SaveResponse + hint MCP + suggest_topic_key por vecino; umbral L2 0.37 ≈ cos 0.93; 5 tests nuevos con StubEmbedder)
-- [ ] Bloque 6 — Q8
-- [ ] Bloque 7 — Q6
+- [x] Bloque 6 — Q8 (entregado junto al bloque 4: search_traced + --explain CLI)
+- [x] Bloque 7 — Q6 (find_similar 2 señales + compare suggest/confirm con confidence real; umbrales en seele_core::similarity; get_embedding nuevo; 5 tests)
 - [ ] Bloque 8 — Q9
 - [ ] Bloque 9 — Q10
 - [ ] Bloque 10 — Q11

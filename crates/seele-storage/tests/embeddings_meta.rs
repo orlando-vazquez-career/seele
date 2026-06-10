@@ -184,3 +184,24 @@ fn mix_warning_is_none_only_when_stored_matches_active() {
         .unwrap();
     assert!(empty.mix_warning("anything", 384).is_none());
 }
+
+#[test]
+fn get_embedding_roundtrips_stored_vector() {
+    let td = TempDir::new().unwrap();
+    let pool = init_db(td.path().join("seele.db")).unwrap();
+    let store = ObservationStore::new(pool);
+    let id = save_one(&store, "roundtrip");
+
+    assert!(store.get_embedding(id).unwrap().is_none(), "no vector yet");
+
+    let mut v = vec![0.0f32; 384];
+    v[0] = 0.6;
+    v[1] = 0.8;
+    store.set_embedding(id, &v, &meta("all-MiniLM-L6-v2")).unwrap();
+
+    let back = store.get_embedding(id).unwrap().expect("vector stored");
+    assert_eq!(back.len(), 384);
+    assert!((back[0] - 0.6).abs() < 1e-6);
+    assert!((back[1] - 0.8).abs() < 1e-6);
+    assert!(back[2].abs() < 1e-6);
+}

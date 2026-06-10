@@ -189,6 +189,128 @@ impl SeeleService {
         Ok(out)
     }
 
+    /// Deterministic similarity scan for an existing observation (Q6,
+    /// GRAIL `find_similar_entity` lesson): two signals in parallel —
+    /// Jaro-Winkler on titles (same project + same type, the conservative
+    /// posture against false merges) and cosine over **stored** embeddings
+    /// (no re-embed). Candidates are deduped keeping each id's strongest
+    /// signal, ranked by score, truncated to `top_k`. Zero LLM.
+    pub fn find_similar(
+        &self,
+        id: SeeleId,
+        top_k: usize,
+    ) -> Result<Vec<crate::dto::SimilarCandidateDto>> {
+        use seele_core::similarity::{cosine_from_unit_l2, SIGNAL_COS_MIN, SIGNAL_JW_MIN};
+
+        let base = self
+            .observations
+            .get(id)?
+            .ok_or_else(|| ApiError::NotFound(format!("observation {id}")))?;
+        let mut best: std::collections::HashMap<SeeleId, (f64, &'static str)> =
+            std::collections::HashMap::new();
+        let mut keep_max = |bid: SeeleId, score: f64, signal: &'static str| {
+            best.entry(bid)
+                .and_modify(|e| {
+                    if score > e.0 {
+                        *e = (score, signal);
+                    }
+                })
+                .or_insert((score, signal));
+        };
+
+        // Vector signal — reuse the vector already paid for at save time.
+        if let Some(vector) = self.observations.get_embedding(id)? {
+            let pairs = self.search.knn_by_vector(
+                &vector,
+                base.project.as_deref(),
+                None,
+                Some(id),
+                (top_k.max(5) * 2) as u32,
+            )?;
+            for (nid, dist) in pairs {
+                let cos = cosine_from_unit_l2(dist);
+                if cos >= SIGNAL_COS_MIN {
+                    keep_max(nid, cos, "vector");
+                }
+            }
+        }
+
+        // Title signal — JW within same project AND same type.
+        let candidates = self.observations.list(seele_storage::ObservationQuery {
+            project: base.project.clone(),
+            kind: Some(base.kind.clone()),
+            limit: Some(500),
+            ..Default::default()
+        })?;
+        let base_title = base.title.to_lowercase();
+        for obs in candidates {
+            if obs.id == id {
+                continue;
+            }
+            let other = obs.title.to_lowercase();
+            if other == base_title {
+                keep_max(obs.id, 1.0, "exact");
+            } else {
+                let jw = strsim::jaro_winkler(&base_title, &other);
+                if jw >= SIGNAL_JW_MIN {
+                    keep_max(obs.id, jw, "title");
+                }
+            }
+        }
+
+        let mut ranked: Vec<(SeeleId, f64, &'static str)> =
+            best.into_iter().map(|(k, (s, sig))| (k, s, sig)).collect();
+        ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        ranked.truncate(top_k);
+
+        let mut out = Vec::with_capacity(ranked.len());
+        for (cid, score, signal) in ranked {
+            if let Some(obs) = self.observations.get(cid)? {
+                out.push(crate::dto::SimilarCandidateDto {
+                    id: cid.to_string(),
+                    title: obs.title,
+                    topic_key: obs.topic_key,
+                    score,
+                    signal,
+                });
+            }
+        }
+        Ok(out)
+    }
+
+    /// Strongest similarity between two specific observations (Q6 confirm
+    /// path): max of title JW and embedding cosine. `None` when neither
+    /// signal is computable (e.g. both rows lack vectors and titles are
+    /// empty — practically never).
+    pub fn similarity_between(&self, a: SeeleId, b: SeeleId) -> Result<Option<f64>> {
+        use seele_core::similarity::cosine_from_unit_l2;
+        let oa = self
+            .observations
+            .get(a)?
+            .ok_or_else(|| ApiError::NotFound(format!("observation {a}")))?;
+        let ob = self
+            .observations
+            .get(b)?
+            .ok_or_else(|| ApiError::NotFound(format!("observation {b}")))?;
+        let jw = strsim::jaro_winkler(&oa.title.to_lowercase(), &ob.title.to_lowercase());
+        let mut score = jw;
+        if let (Some(va), Some(vb)) = (
+            self.observations.get_embedding(a)?,
+            self.observations.get_embedding(b)?,
+        ) {
+            if va.len() == vb.len() {
+                let l2 = va
+                    .iter()
+                    .zip(&vb)
+                    .map(|(x, y)| ((*x - *y) as f64).powi(2))
+                    .sum::<f64>()
+                    .sqrt();
+                score = score.max(cosine_from_unit_l2(l2));
+            }
+        }
+        Ok(Some(score.clamp(0.0, 1.0)))
+    }
+
     /// Run the search engine. Caller is responsible for the anti-empty-query
     /// gate at the transport layer (HTTP handler / MCP tool both apply it).
     pub fn search_observations(&self, req: SearchRequest) -> Result<SearchResponse> {

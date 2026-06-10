@@ -13,6 +13,7 @@ pub mod memory;
 pub mod metadata;
 pub mod relation;
 pub mod session;
+pub mod similarity;
 
 pub use error::{Result, SeeleError};
 pub use filter::{MetadataFilter, ObservationQuery};

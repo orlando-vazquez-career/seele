@@ -71,6 +71,20 @@ pub struct NearDuplicateDto {
     pub distance: f64,
 }
 
+/// One candidate from `find_similar` / `seele_compare` suggest mode (Q6).
+/// `signal` names the strongest evidence: `exact` (identical titles),
+/// `title` (Jaro-Winkler ≥ 0.92) or `vector` (cosine ≥ 0.93 between
+/// stored embeddings). `score` is that signal's similarity in [0, 1].
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct SimilarCandidateDto {
+    pub id: String,
+    pub title: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub topic_key: Option<String>,
+    pub score: f64,
+    pub signal: &'static str,
+}
+
 #[derive(Debug, Deserialize, Default, ToSchema)]
 pub struct SearchRequest {
     #[serde(default)]

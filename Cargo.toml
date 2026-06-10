@@ -48,6 +48,9 @@ r2d2 = "0.8"
 r2d2_sqlite = "0.25"
 refinery = { version = "0.8", features = ["rusqlite"] }
 
+# Similarity (Q6: title signal for find_similar / compare suggest)
+strsim = "0.11"
+
 # Embedder
 # ort 2.0 está en RC; pineamos a `=2.0.0-rc.10` porque no hay stable a 2026-05.
 # Dependabot (.github/dependabot.yml) va a abrir PR cuando salga 2.0.0 stable.

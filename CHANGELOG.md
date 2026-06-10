@@ -33,6 +33,18 @@ SemVer marcado._
 
 ### Added
 
+- **`find_similar` determinístico + `seele_compare` modo suggest (Q6,
+  sprint GRAIL-H1)** — `SeeleService::find_similar(id, top_k)`: dos señales
+  en paralelo al estilo `find_similar_entity` de GRAIL — Jaro-Winkler de
+  títulos (mismo project + mismo type) y coseno entre embeddings YA
+  almacenados (cero re-embed, cero LLM) — dedup por señal más fuerte.
+  Umbrales fieles a GRAIL en `seele_core::similarity` (JW ≥ 0.92,
+  cos ≥ 0.93; piso confirm 0.85) — constantes hasta el registry de config
+  v0.4 (E8). `seele_compare` deja de crear relaciones a ciegas: modo
+  **suggest** (sin `target_id`) devuelve candidatos
+  `{id,title,topic_key,score,signal}` sin crear nada; el modo create
+  computa `confidence` real (`similarity_between`) y marca
+  `marked_by_kind: "heuristic"`. Nuevo `ObservationStore::get_embedding(id)`.
 - **`near_duplicates` informacional en el save path (Q4, sprint GRAIL-H1)** —
   cada save con embedding corre un KNN top-3 (mismo project+scope, excluye
   la fila recién guardada) y reporta vecinos bajo el umbral L2 0.37

@@ -109,3 +109,44 @@ fn near_duplicates_respect_project_boundary() {
         .unwrap();
     assert!(resp.near_duplicates.is_empty());
 }
+
+// -------- Q6: find_similar (señales título + vector) --------
+
+#[test]
+fn find_similar_combines_title_and_vector_signals() {
+    let (_td, svc) = service();
+    let base = save(&svc, "configuracion de auth", "dup contenido base");
+    // Near-identical title, orthogonal vector → only the title signal.
+    let by_title = save(&svc, "configuracion de auth v2", "far otra cosa");
+    // Unrelated title, identical vector → only the vector signal.
+    let by_vector = save(&svc, "totalmente distinto", "dup contenido base bis");
+    // Unrelated on both axes → must not appear.
+    save(&svc, "ruido", "far ruido total");
+
+    let candidates = svc
+        .find_similar(base.id.parse().unwrap(), 5)
+        .expect("find_similar");
+    let ids: Vec<&str> = candidates.iter().map(|c| c.id.as_str()).collect();
+    assert!(ids.contains(&by_vector.id.as_str()), "vector signal candidate");
+    assert!(ids.contains(&by_title.id.as_str()), "title signal candidate");
+
+    let vec_cand = candidates.iter().find(|c| c.id == by_vector.id).unwrap();
+    assert_eq!(vec_cand.signal, "vector");
+    assert!(vec_cand.score > 0.99, "identical vectors → cos ~1");
+
+    let title_cand = candidates.iter().find(|c| c.id == by_title.id).unwrap();
+    assert_eq!(title_cand.signal, "title");
+    assert!(title_cand.score >= 0.92, "JW over signal floor");
+}
+
+#[test]
+fn similarity_between_uses_strongest_signal() {
+    let (_td, svc) = service();
+    let a = save(&svc, "titulo a", "dup mismo vector");
+    let b = save(&svc, "otra cosa b", "dup mismo vector tambien");
+    let score = svc
+        .similarity_between(a.id.parse().unwrap(), b.id.parse().unwrap())
+        .unwrap()
+        .expect("computable");
+    assert!(score > 0.99, "identical stored vectors dominate: {score}");
+}

@@ -435,6 +435,27 @@ impl ObservationStore {
         Ok(())
     }
 
+    /// Read back the stored embedding for `id`, if any (Q6: reuse the
+    /// vector already paid for instead of re-embedding).
+    pub fn get_embedding(&self, id: SeeleId) -> Result<Option<Vec<f32>>> {
+        use rusqlite::OptionalExtension;
+        let conn = self.pool.get()?;
+        let bytes: Option<Vec<u8>> = conn
+            .query_row(
+                "SELECT v.embedding FROM observations_vec v \
+                 JOIN observations o ON o.int_id = v.rowid \
+                 WHERE o.id = ?1",
+                [id.to_string()],
+                |r| r.get(0),
+            )
+            .optional()?;
+        Ok(bytes.map(|b| {
+            b.chunks_exact(4)
+                .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+                .collect()
+        }))
+    }
+
     /// Remove the embedding row (and its provenance) for `id`. No-op if no
     /// embedding present.
     pub fn delete_embedding(&self, id: SeeleId) -> Result<()> {
