@@ -315,9 +315,17 @@ pub async fn chat(
     };
 
     let svc_for_tools = svc.clone();
-    let tool_handler: ToolHandler = Box::new(move |args_json: String| {
+    let tool_handler: ToolHandler = Box::new(move |tool_name: String, args_json: String| {
         let svc = svc_for_tools.clone();
         Box::pin(async move {
+            // Q9: route by the tool name the model actually asked for.
+            // Pre-Q9 every call (hallucinated names included) fell into
+            // the seele_search parser and produced confusing errors.
+            if tool_name != "seele_search" {
+                return Err(format!(
+                    "unknown tool '{tool_name}' — only seele_search is available"
+                ));
+            }
             #[derive(Deserialize)]
             struct Args {
                 query: String,

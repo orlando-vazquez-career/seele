@@ -33,6 +33,20 @@ SemVer marcado._
 
 ### Added
 
+- **ChatProvider endurecido + primera suite de tests de seele-chat (Q9,
+  sprint GRAIL-H1)** — (1) timeouts reales en ambos providers (120s
+  request / 10s connect; antes `Client::new()` sin timeout: un provider
+  colgado retenía la conexión para siempre); (2) retry acotado estilo
+  tenacity (máx 3 intentos sobre timeout/connect/429/5xx, honra
+  `Retry-After`, fail-fast en 4xx≠429); (3) `strip_thinking()` server-side
+  antes de que el mensaje entre al history — corta la inflación de tokens
+  por turno y limpia la salida para consumers no-web; (4) **ToolHandler
+  ahora recibe `(tool_name, args)`** y el handler de `/chat` rutea por
+  nombre: tools alucinadas reciben `(tool error) unknown tool` en vez de
+  caer al parser de seele_search (cambio de firma interno; solo seele-http
+  consumía). Primera suite del crate: 4 tests wiremock (429→ok, 503→ok,
+  400 fail-fast sin retry, 429 persistente agota presupuesto) + dispatch
+  por nombre + strip multilinea case-insensitive.
 - **`find_similar` determinístico + `seele_compare` modo suggest (Q6,
   sprint GRAIL-H1)** — `SeeleService::find_similar(id, top_k)`: dos señales
   en paralelo al estilo `find_similar_entity` de GRAIL — Jaro-Winkler de

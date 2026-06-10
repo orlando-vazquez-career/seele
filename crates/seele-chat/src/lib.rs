@@ -10,11 +10,96 @@
 
 use std::future::Future;
 use std::pin::Pin;
+use std::time::Duration;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::{debug, info, warn};
+
+/// Shared HTTP client (Q9): a chat completion that takes >120s or a
+/// connect that takes >10s is dead, not slow. `Client::new()` had NO
+/// timeout — a hung provider held the connection (and any non-aborting
+/// caller, e.g. curl against POST /chat) forever.
+fn http_client() -> reqwest::Client {
+    reqwest::Client::builder()
+        .timeout(Duration::from_secs(120))
+        .connect_timeout(Duration::from_secs(10))
+        .build()
+        .unwrap_or_else(|_| reqwest::Client::new())
+}
+
+/// Bounded retry policy (Q9, tenacity-lite per GRAIL wrapper.py): retry
+/// connect/timeout errors, 429 and 5xx; fail fast on other 4xx. Fixed
+/// pause, honoring `Retry-After` (seconds form) when present.
+#[derive(Debug, Clone, Copy)]
+struct RetryPolicy {
+    max_attempts: u32,
+    pause: Duration,
+}
+
+impl Default for RetryPolicy {
+    fn default() -> Self {
+        Self {
+            max_attempts: 3,
+            pause: Duration::from_secs(5),
+        }
+    }
+}
+
+/// POST with bounded retries. `build` must produce a fresh RequestBuilder
+/// per attempt (reqwest builders are single-shot). Returns the first
+/// non-retryable response (success or 4xx≠429) or the last retryable
+/// failure once attempts run out.
+async fn send_with_retry(
+    policy: RetryPolicy,
+    build: impl Fn() -> reqwest::RequestBuilder,
+) -> Result<reqwest::Response, ChatError> {
+    let mut attempt = 0;
+    loop {
+        attempt += 1;
+        match build().send().await {
+            Ok(resp) => {
+                let status = resp.status();
+                let retryable = status.as_u16() == 429 || status.is_server_error();
+                if !retryable || attempt >= policy.max_attempts {
+                    return Ok(resp);
+                }
+                let wait = resp
+                    .headers()
+                    .get("retry-after")
+                    .and_then(|v| v.to_str().ok())
+                    .and_then(|s| s.trim().parse::<u64>().ok())
+                    .map(Duration::from_secs)
+                    .unwrap_or(policy.pause);
+                warn!(status = status.as_u16(), attempt, wait_s = wait.as_secs_f32(), "retryable provider status");
+                tokio::time::sleep(wait).await;
+            }
+            Err(e) if (e.is_timeout() || e.is_connect()) && attempt < policy.max_attempts => {
+                warn!(error = %e, attempt, "retryable transport error");
+                tokio::time::sleep(policy.pause).await;
+            }
+            Err(e) => return Err(e.into()),
+        }
+    }
+}
+
+/// Strip chain-of-thought blocks (`<think>…</think>`, `<thinking>…</thinking>`,
+/// case-insensitive, dotall) from model output **server-side** (Q9, GRAIL
+/// `_strip_thinking` lesson). Stripping only client-side meant the blocks
+/// re-entered history every turn — paying their tokens again on each
+/// iteration — and leaked raw to non-web consumers (curl, MCP-side chat).
+pub fn strip_thinking(text: &str) -> String {
+    use std::sync::OnceLock;
+    static RE: OnceLock<regex::Regex> = OnceLock::new();
+    let re = RE.get_or_init(|| {
+        regex::Regex::new(r"(?is)<think(?:ing)?>.*?</think(?:ing)?>")
+            .expect("static thinking regex compiles")
+    });
+    // Replace blocks only — surrounding spaces stay so mid-sentence blocks
+    // don't glue words together; leading whitespace gets trimmed.
+    re.replace_all(text, "").trim().to_string()
+}
 
 #[derive(Debug, Error)]
 pub enum ChatError {
@@ -87,9 +172,14 @@ pub struct ToolSpec {
     pub parameters: serde_json::Value,
 }
 
-/// Boxed async tool handler: `fn(args_json) -> String result`.
+/// Boxed async tool handler: `fn(tool_name, args_json) -> String result`.
+/// The name travels with the call (Q9): pre-Q9 the handler received only
+/// the arguments, so EVERY call — including hallucinated tool names — was
+/// routed to the one real tool's parser.
 pub type ToolHandler = Box<
-    dyn Fn(String) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send>> + Send + Sync,
+    dyn Fn(String, String) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send>>
+        + Send
+        + Sync,
 >;
 
 /// Configuration for one chat run.
@@ -118,6 +208,7 @@ pub struct OpenAICompatibleProvider {
     pub model: String,
     pub tools: Vec<ToolSpec>,
     client: reqwest::Client,
+    retry: RetryPolicy,
 }
 
 impl OpenAICompatibleProvider {
@@ -134,8 +225,15 @@ impl OpenAICompatibleProvider {
             api_key: api_key.into(),
             model: model.into(),
             tools,
-            client: reqwest::Client::new(),
+            client: http_client(),
+            retry: RetryPolicy::default(),
         }
+    }
+
+    /// Override the retry pause (tests / latency tuning). Attempts stay 3.
+    pub fn with_retry_pause(mut self, pause: Duration) -> Self {
+        self.retry.pause = pause;
+        self
     }
 
     fn tools_json(&self) -> serde_json::Value {
@@ -180,13 +278,13 @@ impl ChatProvider for OpenAICompatibleProvider {
 
         debug!(provider = %self.provider_name, model = %self.model, "sending OpenAI-compatible request");
 
-        let resp = self
-            .client
-            .post(&self.endpoint)
-            .bearer_auth(&self.api_key)
-            .json(&body)
-            .send()
-            .await?;
+        let resp = send_with_retry(self.retry, || {
+            self.client
+                .post(&self.endpoint)
+                .bearer_auth(&self.api_key)
+                .json(&body)
+        })
+        .await?;
 
         let status = resp.status();
         if !status.is_success() {
@@ -227,6 +325,7 @@ pub struct AnthropicProvider {
     pub endpoint: String,
     pub tools: Vec<ToolSpec>,
     client: reqwest::Client,
+    retry: RetryPolicy,
 }
 
 impl AnthropicProvider {
@@ -236,8 +335,15 @@ impl AnthropicProvider {
             model: model.into(),
             endpoint: "https://api.anthropic.com/v1/messages".to_string(),
             tools,
-            client: reqwest::Client::new(),
+            client: http_client(),
+            retry: RetryPolicy::default(),
         }
+    }
+
+    /// Override the retry pause (tests / latency tuning). Attempts stay 3.
+    pub fn with_retry_pause(mut self, pause: Duration) -> Self {
+        self.retry.pause = pause;
+        self
     }
 }
 
@@ -277,15 +383,15 @@ impl ChatProvider for AnthropicProvider {
             body["tools"] = serde_json::Value::Array(tools_payload);
         }
 
-        let resp = self
-            .client
-            .post(&self.endpoint)
-            .header("x-api-key", &self.api_key)
-            .header("anthropic-version", "2023-06-01")
-            .header("content-type", "application/json")
-            .json(&body)
-            .send()
-            .await?;
+        let resp = send_with_retry(self.retry, || {
+            self.client
+                .post(&self.endpoint)
+                .header("x-api-key", &self.api_key)
+                .header("anthropic-version", "2023-06-01")
+                .header("content-type", "application/json")
+                .json(&body)
+        })
+        .await?;
 
         let status = resp.status();
         if !status.is_success() {
@@ -437,7 +543,18 @@ pub async fn run_chat(
     );
 
     for iteration in 0..config.max_iterations {
-        let assistant_msg = provider.complete(&history).await?;
+        let mut assistant_msg = provider.complete(&history).await?;
+        // Q9: strip chain-of-thought BEFORE the message enters history, so
+        // think-blocks neither inflate the next iterations' token bill nor
+        // leak to non-web consumers.
+        if let Some(content) = assistant_msg.content.take() {
+            let cleaned = strip_thinking(&content);
+            assistant_msg.content = if cleaned.is_empty() && !assistant_msg.tool_calls.is_empty() {
+                None
+            } else {
+                Some(cleaned)
+            };
+        }
         history.push(assistant_msg.clone());
 
         if assistant_msg.tool_calls.is_empty() {
@@ -451,7 +568,8 @@ pub async fn run_chat(
             "running tool calls"
         );
         for tc in &assistant_msg.tool_calls {
-            let result = tool_handler(tc.function.arguments.clone()).await;
+            let result =
+                tool_handler(tc.function.name.clone(), tc.function.arguments.clone()).await;
             let result_text = match result {
                 Ok(r) => r,
                 Err(e) => format!("(tool error) {}", e),
@@ -473,4 +591,32 @@ pub async fn run_chat(
     Err(ChatError::LoopBudget {
         max_iterations: config.max_iterations,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn strip_thinking_removes_blocks_case_insensitive_multiline() {
+        assert_eq!(
+            strip_thinking("<think>uno\ndos</think>respuesta"),
+            "respuesta"
+        );
+        assert_eq!(
+            strip_thinking("<THINKING>x</THINKING>  hola"),
+            "hola"
+        );
+        assert_eq!(
+            strip_thinking("antes <think>a</think>medio<thinking>b</thinking> fin"),
+            "antes medio fin"
+        );
+    }
+
+    #[test]
+    fn strip_thinking_leaves_plain_text_untouched() {
+        assert_eq!(strip_thinking("sin bloques"), "sin bloques");
+        // Unclosed tag: conservative, leave as-is (no greedy eating).
+        assert_eq!(strip_thinking("<think>sin cierre"), "<think>sin cierre");
+    }
 }

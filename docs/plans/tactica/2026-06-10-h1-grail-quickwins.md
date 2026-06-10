@@ -45,7 +45,7 @@ Los 11 quick wins del plan de mejoras, en orden de ejecución por dependencias:
 - [x] Bloque 5 — Q4 (knn_by_vector + near_duplicates en SaveResponse + hint MCP + suggest_topic_key por vecino; umbral L2 0.37 ≈ cos 0.93; 5 tests nuevos con StubEmbedder)
 - [x] Bloque 6 — Q8 (entregado junto al bloque 4: search_traced + --explain CLI)
 - [x] Bloque 7 — Q6 (find_similar 2 señales + compare suggest/confirm con confidence real; umbrales en seele_core::similarity; get_embedding nuevo; 5 tests)
-- [ ] Bloque 8 — Q9
+- [x] Bloque 8 — Q9 (timeouts + retry/429 + strip_thinking server-side + dispatch por nombre; primera suite de seele-chat: 7 tests)
 - [ ] Bloque 9 — Q10
 - [ ] Bloque 10 — Q11
 - [ ] Bloque 11 — Q1
