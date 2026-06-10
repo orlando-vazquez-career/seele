@@ -54,7 +54,12 @@ fn save_with_embedding(
         .unwrap();
     let id = outcome.id();
     let embedding = embedder.embed(content).unwrap();
-    store.set_embedding(id, &embedding).unwrap();
+    let meta = seele_storage::EmbeddingMeta {
+        model_id: embedder.model_id().to_string(),
+        dim: embedding.len(),
+        contextualized: false,
+    };
+    store.set_embedding(id, &embedding, &meta).unwrap();
     id
 }
 

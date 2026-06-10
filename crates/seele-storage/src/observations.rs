@@ -23,6 +23,69 @@ const DEDUP_WINDOW_MS: i64 = 24 * 60 * 60 * 1000;
 /// Max retries on int_id collision (bytes 9..16 of ULID).
 const ID_COLLISION_RETRIES: usize = 5;
 
+/// Provenance describing how an embedding was produced (ADR-14). Written
+/// alongside every vector by [`ObservationStore::set_embedding`] so
+/// heterogeneous models are never mixed silently in `observations_vec`.
+#[derive(Debug, Clone)]
+pub struct EmbeddingMeta {
+    pub model_id: String,
+    pub dim: usize,
+    /// True when a contextual-retrieval pass rewrote the body before
+    /// embedding (B3, future). Always false in v0.x write paths.
+    pub contextualized: bool,
+}
+
+/// One (model_id, dim) combo present in `embeddings_meta` and its row count.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct EmbeddingModelCount {
+    pub model_id: String,
+    pub dim: usize,
+    pub count: u64,
+}
+
+/// Doctor-facing snapshot of embedding provenance.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct EmbeddingProvenance {
+    /// Distinct (model_id, dim) combos, most rows first. More than one
+    /// entry means heterogeneous vectors share the same vec0 table.
+    pub models: Vec<EmbeddingModelCount>,
+    /// Active observations with no vector — invisible to the vec branch
+    /// of hybrid search until a reindex pass.
+    pub active_without_vector: u64,
+}
+
+impl EmbeddingProvenance {
+    /// ADR-14 anti-mix guard, shared by every doctor surface. Warns when
+    /// more than one (model_id, dim) combo coexists in the vec table, or
+    /// when the stored vectors don't match the active embedder. The
+    /// genuinely silent failure mode is the same-dim/different-model swap:
+    /// vec0's typed column catches dim mismatches loudly, but distances
+    /// across models are meaningless without any error.
+    pub fn mix_warning(&self, active_model_id: &str, active_dim: usize) -> Option<String> {
+        if self.models.len() > 1 {
+            let combos = self
+                .models
+                .iter()
+                .map(|m| format!("{} ({}d, {} rows)", m.model_id, m.dim, m.count))
+                .collect::<Vec<_>>()
+                .join(", ");
+            return Some(format!(
+                "mixed embedding models share observations_vec: {combos}. \
+                 Re-embed with a single model before trusting vec search."
+            ));
+        }
+        match self.models.first() {
+            Some(m) if m.model_id != active_model_id || m.dim != active_dim => Some(format!(
+                "stored vectors were embedded with {} ({}d) but the active \
+                 embedder is {} ({}d). Vec-search distances are not \
+                 comparable — re-embed before trusting results.",
+                m.model_id, m.dim, active_model_id, active_dim
+            )),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct SaveInput {
     pub session_id: Option<SeeleId>,
@@ -319,12 +382,20 @@ impl ObservationStore {
         Ok(())
     }
 
-    /// Insert (or replace) the embedding vector for `id` into `observations_vec`.
-    /// `embedding` length must match the column dim (currently 384). Caller
-    /// is responsible for normalization.
-    pub fn set_embedding(&self, id: SeeleId, embedding: &[f32]) -> Result<()> {
+    /// Insert (or replace) the embedding vector for `id` into `observations_vec`
+    /// AND its provenance row in `embeddings_meta`, atomically (ADR-14: the
+    /// guard against silently mixing heterogeneous vectors is only as good
+    /// as the writes that feed it). `embedding` length must match the column
+    /// dim (currently 384). Caller is responsible for normalization.
+    pub fn set_embedding(
+        &self,
+        id: SeeleId,
+        embedding: &[f32],
+        meta: &EmbeddingMeta,
+    ) -> Result<()> {
         let conn = self.pool.get()?;
-        let int_id: i64 = conn
+        let tx = conn.unchecked_transaction()?;
+        let int_id: i64 = tx
             .query_row(
                 "SELECT int_id FROM observations WHERE id = ?1 AND deleted_at IS NULL",
                 [id.to_string()],
@@ -337,14 +408,35 @@ impl ObservationStore {
                 other => StorageError::from(other),
             })?;
         let bytes: Vec<u8> = embedding.iter().flat_map(|f| f.to_le_bytes()).collect();
-        conn.execute(
-            "INSERT OR REPLACE INTO observations_vec(rowid, embedding) VALUES (?1, ?2)",
+        // vec0 virtual tables (sqlite-vec 0.1.9) reject INSERT OR REPLACE on
+        // an existing rowid ("UNIQUE constraint failed"); the supported
+        // upsert is DELETE + INSERT, atomic here inside the transaction.
+        tx.execute(
+            "DELETE FROM observations_vec WHERE rowid = ?1",
+            params![int_id],
+        )?;
+        tx.execute(
+            "INSERT INTO observations_vec(rowid, embedding) VALUES (?1, ?2)",
             params![int_id, bytes],
         )?;
+        tx.execute(
+            "INSERT OR REPLACE INTO embeddings_meta \
+             (observation_id, model_id, dim, contextualized, created_at) \
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![
+                id.to_string(),
+                meta.model_id,
+                meta.dim as i64,
+                meta.contextualized as i64,
+                Utc::now().timestamp_millis(),
+            ],
+        )?;
+        tx.commit()?;
         Ok(())
     }
 
-    /// Remove the embedding row for `id`. No-op if no embedding present.
+    /// Remove the embedding row (and its provenance) for `id`. No-op if no
+    /// embedding present.
     pub fn delete_embedding(&self, id: SeeleId) -> Result<()> {
         let conn = self.pool.get()?;
         conn.execute(
@@ -352,7 +444,43 @@ impl ObservationStore {
              (SELECT int_id FROM observations WHERE id = ?1)",
             [id.to_string()],
         )?;
+        conn.execute(
+            "DELETE FROM embeddings_meta WHERE observation_id = ?1",
+            [id.to_string()],
+        )?;
         Ok(())
+    }
+
+    /// Embedding provenance snapshot for `doctor`: which (model_id, dim)
+    /// combos exist in `embeddings_meta`, and how many active observations
+    /// have no vector at all (invisible to the vec branch of hybrid search
+    /// until a reindex).
+    pub fn embedding_provenance(&self) -> Result<EmbeddingProvenance> {
+        let conn = self.pool.get()?;
+        let mut stmt = conn.prepare(
+            "SELECT model_id, dim, COUNT(*) FROM embeddings_meta \
+             GROUP BY model_id, dim ORDER BY COUNT(*) DESC, model_id",
+        )?;
+        let models = stmt
+            .query_map([], |r| {
+                Ok(EmbeddingModelCount {
+                    model_id: r.get(0)?,
+                    dim: r.get::<_, i64>(1)? as usize,
+                    count: r.get::<_, i64>(2)? as u64,
+                })
+            })?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        let active_without_vector: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM observations o \
+             WHERE o.deleted_at IS NULL AND NOT EXISTS \
+             (SELECT 1 FROM observations_vec v WHERE v.rowid = o.int_id)",
+            [],
+            |r| r.get(0),
+        )?;
+        Ok(EmbeddingProvenance {
+            models,
+            active_without_vector: active_without_vector as u64,
+        })
     }
 
     /// Number of active (non-soft-deleted) observations.

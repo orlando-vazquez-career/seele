@@ -22,19 +22,32 @@ use app::Cli;
 
 fn main() -> ExitCode {
     let cli = Cli::parse();
+    let json = cli.json;
     let rt = match tokio::runtime::Runtime::new() {
         Ok(r) => r,
         Err(e) => {
-            eprintln!("failed to start tokio runtime: {e}");
+            let err = anyhow::anyhow!("failed to start tokio runtime: {e}");
+            report_error(&err, json);
             return ExitCode::FAILURE;
         }
     };
     match rt.block_on(app::run(cli)) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
-            eprintln!("seele error: {e:#}");
+            report_error(&e, json);
             ExitCode::FAILURE
         }
+    }
+}
+
+/// Errors honor the same `--json` contract as successes: an envelope on
+/// stdout for machines, prose on stderr for humans. Exit code is
+/// non-zero either way.
+fn report_error(err: &anyhow::Error, json: bool) {
+    if json {
+        output::emit_error_json(err);
+    } else {
+        eprintln!("seele error: {err:#}");
     }
 }
 

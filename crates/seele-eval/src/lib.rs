@@ -186,7 +186,12 @@ pub fn ingest(
     for item in &suite.corpus {
         let id = map[&item.id];
         let vector = embedder.embed(&item.body)?;
-        store.set_embedding(id, &vector)?;
+        let meta = seele_storage::EmbeddingMeta {
+            model_id: embedder.model_id().to_string(),
+            dim: vector.len(),
+            contextualized: false,
+        };
+        store.set_embedding(id, &vector, &meta)?;
     }
 
     Ok(map)

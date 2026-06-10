@@ -22,9 +22,19 @@ pub async fn run(
         .parse()
         .map_err(|e| anyhow::anyhow!("invalid id: {e}"))?;
     svc.soft_delete_observation(parsed)?;
-    output::status(&format!("soft-deleted {}", args.id), out.json);
-    if out.json {
-        println!("{}", serde_json::json!({"ok": true, "id": args.id}));
-    }
-    Ok(())
+    let payload = DeleteOutcome {
+        id: args.id,
+        outcome: "soft-deleted",
+    };
+    output::emit_split(
+        &payload,
+        || format!("soft-deleted {}", payload.id),
+        out.json,
+    )
+}
+
+#[derive(serde::Serialize)]
+struct DeleteOutcome {
+    id: String,
+    outcome: &'static str,
 }

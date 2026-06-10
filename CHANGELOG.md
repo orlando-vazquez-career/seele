@@ -14,6 +14,13 @@ SemVer marcado._
 
 ### Fixed
 
+- **Re-embedding an observation always failed (vec0 UNIQUE)** — sqlite-vec
+  0.1.9 virtual tables reject `INSERT OR REPLACE` on an existing rowid
+  ("UNIQUE constraint failed on observations_vec primary key"), so any second
+  `set_embedding` for the same row — the exact path a future
+  `seele reindex` / embedder swap (A2) needs — errored. Now DELETE + INSERT
+  inside the same transaction. Latent since Sprint-02; exposed by the new
+  `embeddings_meta` write-path tests.
 - **Embedder first-run download (`hf-hub` 0.3 → 0.5)** — bump fixes the relative-`307`
   redirect failure (`RelativeUrlWithoutBase`) that broke the first-run download of
   `all-MiniLM-L6-v2` from Hugging Face on the `ureq` sync backend. hf-hub 0.5.0 uses
@@ -26,6 +33,26 @@ SemVer marcado._
 
 ### Added
 
+- **CLI JSON envelope (Q2, sprint GRAIL-H1)** — with `--json`, every one-shot
+  subcommand now emits a uniform envelope: success
+  `{"ok":true,"data":<payload>,"warnings":[..]}`, error
+  `{"ok":false,"error":"<display>","kind":"<class>"}` **on stdout** with exit 1
+  (errors were previously free text on stderr even with `--json`). `warnings`
+  carries in-band degradation signals (`fake-embedder-fallback` when ONNX init
+  fails and the CLI degrades to FakeEmbedder). `delete`/`restore` drop their
+  hand-rolled ad-hoc shapes for typed payloads under the same envelope.
+  **Breaking for `--json` consumers** (acceptable: 0 releases published);
+  this is the contract layer the future agent skill builds on. Pattern
+  validated by GRAIL's `Reply {ok, data, warnings, error}` envelope.
+- **`embeddings_meta` wired into the write path (Q5, sprint GRAIL-H1)** —
+  `ObservationStore::set_embedding` now takes an `EmbeddingMeta
+  {model_id, dim, contextualized}` and persists vector + provenance in one
+  transaction (the V002 table existed but nothing wrote it: the ADR-14 guard
+  was inoperative). New `embedding_provenance()` snapshot + shared
+  `mix_warning()` guard surfaced by **both** doctors (CLI fields
+  `embedding_models` / `observations_active_without_vector` /
+  `embedding_mix_warning`; MCP `seele_doctor.embeddings`). Detects the
+  genuinely silent A2 failure mode: same-dim/different-model swap.
 - **New crate `seele-eval`** (#14) — evaluation-first memory-quality harness
   (ADR-14). recall@5 / recall@10 (binary) + MRR per category against the live
   hybrid FTS+vec+RRF pipeline. Fixture contract (`Suite`/`CorpusItem`/

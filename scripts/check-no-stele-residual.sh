@@ -44,6 +44,8 @@ ALLOWLIST_FILES=(
   "CHANGELOG.md"
   "CLAUDE.md"
   "docs/INDEX.md"
+  # Local Claude Code settings: permission entries name this script.
+  ".claude/settings.local.json"
 )
 
 # Directory prefixes (any file under these is allowlisted). Must mirror
@@ -65,6 +67,9 @@ ALLOWLIST_DIRS=(
   "docs/plans/estrategia/"
   "docs/plans/executed/estrategia/"
   "docs/compendium/"
+  # Comparative analyses (GRAIL→SEELE etc.) document the repo gates by
+  # name, including this check.
+  "docs/analysis/"
 )
 
 is_allowlisted() {

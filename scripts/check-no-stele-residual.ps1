@@ -25,7 +25,9 @@ $allowlistFiles = @(
     'scripts/check-no-stele-residual.ps1',
     'CHANGELOG.md',
     'CLAUDE.md',
-    'docs/INDEX.md'
+    'docs/INDEX.md',
+    # Local Claude Code settings: permission entries name this script.
+    '.claude/settings.local.json'
 )
 
 # Directory prefixes (any file under these is allowlisted). Covers
@@ -45,7 +47,10 @@ $allowlistDirs = @(
     # reference the legacy name (naming history + documenting the check itself).
     'docs/plans/estrategia/',
     'docs/plans/executed/estrategia/',
-    'docs/compendium/'
+    'docs/compendium/',
+    # Comparative analyses (GRAIL→SEELE etc.) document the repo gates by
+    # name, including this check.
+    'docs/analysis/'
 )
 
 $includeExt = @('*.md', '*.rs', '*.toml', '*.yaml', '*.yml', '*.json', '*.sh', '*.ps1')

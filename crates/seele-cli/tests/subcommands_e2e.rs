@@ -36,7 +36,8 @@ fn save_one(db: &str, title: &str, project: &str) -> String {
     ]);
     assert!(status.success(), "save failed: {stdout}");
     let v: Value = serde_json::from_str(&stdout).expect("save json");
-    v["id"].as_str().expect("save id").to_string()
+    assert_eq!(v["ok"], true, "envelope ok flag: {stdout}");
+    v["data"]["id"].as_str().expect("save id").to_string()
 }
 
 // -------- save / list / show --------
@@ -52,8 +53,8 @@ fn save_then_list_round_trip() {
 
     let (stdout, _, status) = run(&["--db", db, "--json", "list", "--project", "p"]);
     assert!(status.success());
-    let arr: Value = serde_json::from_str(&stdout).unwrap();
-    let titles: Vec<&str> = arr
+    let v: Value = serde_json::from_str(&stdout).unwrap();
+    let titles: Vec<&str> = v["data"]
         .as_array()
         .unwrap()
         .iter()
@@ -73,9 +74,9 @@ fn save_then_show_returns_full_observation() {
     let (stdout, _, status) = run(&["--db", db, "--json", "show", &id]);
     assert!(status.success(), "show failed: {stdout}");
     let v: Value = serde_json::from_str(&stdout).unwrap();
-    assert_eq!(v["id"], id);
-    assert_eq!(v["title"], "alpha");
-    assert_eq!(v["content"], "content");
+    assert_eq!(v["data"]["id"], id);
+    assert_eq!(v["data"]["title"], "alpha");
+    assert_eq!(v["data"]["content"], "content");
 }
 
 // -------- search --------
@@ -90,7 +91,7 @@ fn search_with_query_returns_hits() {
     let (stdout, _, status) = run(&["--db", db, "--json", "search", "deploy"]);
     assert!(status.success(), "search failed: {stdout}");
     let v: Value = serde_json::from_str(&stdout).unwrap();
-    let hits = v["hits"].as_array().unwrap();
+    let hits = v["data"]["hits"].as_array().unwrap();
     assert!(!hits.is_empty(), "expected at least one hit");
 }
 
@@ -116,8 +117,8 @@ fn delete_then_list_excludes_default() {
     assert!(status.success(), "delete failed");
 
     let (stdout, _, _) = run(&["--db", db, "--json", "list", "--project", "p"]);
-    let arr: Value = serde_json::from_str(&stdout).unwrap();
-    let ids: Vec<&str> = arr
+    let v: Value = serde_json::from_str(&stdout).unwrap();
+    let ids: Vec<&str> = v["data"]
         .as_array()
         .unwrap()
         .iter()
@@ -138,7 +139,7 @@ fn restore_undoes_soft_delete() {
 
     let (stdout, _, _) = run(&["--db", db, "--json", "show", &id]);
     let v: Value = serde_json::from_str(&stdout).unwrap();
-    assert!(v["deleted_at"].is_null());
+    assert!(v["data"]["deleted_at"].is_null());
 }
 
 // -------- link --------
@@ -153,9 +154,9 @@ fn link_creates_typed_link_between_two_observations() {
     let (stdout, _, status) = run(&["--db", db, "--json", "link", &a, &b, "derives_from"]);
     assert!(status.success());
     let v: Value = serde_json::from_str(&stdout).unwrap();
-    assert_eq!(v["from_id"], a);
-    assert_eq!(v["to_id"], b);
-    assert_eq!(v["link_type"], "derives_from");
+    assert_eq!(v["data"]["from_id"], a);
+    assert_eq!(v["data"]["to_id"], b);
+    assert_eq!(v["data"]["link_type"], "derives_from");
 }
 
 // -------- stats / doctor / projects --------
@@ -171,8 +172,8 @@ fn stats_reflects_observations_count() {
     let (stdout, _, status) = run(&["--db", db, "--json", "stats"]);
     assert!(status.success(), "stats failed: {stdout}");
     let v: Value = serde_json::from_str(&stdout).unwrap();
-    assert_eq!(v["observations"]["active"], 2);
-    assert_eq!(v["observations"]["projects"], 2);
+    assert_eq!(v["data"]["observations"]["active"], 2);
+    assert_eq!(v["data"]["observations"]["projects"], 2);
 }
 
 #[test]
@@ -184,12 +185,38 @@ fn doctor_emits_fake_embedder_warning() {
     let (stdout, _, status) = run(&["--db", db, "--json", "doctor"]);
     assert!(status.success());
     let v: Value = serde_json::from_str(&stdout).unwrap();
-    assert_eq!(v["status"], "ok");
+    assert_eq!(v["data"]["status"], "ok");
     // v0.1 ships FakeEmbedder; doctor must surface the warning so
     // users don't silently lose vector search quality. (Cloven sight.)
-    assert!(v["fake_embedder_warning"].is_string());
-    let warning = v["fake_embedder_warning"].as_str().unwrap();
+    assert!(v["data"]["fake_embedder_warning"].is_string());
+    let warning = v["data"]["fake_embedder_warning"].as_str().unwrap();
     assert!(warning.contains("FakeEmbedder is active"));
+
+    // Q5: embedding-provenance section is always present. Fresh DB → no
+    // combos, nothing vectorless, no mix warning.
+    assert!(v["data"]["embedding_models"].as_array().unwrap().is_empty());
+    assert_eq!(v["data"]["observations_active_without_vector"], 0);
+    assert!(v["data"]["embedding_mix_warning"].is_null());
+}
+
+#[test]
+fn doctor_reports_embedding_provenance_after_saves() {
+    let td = TempDir::new().unwrap();
+    let db = td.path().join("s.db");
+    let db = db.to_str().unwrap();
+    save_one(db, "embedded", "p");
+
+    let (stdout, _, status) = run(&["--db", db, "--json", "doctor"]);
+    assert!(status.success());
+    let v: Value = serde_json::from_str(&stdout).unwrap();
+    let models = v["data"]["embedding_models"].as_array().unwrap();
+    assert_eq!(models.len(), 1, "one combo after fake-embedded saves");
+    assert_eq!(models[0]["model_id"], "seele/fake-embedder");
+    assert_eq!(models[0]["dim"], 384);
+    assert_eq!(models[0]["count"], 1);
+    assert_eq!(v["data"]["observations_active_without_vector"], 0);
+    // Stored model == active model (both fake) → no mix warning.
+    assert!(v["data"]["embedding_mix_warning"].is_null());
 }
 
 #[test]
@@ -203,7 +230,7 @@ fn projects_lists_distinct_active_projects() {
 
     let (stdout, _, _) = run(&["--db", db, "--json", "projects"]);
     let v: Value = serde_json::from_str(&stdout).unwrap();
-    let projects: Vec<&str> = v
+    let projects: Vec<&str> = v["data"]
         .as_array()
         .unwrap()
         .iter()
@@ -237,7 +264,7 @@ fn sync_export_then_import_round_trip() {
     ]);
     assert!(status.success(), "export failed: {stdout}");
     let exp: Value = serde_json::from_str(&stdout).unwrap();
-    let chunk_path = exp["path"].as_str().unwrap();
+    let chunk_path = exp["data"]["path"].as_str().unwrap();
 
     let dst_td = TempDir::new().unwrap();
     let dst_db = dst_td.path().join("dst.db");
@@ -254,13 +281,13 @@ fn sync_export_then_import_round_trip() {
     ]);
     assert!(status.success(), "import failed: {stdout}");
     let imp: Value = serde_json::from_str(&stdout).unwrap();
-    assert_eq!(imp["outcome"], "imported");
-    assert_eq!(imp["observation_count_saved"], 1);
+    assert_eq!(imp["data"]["outcome"], "imported");
+    assert_eq!(imp["data"]["observation_count_saved"], 1);
 
     // The destination now contains the observation.
     let (stdout, _, _) = run(&["--db", dst_db, "--json", "list", "--project", "p"]);
-    let arr: Value = serde_json::from_str(&stdout).unwrap();
-    assert_eq!(arr.as_array().unwrap().len(), 1);
+    let v: Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(v["data"].as_array().unwrap().len(), 1);
 }
 
 // -------- setup --------
@@ -270,7 +297,7 @@ fn setup_list_includes_implemented_and_skeleton_agents() {
     let (stdout, _, status) = run(&["--json", "setup", "--list"]);
     assert!(status.success(), "setup --list failed: {stdout}");
     let v: Value = serde_json::from_str(&stdout).unwrap();
-    let names: Vec<&str> = v
+    let names: Vec<&str> = v["data"]
         .as_array()
         .unwrap()
         .iter()
@@ -317,16 +344,74 @@ fn import_from_engram_against_synthetic_source_inserts_rows() {
         run(&["--db", db_str, "--json", "import", "from-engram", src_str]);
     assert!(status.success(), "import failed: {stdout}");
     let v: Value = serde_json::from_str(&stdout).unwrap();
-    assert_eq!(v["rows_seen"], 1);
-    assert_eq!(v["rows_inserted"], 1);
-    assert_eq!(v["rows_skipped_existing"], 0);
+    assert_eq!(v["data"]["rows_seen"], 1);
+    assert_eq!(v["data"]["rows_inserted"], 1);
+    assert_eq!(v["data"]["rows_skipped_existing"], 0);
 
     // Re-import is idempotent.
     let (stdout, _, status) = run(&["--db", db_str, "--json", "import", "from-engram", src_str]);
     assert!(status.success());
     let v: Value = serde_json::from_str(&stdout).unwrap();
-    assert_eq!(v["rows_inserted"], 0);
-    assert_eq!(v["rows_skipped_existing"], 1);
+    assert_eq!(v["data"]["rows_inserted"], 0);
+    assert_eq!(v["data"]["rows_skipped_existing"], 1);
+}
+
+// -------- envelope contract (Q2, GRAIL-style Reply) --------
+
+#[test]
+fn json_error_lands_on_stdout_as_envelope_with_kind() {
+    let td = TempDir::new().unwrap();
+    let db = td.path().join("s.db");
+    let db = db.to_str().unwrap();
+
+    let (stdout, _, status) = run(&["--db", db, "--json", "show", "not-a-ulid"]);
+    assert!(!status.success(), "invalid id must exit non-zero");
+    let v: Value = serde_json::from_str(&stdout)
+        .unwrap_or_else(|e| panic!("error envelope must be JSON on stdout ({e}): {stdout}"));
+    assert_eq!(v["ok"], false);
+    assert!(
+        v["error"].as_str().unwrap().contains("invalid id"),
+        "error text: {}",
+        v["error"]
+    );
+    assert!(v["kind"].is_string(), "kind must always be present");
+}
+
+#[test]
+fn json_success_envelope_carries_ok_data_and_warnings() {
+    let td = TempDir::new().unwrap();
+    let db = td.path().join("s.db");
+    let db = db.to_str().unwrap();
+
+    let (stdout, _, status) = run(&["--db", db, "--json", "save", "t", "c", "--project", "p"]);
+    assert!(status.success());
+    let v: Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(v["ok"], true);
+    assert!(v["data"].is_object(), "payload lives under data");
+    assert!(v["warnings"].is_array(), "warnings always present");
+    // Fake embedder was requested explicitly via env, not a fallback:
+    // no degradation warning expected.
+    assert!(v["warnings"].as_array().unwrap().is_empty());
+}
+
+#[test]
+fn json_delete_and_restore_share_the_envelope_shape() {
+    let td = TempDir::new().unwrap();
+    let db = td.path().join("s.db");
+    let db = db.to_str().unwrap();
+    let id = save_one(db, "enveloped", "p");
+
+    let (stdout, _, status) = run(&["--db", db, "--json", "delete", &id]);
+    assert!(status.success());
+    let v: Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(v["ok"], true);
+    assert_eq!(v["data"]["id"], id);
+    assert_eq!(v["data"]["outcome"], "soft-deleted");
+
+    let (stdout, _, status) = run(&["--db", db, "--json", "restore", &id]);
+    assert!(status.success());
+    let v: Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(v["data"]["outcome"], "restored");
 }
 
 #[test]

@@ -97,7 +97,12 @@ impl SeeleService {
         // as a 5xx — the row is persisted and a reindex pass can fix it.
         match self.embedder.embed(&req.content) {
             Ok(v) => {
-                if let Err(e) = self.observations.set_embedding(outcome.id(), &v) {
+                let meta = seele_storage::EmbeddingMeta {
+                    model_id: self.embedder.model_id().to_string(),
+                    dim: v.len(),
+                    contextualized: false,
+                };
+                if let Err(e) = self.observations.set_embedding(outcome.id(), &v, &meta) {
                     tracing::warn!(error=%e, id=%outcome.id(), "embedding write failed post-save");
                 }
             }
@@ -432,6 +437,13 @@ impl SeeleService {
             dim: self.embedder.dim(),
             expected_sha256: self.embedder.expected_sha256().map(str::to_string),
         }
+    }
+
+    /// Embedding provenance snapshot (ADR-14): which (model_id, dim) combos
+    /// live in `embeddings_meta`, and how many active observations have no
+    /// vector. Consumed by both doctor surfaces (CLI + MCP).
+    pub fn embedding_provenance(&self) -> Result<seele_storage::EmbeddingProvenance> {
+        Ok(self.observations.embedding_provenance()?)
     }
 }
 

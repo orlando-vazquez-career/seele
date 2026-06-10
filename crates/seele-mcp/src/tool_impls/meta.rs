@@ -18,6 +18,8 @@ pub fn projects(svc: &SeeleService, _params: Value) -> Result<Value, ToolError> 
 pub fn doctor(svc: &SeeleService, _params: Value) -> Result<Value, ToolError> {
     let info = svc.embedder_info();
     let s = svc.stats()?;
+    let provenance = svc.embedding_provenance()?;
+    let mix_warning = provenance.mix_warning(&info.model_id, info.dim);
     Ok(serde_json::json!({
         "status": "ok",
         "embedder": {
@@ -27,6 +29,11 @@ pub fn doctor(svc: &SeeleService, _params: Value) -> Result<Value, ToolError> {
         },
         "observations_active": s.observations.active,
         "sessions_total": s.sessions.total,
+        "embeddings": {
+            "models": provenance.models,
+            "active_without_vector": provenance.active_without_vector,
+            "mix_warning": mix_warning,
+        },
         "schema_version": env!("CARGO_PKG_VERSION"),
     }))
 }

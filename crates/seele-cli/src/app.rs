@@ -158,6 +158,9 @@ fn pick_embedder(fake_flag: bool) -> Arc<dyn Embedder> {
                  download the model, or set SEELE_FAKE_EMBEDDER=1 to silence \
                  this message."
             );
+            // In-band signal for --json consumers: the stderr prose above is
+            // invisible to agents; the envelope warning is not.
+            crate::output::push_warning(crate::output::WARN_FAKE_EMBEDDER_FALLBACK);
             Arc::new(FakeEmbedder)
         }
     }

@@ -20,6 +20,12 @@ struct DoctorReport {
     fake_embedder_warning: Option<String>,
     observations_active: u64,
     sessions_total: u64,
+    /// (model_id, dim) combos present in `embeddings_meta` (ADR-14).
+    embedding_models: Vec<seele_storage::EmbeddingModelCount>,
+    /// Active observations invisible to the vec branch (no vector stored).
+    observations_active_without_vector: u64,
+    /// ADR-14 anti-mix guard: mixed models, or stored ≠ active embedder.
+    embedding_mix_warning: Option<String>,
 }
 
 pub async fn run(
@@ -48,6 +54,9 @@ pub async fn run(
         None
     };
 
+    let provenance = svc.embedding_provenance()?;
+    let embedding_mix_warning = provenance.mix_warning(&info.model_id, info.dim);
+
     let report = DoctorReport {
         status: "ok",
         seele_version: env!("CARGO_PKG_VERSION").to_string(),
@@ -58,6 +67,9 @@ pub async fn run(
         fake_embedder_warning: fake_embedder_warning.clone(),
         observations_active: stats.observations.active,
         sessions_total: stats.sessions.total,
+        embedding_models: provenance.models,
+        observations_active_without_vector: provenance.active_without_vector,
+        embedding_mix_warning,
     };
 
     output::emit_split(
@@ -74,7 +86,26 @@ pub async fn run(
                 format!("observations (active): {}", report.observations_active),
                 format!("sessions (total): {}", report.sessions_total),
             ];
+            if report.embedding_models.is_empty() {
+                lines.push("embeddings: none stored yet".to_string());
+            } else {
+                for m in &report.embedding_models {
+                    lines.push(format!(
+                        "embeddings: {} ({}d) — {} row(s)",
+                        m.model_id, m.dim, m.count
+                    ));
+                }
+            }
+            if report.observations_active_without_vector > 0 {
+                lines.push(format!(
+                    "observations without vector (invisible to vec search): {}",
+                    report.observations_active_without_vector
+                ));
+            }
             if let Some(w) = &report.fake_embedder_warning {
+                lines.push(format!("WARNING: {w}"));
+            }
+            if let Some(w) = &report.embedding_mix_warning {
                 lines.push(format!("WARNING: {w}"));
             }
             lines.join("\n")

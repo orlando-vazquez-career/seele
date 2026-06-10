@@ -54,8 +54,13 @@ impl FixtureSet {
         let outcome = self.store.save(input).expect("save");
         let id = outcome.id();
         let embedding = self.embedder.embed(&content).expect("embed");
+        let meta = seele_storage::EmbeddingMeta {
+            model_id: self.embedder.model_id().to_string(),
+            dim: embedding.len(),
+            contextualized: false,
+        };
         self.store
-            .set_embedding(id, &embedding)
+            .set_embedding(id, &embedding, &meta)
             .expect("set_embedding");
         self.ids.push(id);
         id

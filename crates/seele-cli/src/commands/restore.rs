@@ -22,9 +22,15 @@ pub async fn run(
         .parse()
         .map_err(|e| anyhow::anyhow!("invalid id: {e}"))?;
     svc.restore_observation(parsed)?;
-    output::status(&format!("restored {}", args.id), out.json);
-    if out.json {
-        println!("{}", serde_json::json!({"ok": true, "id": args.id}));
-    }
-    Ok(())
+    let payload = RestoreOutcome {
+        id: args.id,
+        outcome: "restored",
+    };
+    output::emit_split(&payload, || format!("restored {}", payload.id), out.json)
+}
+
+#[derive(serde::Serialize)]
+struct RestoreOutcome {
+    id: String,
+    outcome: &'static str,
 }
