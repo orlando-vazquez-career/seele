@@ -14,7 +14,7 @@ seele-search.workspace = true
 seele-http.workspace = true
 seele-embedder.workspace = true
 ratatui.workspace = true
-crossterm = { version = "0.28", features = ["event-stream"] }
+crossterm = { version = "0.29", features = ["event-stream"] }
 tokio.workspace = true
 tempfile.workspace = true
 serde.workspace = true
