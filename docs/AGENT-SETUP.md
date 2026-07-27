@@ -131,3 +131,32 @@ The full list (alphabetical):
 
 Detailed schemas live in
 [`crates/seele-mcp/src/tool_impls/`](../crates/seele-mcp/src/tool_impls/).
+
+## Passive learning capture convention
+
+`seele_capture_passive` scans a chat transcript and saves every bullet
+under a learnings heading as a `type=learning` observation. For the
+capture to pick your notes up, emit a level-2 Markdown heading named
+(one of, case-insensitive, trailing colon optional, extra spaces after
+`##` tolerated):
+
+- `## Key Learnings:`
+- `## Aprendizajes:`
+- `## Learnings:`
+
+then list items with `- ` or `* ` bullets. Capture stops at the next
+`## ` heading. Multi-line bullets are joined into a single learning.
+
+Example — what the agent writes at the end of a session:
+
+```markdown
+## Aprendizajes:
+
+- SQLite FTS5 necesita el prefijo de columna para búsquedas
+  multi-campo.
+- El flag `--dry-run` del wizard nunca toca el filesystem.
+```
+
+Running `seele_capture_passive` with that transcript saves two
+learnings (`"count": 2`). Any other heading (e.g. `## Takeaways:`) is
+ignored.
