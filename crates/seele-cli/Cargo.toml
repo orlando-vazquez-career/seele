@@ -11,6 +11,21 @@ description = "CLI binary for SEELE."
 name = "seele"
 path = "src/main.rs"
 
+# T-13 (ADR-16): the default build is slim — no ratatui/crossterm tree
+# (seele-tui) and no seele-eval in the binary. `--features full` (or the
+# individual `tui` / `eval` features) re-enables them; CI builds and
+# tests with `--all-features`.
+#
+# `chat` is intentionally NOT a feature: it has no subcommand of its own
+# — it is the `seele serve --chat-*` flag set plus the POST /chat route
+# inside `seele-http`. Gating it would mean feature-plumbing another
+# crate (seele-http server), a refactor outside T-13's blast radius.
+[features]
+default = []
+full = ["tui", "eval"]
+tui = ["dep:seele-tui"]
+eval = ["dep:seele-eval"]
+
 [dependencies]
 seele-core.workspace = true
 seele-storage.workspace = true
@@ -18,12 +33,12 @@ seele-embedder.workspace = true
 seele-search.workspace = true
 seele-mcp.workspace = true
 seele-http.workspace = true
-seele-tui.workspace = true
+seele-tui = { workspace = true, optional = true }
 seele-sync.workspace = true
 seele-setup.workspace = true
 seele-project.workspace = true
 seele-engram-import.workspace = true
-seele-eval.workspace = true
+seele-eval = { workspace = true, optional = true }
 clap.workspace = true
 tokio.workspace = true
 tracing.workspace = true

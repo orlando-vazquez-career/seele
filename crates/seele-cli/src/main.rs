@@ -3,11 +3,20 @@
 //! Subcommands:
 //! - `seele save / search / show / list / delete / restore / link` — local memory ops.
 //! - `seele stats / doctor / projects` — introspection.
+//! - `seele backup <destino>` — consistent one-file DB copy (VACUUM INTO).
 //! - `seele sync export / sync import` — chunk-based multi-machine sync.
-//! - `seele import --from-engram <path>` — one-shot migration from ENGRAM (ADR-13).
+//! - `seele import from-engram <path>` — one-shot migration from ENGRAM (ADR-13).
+//! - `seele embedder reembed-all` — re-embed missing/stale vectors.
 //! - `seele setup --agent <name>` — install MCP entry into agent configs.
 //! - `seele mcp` — JSON-RPC stdio server.
-//! - `seele serve` — HTTP REST API server.
+//! - `seele serve` — HTTP REST API server (incl. POST /chat).
+//! - `seele eval` — memory-quality suites (cargo feature `eval`, off by default).
+//! - `seele tui` — interactive ratatui UI (cargo feature `tui`, off by default).
+//!
+//! The default build is slim (T-13): `tui` and `eval` are cargo features,
+//! re-enabled together with `--features full`. `chat` is not a feature —
+//! it has no subcommand of its own; it lives in `seele serve --chat-*`
+//! and inside `seele-http`.
 
 use std::path::PathBuf;
 use std::process::ExitCode;

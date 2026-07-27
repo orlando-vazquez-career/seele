@@ -135,6 +135,7 @@ async fn openapi_json_exposes_canonical_paths() {
     for p in [
         "/memories",
         "/memories/{id}",
+        "/projects",
         "/search",
         "/sessions",
         "/links",
@@ -244,6 +245,115 @@ async fn legacy_show_alias_works_when_enabled() {
     assert_eq!(r.status(), 200);
     let body: serde_json::Value = r.json().await.unwrap();
     assert_eq!(body["id"], id);
+}
+
+// -------- T-07: GET /projects + PATCH /memories/{id} --------
+
+#[tokio::test]
+async fn projects_returns_active_projects_sorted() {
+    let (_td, base) = spawn(None, false).await;
+    let client = reqwest::Client::new();
+    let mut gamma_id = String::new();
+    for (title, project) in [
+        ("a", Some("beta")),
+        ("b", Some("alpha")),
+        ("c", Some("beta")),
+        ("d", None),
+        ("e", Some("gamma")),
+    ] {
+        let mut body = json!({"title": title, "content": "x"});
+        if let Some(p) = project {
+            body["project"] = json!(p);
+        }
+        let saved: serde_json::Value = client
+            .post(format!("{base}/memories"))
+            .json(&body)
+            .send()
+            .await
+            .unwrap()
+            .json()
+            .await
+            .unwrap();
+        if project == Some("gamma") {
+            gamma_id = saved["id"].as_str().unwrap().to_string();
+        }
+    }
+    // Soft-delete the only "gamma" observation: its project must drop out.
+    let r = client
+        .delete(format!("{base}/memories/{gamma_id}"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(r.status(), 204);
+
+    let r = client.get(format!("{base}/projects")).send().await.unwrap();
+    assert_eq!(r.status(), 200);
+    let projects: Vec<String> = r.json().await.unwrap();
+    assert_eq!(projects, vec!["alpha", "beta"]);
+}
+
+#[tokio::test]
+async fn projects_requires_auth_401_without_token() {
+    let (_td, base) = spawn(Some("s3cret"), false).await;
+    let r = reqwest::Client::new()
+        .get(format!("{base}/projects"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(r.status(), 401);
+}
+
+#[tokio::test]
+async fn patch_memory_merges_metadata_preserving_unmentioned_keys() {
+    let (_td, base) = spawn(None, false).await;
+    let client = reqwest::Client::new();
+    let saved: serde_json::Value = client
+        .post(format!("{base}/memories"))
+        .json(&json!({
+            "title": "m",
+            "content": "x",
+            "metadata": {"keep": "original", "replace_me": "old"}
+        }))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    let id = saved["id"].as_str().unwrap();
+
+    let r = client
+        .patch(format!("{base}/memories/{id}"))
+        .json(&json!({"metadata_patch": {"replace_me": "new", "added": 42}}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(r.status(), 204);
+
+    let body: serde_json::Value = client
+        .get(format!("{base}/memories/{id}"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    // Unmentioned key preserved, mentioned key overwritten, new key added.
+    assert_eq!(body["metadata"]["keep"], "original");
+    assert_eq!(body["metadata"]["replace_me"], "new");
+    assert_eq!(body["metadata"]["added"], 42);
+}
+
+#[tokio::test]
+async fn patch_memory_requires_auth_401_without_token() {
+    let (_td, base) = spawn(Some("s3cret"), false).await;
+    let r = reqwest::Client::new()
+        .patch(format!("{base}/memories/01J00000000000000000000000"))
+        .json(&json!({"metadata_patch": {"a": 1}}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(r.status(), 401);
 }
 
 #[tokio::test]

@@ -23,6 +23,7 @@ use crate::dto::{
     SessionStartRequest, SessionStats, StatsResponse,
 };
 use crate::error::ErrorBody;
+use crate::handlers::PatchMetadataRequest;
 
 #[derive(OpenApi)]
 #[openapi(components(schemas(
@@ -33,6 +34,7 @@ use crate::error::ErrorBody;
     SearchHitDto,
     AnnotationDto,
     ObservationDto,
+    PatchMetadataRequest,
     SessionStartRequest,
     SessionEndRequest,
     SessionDto,
@@ -154,6 +156,26 @@ fn build_paths() -> utoipa::openapi::Paths {
         ),
     );
 
+    // PATCH /memories/{id} — merge metadata (NOT a replace)
+    paths = paths.path(
+        "/memories/{id}",
+        PathItem::new(
+            HttpMethod::Patch,
+            OperationBuilder::new()
+                .summary(Some("Merge observation metadata"))
+                .description(Some(
+                    "Merges `metadata_patch` into the observation's existing metadata: \
+                     new keys are added, mentioned keys are overwritten, keys not \
+                     mentioned are preserved. Nested objects are NOT recursively merged.",
+                ))
+                .parameters(Some(vec![path_param("id", "ULID")]))
+                .request_body(Some(json_body::<PatchMetadataRequest>(
+                    "PatchMetadataRequest",
+                )))
+                .responses(no_content("Merged")),
+        ),
+    );
+
     // POST /memories/{id}/restore
     paths = paths.path(
         "/memories/{id}/restore",
@@ -187,6 +209,21 @@ fn build_paths() -> utoipa::openapi::Paths {
                 .summary(Some("Hybrid search (FTS + vec + RRF)"))
                 .request_body(Some(json_body::<SearchRequest>("SearchRequest")))
                 .responses(json_response::<SearchResponse>(200, "Search hits")),
+        ),
+    );
+
+    // GET /projects — distinct active project names
+    paths = paths.path(
+        "/projects",
+        PathItem::new(
+            HttpMethod::Get,
+            OperationBuilder::new()
+                .summary(Some("List distinct project names"))
+                .description(Some(
+                    "Distinct non-null project names across active (non-deleted) \
+                     observations, alphabetically sorted.",
+                ))
+                .responses(json_string_array(200, "Project names")),
         ),
     );
 
@@ -438,6 +475,35 @@ fn json_array<T: ToSchema>(status: u16, description: &str) -> utoipa::openapi::R
                     "application/json",
                     ContentBuilder::new()
                         .schema(Some(RefOr::T(Schema::Array(array_schema.build()))))
+                        .build(),
+                )
+                .build(),
+        )
+        .build()
+}
+
+/// 200/JSON response whose payload is a bare array of strings — used by
+/// `GET /projects`, which has no named DTO to `$ref`.
+fn json_string_array(status: u16, description: &str) -> utoipa::openapi::Responses {
+    let item = Schema::Object(
+        utoipa::openapi::ObjectBuilder::new()
+            .schema_type(utoipa::openapi::schema::SchemaType::Type(
+                utoipa::openapi::schema::Type::String,
+            ))
+            .build(),
+    );
+    let array = utoipa::openapi::ArrayBuilder::new()
+        .items(RefOr::T(item))
+        .build();
+    ResponsesBuilder::new()
+        .response(
+            status.to_string(),
+            ResponseBuilder::new()
+                .description(description)
+                .content(
+                    "application/json",
+                    ContentBuilder::new()
+                        .schema(Some(RefOr::T(Schema::Array(array))))
                         .build(),
                 )
                 .build(),

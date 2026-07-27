@@ -6,6 +6,7 @@
 //! the two transports — when an operation needs to change, it changes in
 //! exactly one place.
 
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use seele_core::id::SeeleId;
@@ -14,8 +15,8 @@ use seele_embedder::Embedder;
 use seele_search::{SearchEngine, SearchQuery};
 use seele_storage::{
     ChunkStore, LinkInput, LinkQuery, LinkStore, ObservationPatch, ObservationQuery,
-    ObservationStore, Pool, PromptStore, RelationStore, SaveInput, SaveOutcome, SessionFilter,
-    SessionInput, SessionStore,
+    ObservationStore, Pool, RelationStore, SaveInput, SaveOutcome, SessionFilter, SessionInput,
+    SessionStore,
 };
 
 use crate::dto::{
@@ -36,7 +37,6 @@ pub struct SeeleService {
     pub sessions: SessionStore,
     pub links: LinkStore,
     pub relations: RelationStore,
-    pub prompts: PromptStore,
     pub chunks: ChunkStore,
     pub search: Arc<SearchEngine>,
     pub embedder: Arc<dyn Embedder>,
@@ -45,6 +45,10 @@ pub struct SeeleService {
     /// env > project > user > builtin. Arc'd: the set is immutable for
     /// the process lifetime and the service is Clone.
     families: Arc<seele_core::families::FamilySet>,
+    /// Append-only op-log path (T-12, GRAIL `_history.jsonl` port).
+    /// `None` disables the log; the production bootstrap opts in via
+    /// [`SeeleService::with_history_path`].
+    history_path: Option<PathBuf>,
 }
 
 impl SeeleService {
@@ -53,7 +57,6 @@ impl SeeleService {
         let sessions = SessionStore::new(pool.clone());
         let links = LinkStore::new(pool.clone());
         let relations = RelationStore::new(pool.clone());
-        let prompts = PromptStore::new(pool.clone());
         let chunks = ChunkStore::new(pool.clone());
         let search_embedder: Box<dyn Embedder> = Box::new(ArcEmbedder(embedder.clone()));
         let search = Arc::new(SearchEngine::new(pool.clone(), search_embedder));
@@ -66,18 +69,66 @@ impl SeeleService {
             sessions,
             links,
             relations,
-            prompts,
             chunks,
             search,
             embedder,
             pool,
             families: Arc::new(families),
+            history_path: None,
         }
     }
 
     /// The topic-key family set active for this process (Q10).
     pub fn topic_families(&self) -> &seele_core::families::FamilySet {
         &self.families
+    }
+
+    /// Canonical op-log path for a DB file (T-12): same directory as the
+    /// DB, named `<db file name>.history.jsonl` — e.g. `seele.db` →
+    /// `seele.db.history.jsonl`. One file per DB (not per project); each
+    /// line carries its project slug, so per-project slices are a `grep`
+    /// away and the log survives project renames.
+    pub fn history_path_for_db(db_path: &Path) -> PathBuf {
+        let mut name = db_path
+            .file_name()
+            .map(|n| n.to_os_string())
+            .unwrap_or_default();
+        name.push(".history.jsonl");
+        db_path.with_file_name(name)
+    }
+
+    /// Enable the op-log (T-12) at `path`. Builder-style so the single
+    /// production call site stays one expression:
+    /// `SeeleService::new(pool, emb).with_history_path(p)`.
+    pub fn with_history_path(mut self, path: impl Into<PathBuf>) -> Self {
+        self.history_path = Some(path.into());
+        self
+    }
+
+    /// Append one `{"op","ts","id","project"}` line to the op-log
+    /// (T-12). Best-effort, like the post-save embedding write: a log
+    /// failure warns but NEVER fails the mutation it describes — the DB
+    /// is the source of truth, the log is for replay/debug/audit.
+    fn log_op(&self, op: &'static str, id: SeeleId, project: Option<&str>) {
+        let Some(path) = &self.history_path else {
+            return;
+        };
+        let mut line = serde_json::json!({
+            "op": op,
+            "ts": chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+            "id": id.to_string(),
+            "project": project.unwrap_or(""),
+        })
+        .to_string();
+        line.push('\n');
+        let result = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+            .and_then(|mut f| std::io::Write::write_all(&mut f, line.as_bytes()));
+        if let Err(e) = result {
+            tracing::warn!(error = %e, path = %path.display(), op, "history op-log append failed");
+        }
     }
 
     /// Save an observation + compute & store its embedding atomically (best
@@ -106,6 +157,9 @@ impl SeeleService {
             metadata,
         };
         let outcome = self.observations.save(input)?;
+        // T-12: upserts and duplicate-merges count as "save" — one line
+        // per call, logged only after the row is persisted.
+        self.log_op("save", outcome.id(), req.project.as_deref());
 
         // Best-effort embedding write. Failure logs but does not surface
         // as a 5xx — the row is persisted and a reindex pass can fix it.
@@ -375,13 +429,31 @@ impl SeeleService {
     }
 
     pub fn soft_delete_observation(&self, id: SeeleId) -> Result<()> {
+        // T-12: resolve the project for the log line before mutating
+        // (get() does not filter soft-deleted rows). Best-effort: a
+        // read failure here must not block the delete.
+        let project = self.history_project_of(id);
         self.observations.soft_delete(id)?;
+        self.log_op("delete", id, project.as_deref());
         Ok(())
     }
 
     pub fn restore_observation(&self, id: SeeleId) -> Result<()> {
+        let project = self.history_project_of(id);
         self.observations.restore(id)?;
+        self.log_op("restore", id, project.as_deref());
         Ok(())
+    }
+
+    /// Project slug of `id` for an op-log line (T-12); `None` when the
+    /// row is gone or unreadable — the log degrades, the mutation
+    /// proceeds.
+    fn history_project_of(&self, id: SeeleId) -> Option<String> {
+        self.observations
+            .get(id)
+            .ok()
+            .flatten()
+            .and_then(|o| o.project)
     }
 
     /// Merge `patch_metadata` into the observation's existing metadata.
@@ -412,6 +484,7 @@ impl SeeleService {
                 ..Default::default()
             },
         )?;
+        self.log_op("update", id, current.project.as_deref());
         Ok(())
     }
 
@@ -630,6 +703,112 @@ impl SeeleService {
     pub fn embedding_provenance(&self) -> Result<seele_storage::EmbeddingProvenance> {
         Ok(self.observations.embedding_provenance()?)
     }
+
+    /// Re-embed every active observation whose vector is missing or whose
+    /// provenance names a different `(model_id, dim)` than the active
+    /// embedder (T-08). This is the remediation half of doctor's
+    /// `mix_warning`: that detects, this fixes.
+    ///
+    /// Unlike the save path's post-commit best-effort write, every vector
+    /// lands via `ObservationStore::set_embedding`, which commits vector +
+    /// provenance in ONE transaction — the hole this command exists to
+    /// close. Idempotent: a second run finds no candidates. Rows the
+    /// embedder fails on are skipped (counted, not fatal) so one bad text
+    /// doesn't block the rest; a re-run picks them up again. With
+    /// `dry_run` the pass only counts. `project` scopes it to one slug;
+    /// `batch_size` rows go to the embedder per call.
+    pub fn reembed_all(
+        &self,
+        project: Option<&str>,
+        batch_size: usize,
+        dry_run: bool,
+    ) -> Result<ReembedReport> {
+        let model_id = self.embedder.model_id().to_string();
+        let dim = self.embedder.dim();
+        let candidates = self
+            .observations
+            .reembed_candidates(&model_id, dim, project)?;
+        let mut report = ReembedReport {
+            model_id: model_id.clone(),
+            dim,
+            candidates: candidates.len() as u64,
+            reembedded: 0,
+            skipped: 0,
+            dry_run,
+        };
+        if dry_run || candidates.is_empty() {
+            return Ok(report);
+        }
+        let meta = seele_storage::EmbeddingMeta {
+            model_id,
+            dim,
+            contextualized: false,
+        };
+        let batch_size = batch_size.max(1);
+        for chunk in candidates.chunks(batch_size) {
+            let texts: Vec<&str> = chunk.iter().map(|o| o.content.as_str()).collect();
+            // One bad text must not skip the whole batch: when the batch
+            // call fails (or violates the len contract) fall back to
+            // per-row embedding for this chunk.
+            let batch: Option<Vec<Vec<f32>>> = match self.embedder.embed_batch(&texts) {
+                Ok(vs) if vs.len() == chunk.len() => Some(vs),
+                Ok(_) => {
+                    tracing::warn!("embed_batch returned wrong vector count; per-row fallback");
+                    None
+                }
+                Err(e) => {
+                    tracing::warn!(error = %e, "embed_batch failed; per-row fallback");
+                    None
+                }
+            };
+            for (i, obs) in chunk.iter().enumerate() {
+                let vector = match &batch {
+                    Some(vs) => Ok(vs[i].clone()),
+                    None => self.embedder.embed(&obs.content),
+                };
+                let vector = match vector {
+                    Ok(v) => v,
+                    Err(e) => {
+                        report.skipped += 1;
+                        tracing::warn!(id = %obs.id, error = %e, "re-embed failed; row skipped");
+                        continue;
+                    }
+                };
+                match self.observations.set_embedding(obs.id, &vector, &meta) {
+                    Ok(()) => report.reembedded += 1,
+                    Err(e) => {
+                        report.skipped += 1;
+                        tracing::warn!(id = %obs.id, error = %e, "re-embed write failed; row skipped");
+                    }
+                }
+            }
+            tracing::info!(
+                done = report.reembedded + report.skipped,
+                total = report.candidates,
+                "reembed progress"
+            );
+        }
+        Ok(report)
+    }
+}
+
+/// Outcome of a re-embed pass (T-08, `seele embedder reembed-all`).
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct ReembedReport {
+    /// Active embedder the vectors were (re)computed with.
+    pub model_id: String,
+    /// Vector dimensionality of the active embedder.
+    pub dim: usize,
+    /// Active observations whose vector was missing or whose provenance
+    /// didn't match the active embedder when the pass started.
+    pub candidates: u64,
+    /// Rows re-embedded and persisted (vector + provenance in one tx).
+    pub reembedded: u64,
+    /// Candidate rows the embedder (or the write) failed on — left
+    /// untouched, so the next run picks them up again.
+    pub skipped: u64,
+    /// True when the pass only counted candidates (no writes).
+    pub dry_run: bool,
 }
 
 /// Q4: max L2 distance for a stored vector to count as near-duplicate of

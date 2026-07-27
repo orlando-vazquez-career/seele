@@ -10,10 +10,13 @@ use axum::extract::Request;
 use axum::http::{HeaderMap, StatusCode};
 use axum::middleware::Next;
 use axum::response::Response;
+use subtle::ConstantTimeEq;
 
 /// Compare the request's `Authorization` header against `expected_token`.
 /// Returns `Ok(())` if the header matches (case-sensitive on the token
 /// itself, "Bearer" prefix is mandatory). Errors are mapped to 401.
+/// The token comparison is constant-time (`subtle`) so a wrong guess
+/// doesn't leak how many leading bytes were correct.
 pub fn check_bearer(headers: &HeaderMap, expected_token: &str) -> Result<(), StatusCode> {
     let header = headers
         .get("authorization")
@@ -24,7 +27,7 @@ pub fn check_bearer(headers: &HeaderMap, expected_token: &str) -> Result<(), Sta
         .strip_prefix("Bearer ")
         .map(str::trim)
         .ok_or(StatusCode::UNAUTHORIZED)?;
-    if provided == expected_token {
+    if bool::from(provided.as_bytes().ct_eq(expected_token.as_bytes())) {
         Ok(())
     } else {
         Err(StatusCode::UNAUTHORIZED)
@@ -41,4 +44,50 @@ pub async fn require_bearer(
 ) -> Result<Response, StatusCode> {
     check_bearer(req.headers(), &expected_token)?;
     Ok(next.run(req).await)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn headers_with_bearer(token: &str) -> HeaderMap {
+        let mut headers = HeaderMap::new();
+        headers.insert("authorization", format!("Bearer {token}").parse().unwrap());
+        headers
+    }
+
+    #[test]
+    fn correct_token_passes() {
+        let headers = headers_with_bearer("s3cret");
+        assert!(check_bearer(&headers, "s3cret").is_ok());
+    }
+
+    #[test]
+    fn same_length_different_token_fails() {
+        let headers = headers_with_bearer("s3creX");
+        assert_eq!(
+            check_bearer(&headers, "s3cret"),
+            Err(StatusCode::UNAUTHORIZED)
+        );
+    }
+
+    #[test]
+    fn token_differing_only_in_last_byte_fails() {
+        // Pins the semantics of the constant-time comparison: a mismatch
+        // in the final byte must reject just like any other.
+        let headers = headers_with_bearer("token-abcy");
+        assert_eq!(
+            check_bearer(&headers, "token-abcz"),
+            Err(StatusCode::UNAUTHORIZED)
+        );
+    }
+
+    #[test]
+    fn different_length_token_fails() {
+        let headers = headers_with_bearer("s3cret-extended");
+        assert_eq!(
+            check_bearer(&headers, "s3cret"),
+            Err(StatusCode::UNAUTHORIZED)
+        );
+    }
 }

@@ -79,6 +79,147 @@ fn save_then_show_returns_full_observation() {
     assert_eq!(v["data"]["content"], "content");
 }
 
+// -------- save stdin + help (T-05) --------
+
+/// Spawn `seele` with piped stdin, write `body`, close the pipe (EOF)
+/// and collect the result. Used by the `--content -` stdin tests.
+fn run_with_stdin(args: &[&str], body: &[u8]) -> (String, String, std::process::ExitStatus) {
+    use std::io::Write;
+    use std::process::Stdio;
+
+    let mut child = Command::new(SEELE_BIN)
+        .env("SEELE_FAKE_EMBEDDER", "1")
+        .args(args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn");
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(body)
+        .expect("write stdin");
+    // The taken stdin handle drops at the end of the statement → EOF.
+    let out = child.wait_with_output().expect("wait");
+    (
+        String::from_utf8_lossy(&out.stdout).into_owned(),
+        String::from_utf8_lossy(&out.stderr).into_owned(),
+        out.status,
+    )
+}
+
+#[test]
+fn save_content_dash_reads_full_stdin_utf8_multiline() {
+    let td = TempDir::new().unwrap();
+    let db = td.path().join("s.db");
+    let db = db.to_str().unwrap();
+    let body = "primera línea — café\nsegunda línea: ñandú 🦀\ntercera línea\n";
+
+    let (stdout, stderr, status) = run_with_stdin(
+        &[
+            "--db",
+            db,
+            "--json",
+            "save",
+            "stdin-title",
+            "-",
+            "--project",
+            "p",
+        ],
+        body.as_bytes(),
+    );
+    assert!(status.success(), "save with `-` failed: {stderr}");
+    let v: Value = serde_json::from_str(&stdout).expect("save json");
+    let id = v["data"]["id"].as_str().expect("save id").to_string();
+
+    let (stdout, _, status) = run(&["--db", db, "--json", "show", &id]);
+    assert!(status.success());
+    let v: Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(
+        v["data"]["content"].as_str().unwrap(),
+        body,
+        "stdin body must be stored verbatim (full UTF-8, multiline)"
+    );
+}
+
+#[test]
+fn save_content_flag_dash_also_reads_stdin() {
+    let td = TempDir::new().unwrap();
+    let db = td.path().join("s.db");
+    let db = db.to_str().unwrap();
+
+    let (stdout, stderr, status) = run_with_stdin(
+        &[
+            "--db",
+            db,
+            "--json",
+            "save",
+            "flag-title",
+            "--content",
+            "-",
+            "--project",
+            "p",
+        ],
+        b"from the flag\n",
+    );
+    assert!(status.success(), "save --content - failed: {stderr}");
+    let v: Value = serde_json::from_str(&stdout).expect("save json");
+    let id = v["data"]["id"].as_str().expect("save id").to_string();
+
+    let (stdout, _, _) = run(&["--db", db, "--json", "show", &id]);
+    let v: Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(v["data"]["content"].as_str().unwrap(), "from the flag\n");
+}
+
+#[test]
+fn save_content_dash_empty_stdin_fails_with_clear_error() {
+    let td = TempDir::new().unwrap();
+    let db = td.path().join("s.db");
+    let db = db.to_str().unwrap();
+
+    let (_, stderr, status) =
+        run_with_stdin(&["--db", db, "save", "t", "-", "--project", "p"], b"");
+    assert!(!status.success(), "empty stdin must fail");
+    assert!(
+        stderr.contains("stdin"),
+        "error must clearly point at stdin: {stderr}"
+    );
+}
+
+#[test]
+fn save_without_any_content_fails_with_clear_error() {
+    let td = TempDir::new().unwrap();
+    let db = td.path().join("s.db");
+    let db = db.to_str().unwrap();
+
+    let (_, stderr, status) = run(&["--db", db, "save", "t", "--project", "p"]);
+    assert!(!status.success(), "missing content must fail");
+    assert!(
+        stderr.contains("missing content"),
+        "error must say content is missing: {stderr}"
+    );
+}
+
+#[test]
+fn save_help_declares_stdin_path_and_embedding_token_limit() {
+    let out = Command::new(SEELE_BIN)
+        .args(["save", "--help"])
+        .output()
+        .expect("spawn");
+    assert!(out.status.success());
+    let s = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        s.contains("stdin"),
+        "help must document the stdin path: {s}"
+    );
+    assert!(
+        s.contains("256"),
+        "help must declare the ~256-token embedding limit: {s}"
+    );
+}
+
 // -------- search --------
 
 #[test]
@@ -102,6 +243,23 @@ fn search_empty_query_no_filter_fails() {
     let db = db.to_str().unwrap();
     let (_, _, status) = run(&["--db", db, "search"]);
     assert!(!status.success(), "expected empty-query gate to fail");
+}
+
+#[test]
+fn search_explain_reports_canonical_score_boost_default() {
+    // ADR-16 D3: the CLI sends score_boost_multiplier = 1.0 (neutral),
+    // the same canonical default as /chat and the HTTP dto.
+    let td = TempDir::new().unwrap();
+    let db = td.path().join("s.db");
+    let db = db.to_str().unwrap();
+    save_one(db, "deploy notes", "p");
+
+    let (stdout, _, status) = run(&["--db", db, "search", "deploy", "--explain"]);
+    assert!(status.success(), "search --explain failed: {stdout}");
+    assert!(
+        stdout.contains("boost=1 "),
+        "expected canonical score boost default 1.0 in trace: {stdout}"
+    );
 }
 
 // -------- delete / restore --------
@@ -354,6 +512,26 @@ fn import_from_engram_against_synthetic_source_inserts_rows() {
     let v: Value = serde_json::from_str(&stdout).unwrap();
     assert_eq!(v["data"]["rows_inserted"], 0);
     assert_eq!(v["data"]["rows_skipped_existing"], 1);
+}
+
+#[test]
+fn import_from_engram_help_re_embed_points_to_t08_not_sprint05() {
+    // T-05: the ONNX backend is the default now, so the old "no-op until
+    // Sprint-05" wording is obsolete; the honest pointer is T-08.
+    let out = Command::new(SEELE_BIN)
+        .args(["import", "from-engram", "--help"])
+        .output()
+        .expect("spawn");
+    assert!(out.status.success());
+    let s = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        !s.contains("Sprint-05"),
+        "obsolete Sprint-05 wording must be gone: {s}"
+    );
+    assert!(
+        s.contains("T-08"),
+        "--re-embed help must say it is implemented in T-08: {s}"
+    );
 }
 
 // -------- envelope contract (Q2, GRAIL-style Reply) --------

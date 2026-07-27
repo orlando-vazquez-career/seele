@@ -85,7 +85,7 @@ pub struct SimilarCandidateDto {
     pub signal: &'static str,
 }
 
-#[derive(Debug, Deserialize, Default, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct SearchRequest {
     #[serde(default)]
     pub query: String,
@@ -101,10 +101,35 @@ pub struct SearchRequest {
     pub include_purist: bool,
     #[serde(default)]
     pub include_annotations: bool,
-    #[serde(default)]
+    /// Canonical default is 1.0 (ADR-16 D3): metadata `score` weighs what
+    /// the algorithm says it weighs; pass 0.0 explicitly to disable.
+    #[serde(default = "default_score_boost_multiplier")]
     pub score_boost_multiplier: f64,
     #[serde(default)]
     pub max_vec_distance: Option<f64>,
+}
+
+fn default_score_boost_multiplier() -> f64 {
+    1.0
+}
+
+/// Manual impl (instead of derive) so `SearchRequest::default()` agrees
+/// with the serde default — a derived `Default` would yield 0.0 for the
+/// `f64` and reintroduce the foot-gun ADR-16 D3 removed.
+impl Default for SearchRequest {
+    fn default() -> Self {
+        Self {
+            query: String::new(),
+            project: None,
+            scope: None,
+            r#type: None,
+            limit: None,
+            include_purist: false,
+            include_annotations: false,
+            score_boost_multiplier: default_score_boost_multiplier(),
+            max_vec_distance: None,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -538,5 +563,20 @@ pub fn parse_metadata(v: Value) -> Metadata {
         Metadata::new()
     } else {
         Metadata::from_value(v)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn search_request_default_score_boost_multiplier_is_one() {
+        // ADR-16 D3: the canonical default is 1.0 on every surface —
+        // 0.0 zeroes out the signal it multiplies, so opting out must
+        // be explicit.
+        let from_json: SearchRequest = serde_json::from_str("{}").unwrap();
+        assert_eq!(from_json.score_boost_multiplier, 1.0);
+        assert_eq!(SearchRequest::default().score_boost_multiplier, 1.0);
     }
 }

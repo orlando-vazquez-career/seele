@@ -42,14 +42,24 @@ const CACHE_DIR_SUFFIX: &str = "seele/embedder";
 /// **is listed and the hash does not match**, [`EmbedderError::HashMismatch`]
 /// is returned — that's the tampering signal.
 ///
-/// To populate: download the model once, run `sha256sum <file>` over each
-/// artifact, and add the entry. Document the bump in `CHANGELOG.md`.
+/// To bump: download the model once, run `sha256sum <file>` over each
+/// artifact, and update the entry. Document the bump in `CHANGELOG.md`.
 const TRUSTED_HASHES: &[(&str, &str, &str)] = &[
-    // No hashes are pinned by default at v0.1 — populate per release.
-    // Example (replace with real values when bumping the model version):
-    // (DEFAULT_MODEL_REPO, ONNX_PATH_FULL, "<sha256-hex>"),
-    // (DEFAULT_MODEL_REPO, ONNX_PATH_QUANTIZED, "<sha256-hex>"),
-    // (DEFAULT_MODEL_REPO, TOKENIZER_PATH_IN_REPO, "<sha256-hex>"),
+    // sentence-transformers/all-MiniLM-L6-v2 @ c9745ed1d9f207416be6d2e6f8de32d1f16199bf
+    // `model.onnx` cross-checked against the Hub LFS oid; `tokenizer.json`
+    // hashed from the local cache. The repo ships no `onnx/model_quantized.onnx`
+    // (404 at this revision), so that path stays unpinned — production falls
+    // back to full precision, which is the entry verified below.
+    (
+        DEFAULT_MODEL_REPO,
+        ONNX_PATH_FULL,
+        "6fd5d72fe4589f189f8ebc006442dbb529bb7ce38f8082112682524616046452",
+    ),
+    (
+        DEFAULT_MODEL_REPO,
+        TOKENIZER_PATH_IN_REPO,
+        "be50c3628f2bf5bb5e3a7f17b1f74611b2561a3a27eeab05e5aa30f411572037",
+    ),
 ];
 
 #[derive(Debug, Clone)]
@@ -326,6 +336,13 @@ fn verify_hash_if_listed(repo: &str, file: &str, path: &Path) -> Result<()> {
         );
         return Ok(());
     };
+    verify_sha256_hex(&format!("{repo}/{file}"), expected, path)
+}
+
+/// Hash `path` with SHA-256 and compare against `expected` (hex). A mismatch
+/// is a hard [`EmbedderError::HashMismatch`], never a warn-and-proceed: the
+/// artifact may have been tampered with in transit or in the local cache.
+fn verify_sha256_hex(artifact: &str, expected: &str, path: &Path) -> Result<()> {
     let bytes = std::fs::read(path)?;
     let digest = Sha256::digest(&bytes);
     let got = hex::encode(digest);
@@ -333,7 +350,7 @@ fn verify_hash_if_listed(repo: &str, file: &str, path: &Path) -> Result<()> {
         Ok(())
     } else {
         Err(EmbedderError::HashMismatch {
-            file: format!("{repo}/{file}"),
+            file: artifact.to_string(),
             expected: expected.to_string(),
             got,
         })
@@ -442,8 +459,23 @@ mod tests {
     }
 
     #[test]
+    fn trusted_hashes_pinned_for_default_model() {
+        // The default model artifacts must be pinned with well-formed hashes.
+        let model = trusted_hash_for(DEFAULT_MODEL_REPO, ONNX_PATH_FULL)
+            .expect("default onnx/model.onnx must be pinned in TRUSTED_HASHES");
+        let tokenizer = trusted_hash_for(DEFAULT_MODEL_REPO, TOKENIZER_PATH_IN_REPO)
+            .expect("default tokenizer.json must be pinned in TRUSTED_HASHES");
+        for h in [model, tokenizer] {
+            assert_eq!(h.len(), 64, "sha256 hex must be 64 chars: {h}");
+            assert!(
+                h.chars().all(|c| c.is_ascii_hexdigit()),
+                "non-hex characters in pinned hash: {h}"
+            );
+        }
+    }
+
+    #[test]
     fn trusted_hash_lookup_returns_none_for_unlisted() {
-        // The default table is empty at v0.1; any lookup is None.
         assert_eq!(trusted_hash_for("nonexistent/repo", "any/file"), None);
         assert_eq!(
             trusted_hash_for(DEFAULT_MODEL_REPO, "totally-not-listed-path"),
@@ -461,24 +493,43 @@ mod tests {
     }
 
     #[test]
-    fn verify_hash_returns_mismatch_when_listed_and_different() {
-        // Inline assertion using the verify helper indirectly: simulate a
-        // listed hash by checking the lookup itself. We can't push to
-        // TRUSTED_HASHES at runtime (it's `const`), but we can validate the
-        // mismatch arm via a synthetic call that re-implements the check.
+    fn trusted_hash_verify_accepts_matching_fixture() {
         let td = tempfile::TempDir::new().unwrap();
         let path = td.path().join("artifact.bin");
-        std::fs::write(&path, b"hello world").unwrap();
-        let bytes = std::fs::read(&path).unwrap();
-        let got = hex::encode(Sha256::digest(&bytes));
-        let expected = "0000000000000000000000000000000000000000000000000000000000000000";
-        // Direct construction of the mismatch error replicates what
-        // verify_hash_if_listed would do for a listed-but-mismatching entry.
-        let err = EmbedderError::HashMismatch {
-            file: "synthetic/file".into(),
-            expected: expected.to_string(),
-            got,
-        };
+        std::fs::write(&path, b"seele fixture bytes").unwrap();
+        let expected = hex::encode(Sha256::digest(b"seele fixture bytes"));
+        assert!(verify_sha256_hex("fixture/repo/file", &expected, &path).is_ok());
+    }
+
+    #[test]
+    fn trusted_hash_verify_rejects_mismatching_fixture() {
+        let td = tempfile::TempDir::new().unwrap();
+        let path = td.path().join("artifact.bin");
+        std::fs::write(&path, b"seele fixture bytes").unwrap();
+        let expected = "0".repeat(64);
+        let err = verify_sha256_hex("fixture/repo/file", &expected, &path).unwrap_err();
+        match err {
+            EmbedderError::HashMismatch {
+                file,
+                expected,
+                got,
+            } => {
+                assert_eq!(file, "fixture/repo/file");
+                assert_eq!(expected, "0".repeat(64));
+                assert_eq!(got, hex::encode(Sha256::digest(b"seele fixture bytes")));
+            }
+            other => panic!("expected HashMismatch, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn trusted_hash_listed_entry_rejects_garbage_download() {
+        // End-to-end over the real table: a tampered download of a pinned
+        // artifact must be a hard error, never a warn-and-proceed.
+        let td = tempfile::TempDir::new().unwrap();
+        let path = td.path().join("model.onnx");
+        std::fs::write(&path, b"tampered bytes").unwrap();
+        let err = verify_hash_if_listed(DEFAULT_MODEL_REPO, ONNX_PATH_FULL, &path).unwrap_err();
         assert!(matches!(err, EmbedderError::HashMismatch { .. }));
     }
 

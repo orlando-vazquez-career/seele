@@ -2,8 +2,11 @@
 //! its `run(...)` entry point — splitting them out keeps `app.rs`
 //! focused on the dispatch tree.
 
+pub mod backup;
 pub mod delete;
 pub mod doctor;
+pub mod embedder;
+#[cfg(feature = "eval")]
 pub mod eval;
 pub mod import;
 pub mod link;
@@ -18,4 +21,5 @@ pub mod setup;
 pub mod show;
 pub mod stats;
 pub mod sync;
+#[cfg(feature = "tui")]
 pub mod tui;

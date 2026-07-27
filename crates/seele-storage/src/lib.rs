@@ -8,7 +8,6 @@ pub mod migrations;
 pub mod observations;
 pub mod pool;
 pub mod privacy;
-pub mod prompts;
 pub mod relations;
 pub mod sessions;
 pub mod vec0_install;
@@ -20,7 +19,6 @@ pub use observations::{
     EmbeddingMeta, EmbeddingModelCount, EmbeddingProvenance, ObservationPatch, ObservationQuery,
     ObservationStore, RawSaveInput, RawSaveOutcome, SaveInput, SaveOutcome,
 };
-pub use prompts::{PromptInput, PromptQuery, PromptStore, UserPrompt};
 pub use relations::{JudgmentInput, RelationInput, RelationQuery, RelationStore};
 pub use sessions::{SessionFilter, SessionInput, SessionStore};
 

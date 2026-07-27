@@ -187,7 +187,8 @@ impl AppState {
             limit: Some(BROWSE_LIMIT),
             include_purist: false,
             include_annotations: false,
-            score_boost_multiplier: 0.0,
+            // Canonical default (ADR-16 D3); 0.0 would disable the boost.
+            score_boost_multiplier: 1.0,
             max_vec_distance: None,
         };
         if let Err(e) = enforce_search_query_or_filter(&req) {

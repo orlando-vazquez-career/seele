@@ -187,11 +187,20 @@ impl ObservationStore {
     }
 
     pub fn save(&self, input: SaveInput) -> Result<SaveOutcome> {
-        let mut conn = self.pool.get()?;
-        let tx = conn.transaction()?;
-        let outcome = save_in_tx(&tx, input)?;
-        tx.commit()?;
-        Ok(outcome)
+        // T-01: BEGIN IMMEDIATE + retry-once on SQLITE_BUSY. Save always
+        // writes, so starting as a writer is free — and it lets the pool's
+        // busy_timeout absorb lock waits: a DEFERRED tx that reads first
+        // and upgrades mid-flight is refused BUSY immediately (SQLite skips
+        // the busy handler for read→write upgrades). The retry covers what
+        // is left: a writer holding the lock past the timeout. `input` is
+        // cloned per attempt so a retry gets it whole.
+        crate::pool::with_busy_retry(|| {
+            let mut conn = self.pool.get()?;
+            let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            let outcome = save_in_tx(&tx, input.clone())?;
+            tx.commit()?;
+            Ok(outcome)
+        })
     }
 
     /// Save into a caller-owned transaction. The caller is responsible
@@ -502,6 +511,43 @@ impl ObservationStore {
             models,
             active_without_vector: active_without_vector as u64,
         })
+    }
+
+    /// Active observations that need a re-embed under `model_id`/`dim`
+    /// (T-08): their vector is missing from `observations_vec`, their
+    /// provenance row is missing from `embeddings_meta` (unknown model),
+    /// or the provenance names a different `(model_id, dim)`. This is the
+    /// per-row source of truth behind doctor's
+    /// [`EmbeddingProvenance::mix_warning`] — that detects, this lists.
+    /// Ordered oldest-first so batch progress is deterministic.
+    pub fn reembed_candidates(
+        &self,
+        model_id: &str,
+        dim: usize,
+        project: Option<&str>,
+    ) -> Result<Vec<Observation>> {
+        let sql = [
+            SQL_SELECT_PREFIX,
+            " WHERE deleted_at IS NULL \
+               AND (?1 IS NULL OR project = ?1) \
+               AND (NOT EXISTS (SELECT 1 FROM observations_vec v \
+                                WHERE v.rowid = observations.int_id) \
+                 OR NOT EXISTS (SELECT 1 FROM embeddings_meta m \
+                                WHERE m.observation_id = observations.id) \
+                 OR EXISTS (SELECT 1 FROM embeddings_meta m \
+                            WHERE m.observation_id = observations.id \
+                              AND (m.model_id <> ?2 OR m.dim <> ?3))) \
+               ORDER BY created_at ASC, id ASC",
+        ]
+        .concat();
+        let conn = self.pool.get()?;
+        let mut stmt = conn.prepare(&sql)?;
+        let mut rows = stmt.query(params![project, model_id, dim as i64])?;
+        let mut out = Vec::new();
+        while let Some(row) = rows.next()? {
+            out.push(parse_observation(row)?);
+        }
+        Ok(out)
     }
 
     /// Number of active (non-soft-deleted) observations.

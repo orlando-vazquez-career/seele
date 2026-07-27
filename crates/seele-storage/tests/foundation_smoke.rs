@@ -7,7 +7,6 @@ use tempfile::TempDir;
 const EXPECTED_TABLES: &[&str] = &[
     "sessions",
     "observations",
-    "user_prompts",
     "links",
     "memory_relations",
     "sync_chunks",
@@ -31,16 +30,15 @@ fn init_db_applies_full_schema() {
     }
 
     // FTS5 virtual tables (registered as 'table' in sqlite_master).
-    for vt in ["observations_fts", "prompts_fts"] {
-        let exists: i64 = conn
-            .query_row(
-                "SELECT count(*) FROM sqlite_master WHERE name=?1",
-                [vt],
-                |r| r.get(0),
-            )
-            .unwrap();
-        assert_eq!(exists, 1, "fts {vt} must exist");
-    }
+    let vt = "observations_fts";
+    let exists: i64 = conn
+        .query_row(
+            "SELECT count(*) FROM sqlite_master WHERE name=?1",
+            [vt],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(exists, 1, "fts {vt} must exist");
 
     // vec0 virtual table.
     let vec_exists: i64 = conn
@@ -63,6 +61,31 @@ fn init_db_applies_full_schema() {
             .unwrap();
         assert_eq!(exists, 1, "trigger {tr} must exist");
     }
+}
+
+#[test]
+fn init_db_drops_user_prompts_pipeline() {
+    // ADR-16 (decision 2): `user_prompts` + `prompts_fts` are dropped by
+    // V003 — the pipeline was write-dead in production and the FTS was
+    // inert (no content_rowid, no sync triggers). Fresh DBs run
+    // V001→V003, so the tables must be gone right after init.
+    let td = TempDir::new().unwrap();
+    let pool = init_db(td.path().join("seele.db")).expect("init_db must succeed");
+    let conn = pool.get().expect("checkout");
+
+    // Base table, FTS virtual table, and every FTS5 shadow table.
+    let leftovers: i64 = conn
+        .query_row(
+            "SELECT count(*) FROM sqlite_master \
+             WHERE name='user_prompts' OR name LIKE 'prompts_fts%'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(
+        leftovers, 0,
+        "user_prompts and prompts_fts (incl. shadows) must be dropped"
+    );
 }
 
 #[test]

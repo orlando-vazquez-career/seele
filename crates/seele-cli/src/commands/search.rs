@@ -45,7 +45,8 @@ pub async fn run(
         limit: Some(args.limit),
         include_purist: args.include_purist,
         include_annotations: args.include_annotations,
-        score_boost_multiplier: 0.0,
+        // Canonical default (ADR-16 D3); 0.0 would disable the boost.
+        score_boost_multiplier: 1.0,
         max_vec_distance: None,
     };
     enforce_search_query_or_filter(&req)

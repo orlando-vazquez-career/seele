@@ -126,11 +126,14 @@ impl Server {
             )
             .route(
                 "/memories/{id}",
-                get(handlers::get_memory).delete(handlers::soft_delete_memory),
+                get(handlers::get_memory)
+                    .delete(handlers::soft_delete_memory)
+                    .patch(handlers::patch_memory_metadata),
             )
             .route("/memories/{id}/restore", post(handlers::restore_memory))
             .route("/memories/{id}/links", get(handlers::list_links_for_memory))
             .route("/search", post(handlers::search_memories))
+            .route("/projects", get(handlers::list_projects))
             .route(
                 "/sessions",
                 post(handlers::start_session).get(handlers::list_sessions),

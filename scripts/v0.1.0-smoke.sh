@@ -49,7 +49,7 @@ crit()  { printf '\n== Criterion %s ==\n' "$*"; }
 # Build the binary once into the tempdir-shared cache. We use the
 # release profile so behavior matches what ships.
 crit '1 — cargo build (proxy for cargo install)'
-cargo build --release -p seele-cli 1>/dev/null
+cargo build --release -p seele-cli --features full 1>/dev/null
 SEELE="${ROOT}/target/release/seele"
 test -x "$SEELE" || fail "binary not at $SEELE"
 pass "binary built at $SEELE"

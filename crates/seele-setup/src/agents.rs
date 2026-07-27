@@ -23,6 +23,7 @@ pub enum AgentKind {
     ClaudeCode,
     Cursor,
     Windsurf,
+    KimiCode,
     // Skeleton — declared so `--agent <name>` gives a useful error
     // instead of "unknown agent".
     OpenCode,
@@ -38,6 +39,7 @@ impl AgentKind {
             Self::ClaudeCode => "claude-code",
             Self::Cursor => "cursor",
             Self::Windsurf => "windsurf",
+            Self::KimiCode => "kimi-code",
             Self::OpenCode => "opencode",
             Self::Aider => "aider",
             Self::Cody => "cody",
@@ -55,6 +57,7 @@ impl AgentKind {
             Self::ClaudeCode,
             Self::Cursor,
             Self::Windsurf,
+            Self::KimiCode,
             Self::OpenCode,
             Self::Aider,
             Self::Cody,
@@ -67,7 +70,10 @@ impl AgentKind {
     /// skeletons declared so `--agent <name>` gives a useful error
     /// instead of "unknown agent". Drives `setup --all` filtering.
     pub fn is_implemented(&self) -> bool {
-        matches!(self, Self::ClaudeCode | Self::Cursor | Self::Windsurf)
+        matches!(
+            self,
+            Self::ClaudeCode | Self::Cursor | Self::Windsurf | Self::KimiCode
+        )
     }
 }
 
@@ -94,14 +100,19 @@ pub fn install_agent(kind: AgentKind, opts: &InstallOptions) -> Result<InstallRe
             opts,
             "mcpServers",
         ),
+        AgentKind::KimiCode => install_mcp_json(
+            kind,
+            opts.home()?.join(".kimi-code").join("mcp.json"),
+            opts,
+            "mcpServers",
+        ),
         skeleton => Err(SetupError::NotImplemented(skeleton.as_str().to_string())),
     }
 }
 
 /// Shared implementation for agents that use a JSON file with a top-level
 /// object whose key (typically `"mcpServers"`) maps server name → spec
-/// `{command, args}`. Covers Claude Code, Cursor, Windsurf — the three
-/// dominant MCP consumers as of v0.1.
+/// `{command, args}`. Covers Claude Code, Cursor, Windsurf and Kimi Code.
 fn install_mcp_json(
     kind: AgentKind,
     config_path: PathBuf,

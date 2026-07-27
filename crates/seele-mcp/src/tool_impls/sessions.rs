@@ -62,9 +62,9 @@ pub fn summary(svc: &SeeleService, params: Value) -> Result<Value, ToolError> {
     Ok(serde_json::to_value(resp)?)
 }
 
-/// Parse a chat transcript looking for `## Key Learnings:` blocks (or
-/// `## Key Learnings`) and save each line item as a `type=learning`
-/// observation. Returns the list of saved ids.
+/// Parse a chat transcript looking for learnings blocks (`## Key Learnings:`,
+/// `## Aprendizajes:` or `## Learnings:`) and save each line item as a
+/// `type=learning` observation. Returns the list of saved ids.
 pub fn capture_passive(svc: &SeeleService, params: Value) -> Result<Value, ToolError> {
     let transcript = params
         .get("transcript")
@@ -105,16 +105,35 @@ pub fn capture_passive(svc: &SeeleService, params: Value) -> Result<Value, ToolE
     }))
 }
 
-/// Extract bullet items under `## Key Learnings:` (or `## Key Learnings`)
-/// up to the next `## ` heading or EOF. Each `- ` or `* ` line is one
-/// learning. Multi-line bullets are concatenated into a single item.
+/// Headings (normalized: lowercase, trailing colon stripped) that open a
+/// learnings section for passive capture. Localized variants are accepted
+/// so agents can emit transcripts in English or Spanish.
+const LEARNINGS_HEADINGS: [&str; 3] = ["key learnings", "aprendizajes", "learnings"];
+
+/// Normalize a level-2 heading line (`## …`) to lowercase text without the
+/// trailing colon. Tolerates extra spaces after `##`; returns `None` for
+/// lines that are not level-2 headings (`# h1`, `### h3`, `##no-space`).
+fn parse_h2_heading(line: &str) -> Option<String> {
+    let rest = line.strip_prefix("##")?;
+    if !rest.starts_with(' ') && !rest.starts_with('\t') {
+        return None;
+    }
+    let text = rest.trim();
+    let text = text.strip_suffix(':').unwrap_or(text).trim_end();
+    Some(text.to_lowercase())
+}
+
+/// Extract bullet items under a learnings heading (`## Key Learnings:`,
+/// `## Aprendizajes:` or `## Learnings:`, case-insensitive) up to the next
+/// `## ` heading or EOF. Each `- ` or `* ` line is one learning.
+/// Multi-line bullets are concatenated into a single item.
 fn extract_key_learnings(transcript: &str) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
     let mut in_section = false;
     let mut current: Option<String> = None;
     for raw_line in transcript.lines() {
         let line = raw_line.trim_end();
-        if line.starts_with("## ") {
+        if let Some(heading) = parse_h2_heading(line) {
             // Push the buffered bullet before switching sections.
             if let Some(b) = current.take() {
                 let trimmed = b.trim().to_string();
@@ -122,8 +141,7 @@ fn extract_key_learnings(transcript: &str) -> Vec<String> {
                     out.push(trimmed);
                 }
             }
-            let heading = line.trim_start_matches("## ").trim().to_lowercase();
-            in_section = heading == "key learnings" || heading == "key learnings:";
+            in_section = LEARNINGS_HEADINGS.contains(&heading.as_str());
             continue;
         }
         if !in_section {
@@ -196,6 +214,31 @@ mod tests {
     #[test]
     fn extract_learnings_no_section_returns_empty() {
         let t = "no relevant heading here\n- foo\n- bar";
+        assert!(extract_key_learnings(t).is_empty());
+    }
+
+    #[test]
+    fn capture_extracts_all_localized_headings() {
+        for heading in ["## Key Learnings:", "## Aprendizajes:", "## Learnings:"] {
+            let t = format!("{heading}\n- uno\n- dos");
+            assert_eq!(
+                extract_key_learnings(&t),
+                vec!["uno", "dos"],
+                "heading not recognized: {heading}"
+            );
+        }
+    }
+
+    #[test]
+    fn capture_headings_case_insensitive_and_space_tolerant() {
+        let t = "##   KEY LEARNINGS\n- uno\n## Aprendizajes :\n- dos";
+        let r = extract_key_learnings(t);
+        assert_eq!(r, vec!["uno", "dos"]);
+    }
+
+    #[test]
+    fn capture_ignores_unknown_heading() {
+        let t = "## Takeaways:\n- uno\n- dos";
         assert!(extract_key_learnings(t).is_empty());
     }
 }

@@ -17,6 +17,8 @@ pub struct Args {
     #[arg(long)]
     pub legacy_engram_paths: bool,
     /// Require `Authorization: Bearer <token>` for non-public routes.
+    /// Reads from the env var named here if the value starts with `$`,
+    /// otherwise used literally. E.g. `--auth-bearer $SEELE_TOKEN`.
     #[arg(long)]
     pub auth_bearer: Option<String>,
     /// Enable CORS for the given origin. Repeatable for multiple origins.
@@ -52,7 +54,7 @@ pub async fn run(args: Args, db: &Option<PathBuf>, fake_embedder: bool) -> anyho
 
     let chat = match (args.chat_provider, args.chat_key) {
         (Some(provider), Some(key_or_env)) => {
-            let api_key = resolve_key(&key_or_env)?;
+            let api_key = resolve_secret(&key_or_env, "chat key")?;
             let model = args
                 .chat_model
                 .unwrap_or_else(|| default_model_for(&provider));
@@ -69,12 +71,18 @@ pub async fn run(args: Args, db: &Option<PathBuf>, fake_embedder: bool) -> anyho
         }
     };
 
+    let auth_bearer = args
+        .auth_bearer
+        .as_deref()
+        .map(|raw| resolve_secret(raw, "auth bearer"))
+        .transpose()?;
+
     Server::new(
         svc,
         ServerConfig {
             addr,
             cors_origins: args.cors_allow,
-            auth_bearer: args.auth_bearer,
+            auth_bearer,
             legacy_engram_paths: args.legacy_engram_paths,
             chat,
         },
@@ -83,10 +91,10 @@ pub async fn run(args: Args, db: &Option<PathBuf>, fake_embedder: bool) -> anyho
     .await
 }
 
-fn resolve_key(raw: &str) -> anyhow::Result<String> {
+fn resolve_secret(raw: &str, label: &str) -> anyhow::Result<String> {
     if let Some(envvar) = raw.strip_prefix('$') {
         std::env::var(envvar)
-            .map_err(|_| anyhow::anyhow!("chat key references env var ${envvar} but it is not set"))
+            .map_err(|_| anyhow::anyhow!("{label} references env var ${envvar} but it is not set"))
     } else {
         Ok(raw.to_string())
     }
@@ -102,5 +110,33 @@ fn default_model_for(provider: &str) -> String {
         "deepseek" => "deepseek-chat".to_string(),
         "anthropic" => "claude-haiku-4-5-20251001".to_string(),
         _ => "gpt-4o-mini".to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn serve_auth_bearer_env_var_indirection_resolves() {
+        std::env::set_var("SEELE_TEST_AUTH_BEARER", "tok-from-env");
+        let resolved = resolve_secret("$SEELE_TEST_AUTH_BEARER", "auth bearer").unwrap();
+        assert_eq!(resolved, "tok-from-env");
+        std::env::remove_var("SEELE_TEST_AUTH_BEARER");
+    }
+
+    #[test]
+    fn serve_auth_bearer_literal_value_passes_through() {
+        let resolved = resolve_secret("literal-token", "auth bearer").unwrap();
+        assert_eq!(resolved, "literal-token");
+    }
+
+    #[test]
+    fn serve_auth_bearer_unset_env_var_errors() {
+        let err = resolve_secret("$SEELE_TEST_AUTH_BEARER_UNSET", "auth bearer").unwrap_err();
+        assert!(
+            err.to_string().contains("$SEELE_TEST_AUTH_BEARER_UNSET"),
+            "unexpected error: {err}"
+        );
     }
 }

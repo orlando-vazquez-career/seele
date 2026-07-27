@@ -74,6 +74,36 @@ pub async fn restore_memory(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/// PATCH /memories/{id} body. Flat JSON object merged into the
+/// observation's existing metadata — NOT a replace: new keys are added,
+/// mentioned keys are overwritten, unmentioned keys are preserved
+/// (mirrors the MCP `seele_update_metadata` tool).
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
+pub struct PatchMetadataRequest {
+    pub metadata_patch: serde_json::Value,
+}
+
+pub async fn patch_memory_metadata(
+    State(svc): State<Arc<SeeleService>>,
+    Path(id): Path<String>,
+    Json(req): Json<PatchMetadataRequest>,
+) -> Result<StatusCode> {
+    let parsed = parse_id(&id, "id")?;
+    if !req.metadata_patch.is_object() {
+        return Err(crate::ApiError::BadRequest(
+            "metadata_patch must be an object".into(),
+        ));
+    }
+    svc.merge_observation_metadata(parsed, req.metadata_patch)?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+// -------- Projects --------
+
+pub async fn list_projects(State(svc): State<Arc<SeeleService>>) -> Result<Json<Vec<String>>> {
+    Ok(Json(svc.list_projects()?))
+}
+
 // -------- Sessions --------
 
 pub async fn start_session(

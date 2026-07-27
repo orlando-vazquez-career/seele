@@ -1,4 +1,4 @@
-//! CRUD smoke for prompts, links, relations, chunks.
+//! CRUD smoke for links, relations, chunks.
 
 use seele_core::id::SeeleId;
 use seele_core::memory::{ObservationType, Scope};
@@ -6,7 +6,7 @@ use seele_core::metadata::Metadata;
 use seele_core::relation::{JudgmentStatus, RelationKind};
 use seele_storage::{
     init_db, ChunkStore, JudgmentInput, LinkInput, LinkQuery, LinkStore, ObservationStore,
-    PromptInput, PromptQuery, PromptStore, RelationInput, RelationQuery, RelationStore, SaveInput,
+    RelationInput, RelationQuery, RelationStore, SaveInput,
 };
 use serde_json::json;
 use tempfile::TempDir;
@@ -44,35 +44,6 @@ fn make_two_observations() -> (TempDir, ObservationStore, SeeleId, SeeleId) {
         .unwrap()
         .id();
     (td, store, a, b)
-}
-
-#[test]
-fn prompts_save_get_list_delete_round_trip() {
-    let td = TempDir::new().unwrap();
-    let pool = init_db(td.path().join("seele.db")).unwrap();
-    let store = PromptStore::new(pool);
-    let saved = store
-        .save(PromptInput {
-            session_id: None,
-            content: "first prompt".into(),
-            project: Some("p".into()),
-        })
-        .unwrap();
-    assert_eq!(saved.content, "first prompt");
-
-    let got = store.get(saved.id).unwrap().unwrap();
-    assert_eq!(got.id, saved.id);
-
-    let list = store
-        .list(PromptQuery {
-            project: Some("p".into()),
-            ..Default::default()
-        })
-        .unwrap();
-    assert_eq!(list.len(), 1);
-
-    store.delete(saved.id).unwrap();
-    assert!(store.get(saved.id).unwrap().is_none());
 }
 
 #[test]

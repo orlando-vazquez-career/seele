@@ -71,6 +71,7 @@ SemVer marcado._
 
 ### Changed
 
+- **Default canónico de `score_boost_multiplier`: 1.0** (ADR-16 D3) en las tres superficies que hardcodeaban 0.0 (HTTP `SearchRequest` serde/`Default`, CLI `search`, TUI); `/chat` ya usaba 1.0 — pasar 0.0 explícito sigue apagando el boost.
 - **`[profile.dev] debug = "line-tables-only"`** (ronda 2, sprint
   GRAIL-H1) — el target/ debug del workspace (full debuginfo × 14 crates
   + ort + tokenizers) superaba los 18 GB y llenó el disco de desarrollo
@@ -233,6 +234,67 @@ SemVer marcado._
   per MCP spec 2024-11-05. Two cases: `seele_doctor` (full payload) and
   `seele_version` (minimal payload). Prevents regression of the wire
   envelope bug.
+
+## [0.4.0] — 2026-07-27
+
+v0.4 «dual-runtime y robustez». Sprint AEGIS completo (15 tareas, 5 oleadas)
+nacido del análisis de `DeusData/codebase-memory-mcp` y `CCHIA/GRAIL` más una
+re-auditoría propia. Devlog
+`docs/aegis/devlogs/2026-07-27-sprint-v0.4-dual-runtime-robustez.md`.
+
+### Added
+
+- **`seele setup --agent kimi-code`** — SEELE se instala como MCP server en
+  Kimi Code (`~/.kimi-code/mcp.json`), con merge idempotente, backup y
+  dry-run como el resto de agentes.
+- **`seele embedder reembed-all`** — re-embebe filas sin vector o con modelo
+  distinto al vigente (batch `--batch-size`, `--dry-run`, `--project`;
+  transaccional e idempotente). `import --re-embed` deja de ser no-op.
+  Aplicado a la DB de producción: 169 filas re-embebidas, cero mezcla de
+  modelos.
+- **`seele backup <destino>`** — copia consistente vía `VACUUM INTO`,
+  funciona con servidores corriendo (WAL).
+- **`seele import from-jsonl <file>`** — import batch genérico, una
+  observación por línea, upsert por topic-key, reporte
+  `{imported, skipped, errors}`.
+- **REST**: `GET /projects` y `PATCH /memories/{id}` (merge de metadata,
+  no replace). Los métodos de servicio ya existían; era gap de transporte.
+- **Op-log** `<db>.history.jsonl` — append por mutación
+  (`save`/`update`/`delete`/`restore` con `op`, `ts`, `id`, `project`),
+  opt-in vía builder, best-effort. Portado de GRAIL.
+- **`doctor` con salud FTS5** — heurística de segmentos + `--fix`
+  (`INSERT INTO observations_fts(observations_fts) VALUES('optimize')`).
+- **`save` autodetecta proyecto** desde el repo git cuando no se pasa
+  `--project` (solo CLI, ADR-16 D4; `seele-project` deja de ser dead code).
+- **`capture_passive` trilingüe** — acepta `## Key Learnings:`,
+  `## Aprendizajes:` y `## Learnings:` (case-insensitive), documentado en
+  `docs/AGENT-SETUP.md`.
+- **`save --content -`** lee stdin completo; el help declara el límite de
+  ~256 tokens del embedding.
+
+### Changed
+
+- **Robustez de escritura concurrente**: `PRAGMA busy_timeout=5000`,
+  `save` con `TransactionBehavior::Immediate` y retry-once ante
+  `SQLITE_BUSY`. Dos procesos escribiendo ya no fallan con
+  "database is locked".
+- **Default canónico `score_boost_multiplier = 1.0`** en HTTP, CLI, TUI
+  (`/chat` ya lo usaba). ADR-16 D3: el multiplicador neutro es 1.
+- **Binario slim por defecto**: `tui` y `eval` quedan tras features cargo
+  (`--features full` los reactiva; `release.yml` y `v0.1.0-smoke.sh`
+  actualizados). Menos deps de terminal en installs headless.
+
+### Security
+
+- Bearer token con comparación **constant-time** (`subtle`) y soporte de
+  indirección `--auth-bearer $ENVVAR` (el token deja de viajar en argv).
+- **`TRUSTED_HASHES` pineados** para `all-MiniLM-L6-v2` (hash cruzado contra
+  el LFS oid del Hub): un cache de modelo corrupto o tampered falla duro.
+
+### Removed
+
+- **`user_prompts` + `prompts_fts` + `PromptStore`** (migración V003):
+  pipeline write-dead en producción. ADR-16 D2.
 
 ## [0.2.0] — 2026-05-13
 

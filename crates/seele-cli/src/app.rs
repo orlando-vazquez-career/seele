@@ -59,11 +59,14 @@ pub enum Command {
     Link(commands::link::Args),
     /// Aggregate stats: observations + sessions counters.
     Stats,
-    /// Health check + embedder + schema.
-    Doctor,
+    /// Health check + embedder + schema + FTS index health (`--fix` optimizes).
+    Doctor(commands::doctor::Args),
+    /// Consistent one-file backup of the database (VACUUM INTO).
+    Backup(commands::backup::Args),
     /// List distinct project names.
     Projects,
     /// Run a built-in memory-quality evaluation suite (recall@k / MRR).
+    #[cfg(feature = "eval")]
     Eval(commands::eval::Args),
     /// Multi-machine sync via gzipped JSON chunks.
     #[command(subcommand)]
@@ -71,6 +74,9 @@ pub enum Command {
     /// One-shot migration from another memory engine.
     #[command(subcommand)]
     Import(commands::import::ImportCmd),
+    /// Embedder maintenance (re-embed missing/stale vectors).
+    #[command(subcommand)]
+    Embedder(commands::embedder::EmbedderCmd),
     /// Install SEELE as MCP server into agent configs.
     Setup(commands::setup::Args),
     /// MCP server over stdio (JSON-RPC 2.0).
@@ -78,6 +84,7 @@ pub enum Command {
     /// HTTP REST API server.
     Serve(commands::serve::Args),
     /// Interactive terminal UI (ratatui).
+    #[cfg(feature = "tui")]
     Tui(commands::tui::Args),
 }
 
@@ -103,14 +110,22 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
         }
         Command::Link(args) => commands::link::run(args, &cli.db, cli.fake_embedder, &out).await,
         Command::Stats => commands::stats::run(&cli.db, cli.fake_embedder, &out).await,
-        Command::Doctor => commands::doctor::run(&cli.db, cli.fake_embedder, &out).await,
+        Command::Doctor(args) => {
+            commands::doctor::run(args, &cli.db, cli.fake_embedder, &out).await
+        }
+        Command::Backup(args) => commands::backup::run(args, &cli.db, &out).await,
         Command::Projects => commands::projects::run(&cli.db, cli.fake_embedder, &out).await,
+        #[cfg(feature = "eval")]
         Command::Eval(args) => commands::eval::run(args, cli.fake_embedder, &out).await,
         Command::Sync(cmd) => commands::sync::run(cmd, &cli.db, cli.fake_embedder, &out).await,
         Command::Import(cmd) => commands::import::run(cmd, &cli.db, cli.fake_embedder, &out).await,
+        Command::Embedder(cmd) => {
+            commands::embedder::run(cmd, &cli.db, cli.fake_embedder, &out).await
+        }
         Command::Setup(args) => commands::setup::run(args, &out).await,
         Command::Mcp(args) => commands::mcp::run(args, &cli.db, cli.fake_embedder).await,
         Command::Serve(args) => commands::serve::run(args, &cli.db, cli.fake_embedder).await,
+        #[cfg(feature = "tui")]
         Command::Tui(args) => commands::tui::run(args, &cli.db, cli.fake_embedder).await,
     }
 }
@@ -138,7 +153,9 @@ pub fn build_service(
     }
     let pool = init_db(&path)?;
     let embedder = pick_embedder(fake_embedder_flag);
-    Ok(SeeleService::new(pool, embedder))
+    // T-12: op-log next to the DB (`<db>.history.jsonl`), append-only.
+    Ok(SeeleService::new(pool, embedder)
+        .with_history_path(SeeleService::history_path_for_db(&path)))
 }
 
 /// Resolve the embedder per the selection rules documented on
@@ -149,8 +166,8 @@ fn pick_embedder(fake_flag: bool) -> Arc<dyn Embedder> {
 }
 
 /// Boxed variant — the single source of truth for embedder selection,
-/// shared with `seele eval` (which needs `Box<dyn Embedder>` for
-/// `run_suite`). Previously duplicated in `commands/eval.rs`.
+/// shared with `seele eval` (feature `eval`; it needs `Box<dyn Embedder>`
+/// for `run_suite`). Previously duplicated in `commands/eval.rs`.
 pub(crate) fn pick_embedder_boxed(fake_flag: bool) -> Box<dyn Embedder> {
     if fake_flag || fake_env_set() {
         return Box::new(FakeEmbedder);

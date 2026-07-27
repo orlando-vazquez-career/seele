@@ -136,6 +136,54 @@ fn windsurf_writes_to_codeium_windsurf_mcp_config_json() {
     assert!(expected.exists());
 }
 
+// -------- kimi-code --------
+
+#[test]
+fn kimi_code_creates_new_config_if_absent() {
+    let home = TempDir::new().unwrap();
+    let report = install("kimi-code", &opts_for(&home)).unwrap();
+
+    assert_eq!(report.outcome, Outcome::Created);
+    assert_eq!(report.agent, "kimi-code");
+    assert_eq!(
+        report.config_path,
+        home.path().join(".kimi-code").join("mcp.json")
+    );
+
+    let v = read_json(&report.config_path);
+    assert_eq!(v["mcpServers"]["seele"]["command"], "/usr/local/bin/seele");
+    assert_eq!(v["mcpServers"]["seele"]["args"], serde_json::json!(["mcp"]));
+}
+
+#[test]
+fn kimi_code_re_running_is_idempotent_unchanged() {
+    let home = TempDir::new().unwrap();
+    let first = install("kimi-code", &opts_for(&home)).unwrap();
+    assert_eq!(first.outcome, Outcome::Created);
+    let second = install("kimi-code", &opts_for(&home)).unwrap();
+    assert_eq!(second.outcome, Outcome::Unchanged);
+    assert!(
+        second.backup_path.is_none(),
+        "unchanged should not produce a backup"
+    );
+}
+
+#[test]
+fn kimi_code_is_listed_as_implemented() {
+    // `seele setup --list` tags agents from `implemented_agent_names()`
+    // as "implemented"; the rest as "skeleton (v0.2)".
+    let implemented = seele_setup::implemented_agent_names();
+    assert!(
+        implemented.contains(&"kimi-code"),
+        "kimi-code missing from implemented list: {implemented:?}"
+    );
+    let all = seele_setup::all_agent_names();
+    assert!(
+        all.contains(&"kimi-code"),
+        "kimi-code missing from known agents: {all:?}"
+    );
+}
+
 // -------- skeleton agents --------
 
 #[test]
@@ -194,6 +242,7 @@ fn all_agent_names_includes_implemented_and_skeleton() {
         "claude-code",
         "cursor",
         "windsurf",
+        "kimi-code",
         "opencode",
         "aider",
         "cody",

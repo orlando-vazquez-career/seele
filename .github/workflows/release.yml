@@ -84,11 +84,11 @@ jobs:
 
       - name: Build release binary (native)
         if: '!matrix.cross'
-        run: cargo build --release --target ${{ matrix.target }} -p seele-cli
+        run: cargo build --release --target ${{ matrix.target }} -p seele-cli --features full
 
       - name: Build release binary (cross)
         if: matrix.cross
-        run: cross build --release --target ${{ matrix.target }} -p seele-cli
+        run: cross build --release --target ${{ matrix.target }} -p seele-cli --features full
 
       # Package: tar.gz on Unix, zip on Windows. Output name follows the
       # standard <name>-<version>-<target>.<ext> pattern so install
